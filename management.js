@@ -16,7 +16,7 @@ async function loadAllNotes() {
 }
 
 // 显示备注列表
-function displayNotes(notes) {
+function displayNotes(notes, searchTerm = '') {
   const notesList = document.getElementById('notesList');
   
   // 过滤和排序
@@ -37,11 +37,27 @@ function displayNotes(notes) {
   });
 
   if (validNotes.length === 0) {
-    notesList.innerHTML = `
-      <div class="empty-state">
-        <p>暂无备注信息</p>
-      </div>
-    `;
+    if (searchTerm) {
+      // 搜索无结果状态
+      notesList.innerHTML = `
+        <div class="no-results">
+          <h3>未找到相关备注</h3>
+          <p>没有找到与 "<span class="search-term">${searchTerm}</span>" 相关的备注</p>
+        </div>
+      `;
+    } else {
+      // 空状态
+      notesList.innerHTML = `
+        <div class="empty-state">
+          <svg class="empty-icon" viewBox="0 0 24 24">
+            <path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6zm0 10c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4z" fill="currentColor"/>
+            <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill="currentColor"/>
+          </svg>
+          <h3>暂无备注信息</h3>
+          <p>当您在登录页面添加备注后，备注信息会显示在这里</p>
+        </div>
+      `;
+    }
     return;
   }
 
@@ -86,18 +102,16 @@ function setupSearch() {
     chrome.storage.local.get(null, (result) => {
       const notes = Object.values(result);
       const filteredNotes = notes.filter(note => {
-        // 首先确保note是有效的
         if (!note || !note.domain || !note.username || !note.note) {
           return false;
         }
         
-        // 转换为小写进行搜索
         const term = searchTerm.toLowerCase();
         return note.domain.toLowerCase().includes(term) ||
                note.username.toLowerCase().includes(term) ||
                note.note.toLowerCase().includes(term);
       });
-      displayNotes(filteredNotes);
+      displayNotes(filteredNotes, searchTerm);  // 传递搜索词
     });
   };
 
