@@ -14,28 +14,32 @@ function initPasswordFields() {
     
     // 监听密码框的focus事件
     field.addEventListener('focus', () => {
-      chrome.storage.local.get([getFieldKey(field)], (result) => {
-        const note = result[getFieldKey(field)];
-        if (note) {
-          showPasswordSuggestion(field, note);
-        } else {
-          // 如果没有备注，直接显示编辑弹窗
-          showEditNotePopup(field);
-        }
-      });
+      // 确保 chrome.storage API 可用
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        chrome.storage.local.get([getFieldKey(field)], (result) => {
+          const noteData = result[getFieldKey(field)];
+          if (noteData) {
+            showPasswordSuggestion(field, noteData);
+          } else {
+            // 如果没有备注，直接显示编辑弹窗
+            showEditNotePopup(field);
+          }
+        });
+      }
     });
   });
 }
 
-// 加载已存储的备注
+// 修改其他使用 chrome.storage 的函数
 function loadExistingNote(field) {
-  chrome.storage.local.get([getFieldKey(field)], (result) => {
-    const note = result[getFieldKey(field)];
-    if (note) {
-      // 移除创建固定标签的代码，只保留获取备注的功能
-      field.dataset.hasStoredNote = 'true'; // 标记该字段有已保存的备注
-    }
-  });
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    chrome.storage.local.get([getFieldKey(field)], (result) => {
+      const noteData = result[getFieldKey(field)];
+      if (noteData) {
+        field.dataset.hasStoredNote = 'true';
+      }
+    });
+  }
 }
 
 // 更新弹窗位置
@@ -79,6 +83,11 @@ function createNotePopup(field) {
 
 // 保存备注
 function saveNote(note, popup, field) {
+  if (typeof chrome === 'undefined' || !chrome.storage) {
+    alert('存储API不可用');
+    return;
+  }
+
   const domain = window.location.origin;
   const usernameField = findUsernameField(field);
   const username = usernameField ? usernameField.value.trim() : '';
@@ -101,7 +110,6 @@ function saveNote(note, popup, field) {
 
   chrome.storage.local.get([key], (result) => {
     if (result[key]) {
-      // 如果已存在，保留原来的创建时间
       noteData.createTime = result[key].createTime;
     }
 
@@ -211,6 +219,11 @@ function showPasswordSuggestion(field, noteData) {
 
   const suggestion = document.createElement('div');
   suggestion.className = 'password-suggestion';
+  
+  const note = noteData.note;
+  const isLongText = note.length > 100;
+  const displayText = isLongText ? `${note.slice(0, 100)}...` : note;
+
   suggestion.innerHTML = `
     <div class="suggestion-header">
       <img src="${chrome.runtime.getURL('icons/icon48.png')}" class="suggestion-icon" />
@@ -219,7 +232,12 @@ function showPasswordSuggestion(field, noteData) {
     </div>
     <div class="suggestion-content">
       <div class="suggestion-note">
-        <span class="note-text">${noteData.note}</span>
+        <span class="note-text">${displayText}</span>
+        ${isLongText ? `
+          <button class="toggle-text-btn" data-expanded="false">
+            展开
+          </button>
+        ` : ''}
       </div>
       <div class="suggestion-meta">
         <span class="meta-text">上次更新: ${new Date(noteData.updateTime).toLocaleString()}</span>
@@ -239,7 +257,7 @@ function showPasswordSuggestion(field, noteData) {
   const editBtn = suggestion.querySelector('.edit-note-btn');
   editBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    showEditNotePopup(field, noteData);
+    showEditNotePopup(field, noteData.note);
     suggestion.remove();
   });
 
@@ -257,6 +275,25 @@ function showPasswordSuggestion(field, noteData) {
       }, 200);
     }
   }, { once: true });
+
+  // 添加展开/收起功能
+  if (isLongText) {
+    const toggleBtn = suggestion.querySelector('.toggle-text-btn');
+    const noteText = suggestion.querySelector('.note-text');
+    
+    toggleBtn.addEventListener('click', () => {
+      const isExpanded = toggleBtn.dataset.expanded === 'true';
+      if (isExpanded) {
+        noteText.textContent = displayText;
+        toggleBtn.textContent = '展开';
+        toggleBtn.dataset.expanded = 'false';
+      } else {
+        noteText.textContent = note;
+        toggleBtn.textContent = '收起';
+        toggleBtn.dataset.expanded = 'true';
+      }
+    });
+  }
 }
 
 // 显示编辑备注的弹窗

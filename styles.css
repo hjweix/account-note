@@ -106,14 +106,12 @@
 
 .suggestion-note {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .note-text {
-  color: #333;
-  font-size: 14px;
-  word-break: break-all;
-  line-height: 1.4;
+  flex: 1;
+  transition: all 0.3s ease;
 }
 
 .suggestion-site {
@@ -260,4 +258,20 @@
 .meta-text {
   font-size: 12px;
   color: #666;
+}
+
+.toggle-text-btn {
+  background: none;
+  border: none;
+  color: #1a73e8;
+  padding: 4px 8px;
+  margin-left: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.toggle-text-btn:hover {
+  background: rgba(26, 115, 232, 0.1);
 } 
