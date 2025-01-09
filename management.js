@@ -1,3 +1,10 @@
+// 在文件开头添加排序状态
+let sortConfig = {
+  field: 'updateTime',
+  direction: 'desc'
+};
+let isSelectMode = false;
+
 // 加载所有备注
 async function loadAllNotes() {
   chrome.storage.local.get(null, (result) => {
@@ -12,11 +19,23 @@ async function loadAllNotes() {
 function displayNotes(notes) {
   const notesList = document.getElementById('notesList');
   
-  // 过滤掉无效数据
+  // 过滤和排序
   const validNotes = notes.filter(note => 
     note && note.domain && note.note && note.username && note.key
-  );
-  
+  ).sort((a, b) => {
+    const direction = sortConfig.direction === 'asc' ? 1 : -1;
+    switch (sortConfig.field) {
+      case 'updateTime':
+        return direction * (new Date(b.updateTime) - new Date(a.updateTime));
+      case 'username':
+        return direction * a.username.localeCompare(b.username);
+      case 'domain':
+        return direction * a.domain.localeCompare(b.domain);
+      default:
+        return 0;
+    }
+  });
+
   if (validNotes.length === 0) {
     notesList.innerHTML = `
       <div class="empty-state">
@@ -26,28 +45,24 @@ function displayNotes(notes) {
     return;
   }
 
-  // 按域名分组
-  const groupedNotes = groupNotesByDomain(validNotes);
-  
-  notesList.innerHTML = Object.entries(groupedNotes).map(([domain, domainNotes]) => 
-    domainNotes.map(note => `
-      <div class="note-card" data-key="${note.key}">
-        <div class="note-domain">${domain}</div>
-        <div class="note-main">
-          <div class="note-username">用户名: ${note.username}</div>
-          <div class="note-content" title="${note.note}">
-            ${note.note.length > 50 ? note.note.slice(0, 50) + '...' : note.note}
-          </div>
-        </div>
-        <div class="note-actions">
-          <button class="action-btn edit-btn">编辑</button>
-          <button class="action-btn delete-btn">删除</button>
+  // 修改卡片模板，添加复选框
+  notesList.innerHTML = validNotes.map(note => `
+    <div class="note-card" data-key="${note.key}">
+      <input type="checkbox" class="select-checkbox">
+      <div class="note-domain">${note.domain}</div>
+      <div class="note-main">
+        <div class="note-username">用户名: ${note.username}</div>
+        <div class="note-content" title="${note.note}">
+          ${note.note.length > 50 ? note.note.slice(0, 50) + '...' : note.note}
         </div>
       </div>
-    `).join('')
-  ).join('');
+      <div class="note-actions">
+        <button class="action-btn edit-btn">编辑</button>
+        <button class="action-btn delete-btn">删除</button>
+      </div>
+    </div>
+  `).join('');
 
-  // 添加事件监听
   addNoteActions();
 }
 
@@ -120,6 +135,14 @@ function addNoteActions() {
       noteContent.innerHTML = `
         <div class="edit-mode">
           <textarea class="edit-input" placeholder="输入备注内容">${noteContent.getAttribute('title')}</textarea>
+          <div class="keyboard-tips">
+            <span class="tip-item">
+              <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 保存
+            </span>
+            <span class="tip-item">
+              <kbd>Esc</kbd> 取消
+            </span>
+          </div>
         </div>
         <div class="edit-actions">
           <button class="action-btn save-edit-btn">保存</button>
@@ -208,8 +231,66 @@ function addNoteActions() {
   });
 }
 
+// 添加排序和批量操作的事件处理
+function setupControls() {
+  const sortSelect = document.getElementById('sortSelect');
+  const sortDirection = document.getElementById('sortDirection');
+  const toggleSelect = document.getElementById('toggleSelect');
+  const deleteSelected = document.getElementById('deleteSelected');
+
+  // 排序事件
+  sortSelect.addEventListener('change', (e) => {
+    sortConfig.field = e.target.value;
+    loadAllNotes();
+  });
+
+  sortDirection.addEventListener('click', () => {
+    sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    sortDirection.classList.toggle('desc', sortConfig.direction === 'desc');
+    loadAllNotes();
+  });
+
+  // 批量选择事件
+  toggleSelect.addEventListener('click', () => {
+    isSelectMode = !isSelectMode;
+    document.body.classList.toggle('select-mode', isSelectMode);
+    toggleSelect.textContent = isSelectMode ? '取消' : '选择';
+    deleteSelected.style.display = isSelectMode ? 'block' : 'none';
+  });
+
+  // 批量删除事件
+  deleteSelected.addEventListener('click', () => {
+    const selectedCards = document.querySelectorAll('.note-card input:checked');
+    if (selectedCards.length === 0) {
+      alert('请选择要删除的备注');
+      return;
+    }
+
+    if (confirm(`确定要删除选中的 ${selectedCards.length} 条备注吗？`)) {
+      const keys = Array.from(selectedCards).map(checkbox => 
+        checkbox.closest('.note-card').dataset.key
+      );
+
+      chrome.storage.local.get(null, (result) => {
+        keys.forEach(key => {
+          delete result[key];
+        });
+
+        chrome.storage.local.set(result, () => {
+          loadAllNotes();
+          isSelectMode = false;
+          document.body.classList.remove('select-mode');
+          toggleSelect.textContent = '选择';
+          deleteSelected.style.display = 'none';
+        });
+      });
+    }
+  });
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
   loadAllNotes();
   setupSearch();
+  setupControls();
 }); 

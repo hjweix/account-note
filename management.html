@@ -24,6 +24,27 @@
     </header>
 
     <main class="main-content">
+      <div class="control-bar">
+        <div class="sort-controls">
+          <select id="sortSelect" class="sort-select">
+            <option value="updateTime">按更新时间排序</option>
+            <option value="username">按用户名排序</option>
+            <option value="domain">按网站排序</option>
+          </select>
+          <button id="sortDirection" class="sort-direction" title="切换排序方向">
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path d="M7 10l5 5 5-5H7z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="batch-controls">
+          <button id="toggleSelect" class="batch-btn">选择</button>
+          <button id="deleteSelected" class="batch-btn danger" style="display: none;">
+            删除所选
+          </button>
+        </div>
+      </div>
+
       <div class="notes-grid" id="notesList">
         <!-- 备注列表将通过 JS 动态插入 -->
       </div>
