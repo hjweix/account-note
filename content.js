@@ -79,32 +79,103 @@ function createNotePopup(field) {
 
 // 保存备注
 function saveNote(note, popup, field) {
+  const domain = window.location.origin;
+  const usernameField = findUsernameField(field);
+  const username = usernameField ? usernameField.value : '';
   const key = getFieldKey(field);
   
-  chrome.storage.local.set({
-    [key]: note
-  }, () => {
-    popup.style.display = 'none';
-    // 显示保存成功提示
-    const toast = document.createElement('div');
-    toast.className = 'password-note-toast';
-    toast.textContent = '备注已保存';
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-      toast.remove();
-    }, 2000);
-    
-    // 更新字段状态
-    field.dataset.hasStoredNote = 'true';
+  const noteData = {
+    key: key,
+    note: note,
+    createTime: new Date().toISOString(),
+    updateTime: new Date().toISOString(),
+    domain: domain,
+    username: username
+  };
+
+  chrome.storage.local.get([key], (result) => {
+    if (result[key]) {
+      // 如果已存在，保留原来的创建时间
+      noteData.createTime = result[key].createTime;
+    }
+
+    chrome.storage.local.set({
+      [key]: noteData
+    }, () => {
+      popup.style.display = 'none';
+      // 显示保存成功提示
+      const toast = document.createElement('div');
+      toast.className = 'password-note-toast';
+      toast.textContent = '备注已保存';
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 2000);
+      
+      // 更新字段状态
+      field.dataset.hasStoredNote = 'true';
+    });
   });
 }
 
 // 生成输入框的唯一标识
 function getFieldKey(field) {
-  const url = window.location.origin;
-  const fieldId = field.id || field.name || '';
-  return `${url}_${fieldId}`;
+  const domain = window.location.origin;
+  // 查找用户名输入框（通常是密码框的前一个input）
+  const usernameField = findUsernameField(field);
+  const username = usernameField ? usernameField.value : '';
+  return `${domain}_${username}`;
+}
+
+// 添加查找用户名输入框的函数
+function findUsernameField(passwordField) {
+  // 1. 尝试在同一表单中查找
+  if (passwordField.form) {
+    const inputs = Array.from(passwordField.form.getElementsByTagName('input'));
+    const index = inputs.indexOf(passwordField);
+    if (index > 0) {
+      const prevInput = inputs[index - 1];
+      if (isUsernameField(prevInput)) {
+        return prevInput;
+      }
+    }
+  }
+  
+  // 2. 尝试查找密码框前面的输入框
+  const allInputs = Array.from(document.getElementsByTagName('input'));
+  const index = allInputs.indexOf(passwordField);
+  if (index > 0) {
+    const prevInput = allInputs[index - 1];
+    if (isUsernameField(prevInput)) {
+      return prevInput;
+    }
+  }
+  
+  return null;
+}
+
+// 判断是否为用户名输入框
+function isUsernameField(input) {
+  if (!input || !input.type) return false;
+  
+  const usernameTypes = ['text', 'email', 'tel'];
+  const usernameIdentifiers = ['user', 'email', 'login', 'name', 'account'];
+  
+  // 检查输入框类型
+  if (!usernameTypes.includes(input.type.toLowerCase())) return false;
+  
+  // 检查输入框的id、name、placeholder等属性
+  const attributes = [
+    input.id,
+    input.name,
+    input.placeholder,
+    input.getAttribute('aria-label')
+  ].map(attr => (attr || '').toLowerCase());
+  
+  return attributes.some(attr => 
+    usernameIdentifiers.some(identifier => attr.includes(identifier))
+  );
 }
 
 function showNotePopup(popup, field) {
@@ -126,7 +197,7 @@ function showNotePopup(popup, field) {
   popup.querySelector('input').focus();
 }
 
-function showPasswordSuggestion(field, note) {
+function showPasswordSuggestion(field, noteData) {
   // 移除可能已存在的弹窗
   const existingSuggestion = document.querySelector('.password-suggestion');
   if (existingSuggestion) {
@@ -143,7 +214,10 @@ function showPasswordSuggestion(field, note) {
     </div>
     <div class="suggestion-content">
       <div class="suggestion-note">
-        <span class="note-text">${note}</span>
+        <span class="note-text">${noteData.note}</span>
+      </div>
+      <div class="suggestion-meta">
+        <span class="meta-text">上次更新: ${new Date(noteData.updateTime).toLocaleString()}</span>
       </div>
     </div>
   `;
@@ -160,7 +234,7 @@ function showPasswordSuggestion(field, note) {
   const editBtn = suggestion.querySelector('.edit-note-btn');
   editBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    showEditNotePopup(field, note);
+    showEditNotePopup(field, noteData);
     suggestion.remove();
   });
 
