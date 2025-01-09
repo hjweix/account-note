@@ -113,14 +113,17 @@ function addNoteActions() {
       const noteContent = noteCard.querySelector('.note-content');
       const key = noteCard.dataset.key;
       
-      // 切换到编辑模式，使用 textarea
+      // 添加编辑状态类名
+      noteCard.classList.add('editing');
+      
+      // 切换到编辑模式
       noteContent.innerHTML = `
         <div class="edit-mode">
           <textarea class="edit-input" placeholder="输入备注内容">${noteContent.getAttribute('title')}</textarea>
-          <div class="edit-actions">
-            <button class="save-edit-btn">保存</button>
-            <button class="cancel-edit-btn">取消</button>
-          </div>
+        </div>
+        <div class="edit-actions">
+          <button class="action-btn save-edit-btn">保存</button>
+          <button class="action-btn cancel-edit-btn">取消</button>
         </div>
       `;
 
@@ -149,7 +152,8 @@ function addNoteActions() {
           chrome.storage.local.set({
             [key]: noteData
           }, () => {
-            // 更新显示
+            // 更新显示并移除编辑状态
+            noteCard.classList.remove('editing');
             noteContent.innerHTML = newNote.length > 50 ? 
               `${newNote.slice(0, 50)}...` : newNote;
             noteContent.setAttribute('title', newNote);
@@ -160,6 +164,7 @@ function addNoteActions() {
       // 取消编辑
       const cancelEdit = () => {
         const originalNote = noteContent.getAttribute('title');
+        noteCard.classList.remove('editing');
         noteContent.innerHTML = originalNote.length > 50 ? 
           `${originalNote.slice(0, 50)}...` : originalNote;
       };
@@ -170,7 +175,7 @@ function addNoteActions() {
 
       // 添加键盘事件
       editInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
           saveEdit();
         } else if (e.key === 'Escape') {
