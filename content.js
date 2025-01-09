@@ -239,7 +239,7 @@ function showPasswordSuggestion(field, noteData) {
         <input type="text" 
           class="note-text ${!hasNote ? 'empty-note' : ''}" 
           value="${escapeHtml(hasNote ? displayText : '')}" 
-          placeholder="${!hasNote ? '点击添加备注' : '点击编辑备注'}"
+          placeholder="${!hasNote ? '点击添加备注,回车保存' : '点击编辑备注'}"
           data-full-text="${escapeHtml(note)}"
           data-short-text="${escapeHtml(displayText)}"
           readonly>
@@ -278,12 +278,82 @@ function showPasswordSuggestion(field, noteData) {
       e.preventDefault();
       const newNote = noteInput.value.trim();
       if (newNote) {
-        saveNote(newNote, suggestion, field);
+        // 先恢复只读状态
+        noteInput.readOnly = true;
+        noteInput.blur();
+        
+        // 保存备注
+        const domain = window.location.origin;
+        const usernameField = findUsernameField(field);
+        const username = usernameField ? usernameField.value.trim() : '';
+        
+        if (!username) {
+          showToast('请先输入用户名');
+          return;
+        }
+
+        const key = getFieldKey(field);
+        const noteData = {
+          key: key,
+          note: newNote,
+          createTime: new Date().toISOString(),
+          updateTime: new Date().toISOString(),
+          domain: domain,
+          username: username
+        };
+
+        chrome.storage.local.get([key], (result) => {
+          if (result[key]) {
+            noteData.createTime = result[key].createTime;
+          }
+
+          chrome.storage.local.set({
+            [key]: noteData
+          }, () => {
+            // 更新显示状态
+            const isLongText = newNote.length > 100;
+            const displayText = isLongText ? `${newNote.slice(0, 100)}...` : newNote;
+            
+            noteInput.value = displayText;
+            noteInput.dataset.fullText = newNote;
+            noteInput.dataset.shortText = displayText;
+            
+            // 如果需要，添加或更新展开按钮
+            let toggleBtn = suggestion.querySelector('.toggle-text-btn');
+            if (isLongText && !toggleBtn) {
+              toggleBtn = document.createElement('button');
+              toggleBtn.className = 'toggle-text-btn';
+              toggleBtn.dataset.expanded = 'false';
+              toggleBtn.textContent = '展开';
+              noteInput.parentElement.appendChild(toggleBtn);
+              
+              // 添加展开/收起功能
+              toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isExpanded = toggleBtn.dataset.expanded === 'true';
+                
+                if (isExpanded) {
+                  noteInput.value = noteInput.dataset.shortText;
+                  toggleBtn.textContent = '展开';
+                  toggleBtn.dataset.expanded = 'false';
+                } else {
+                  noteInput.value = noteInput.dataset.fullText;
+                  toggleBtn.textContent = '收起';
+                  toggleBtn.dataset.expanded = 'true';
+                }
+              });
+            } else if (!isLongText && toggleBtn) {
+              toggleBtn.remove();
+            }
+            
+            showToast('备注已保存');
+          });
+        });
       }
     } else if (e.key === 'Escape') {
-      noteInput.value = hasNote ? noteData.note : '';
       noteInput.readOnly = true;
       noteInput.blur();
+      noteInput.value = noteInput.dataset.fullText || '';
     }
   });
 
