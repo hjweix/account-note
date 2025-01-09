@@ -18,12 +18,8 @@ function initPasswordFields() {
       if (typeof chrome !== 'undefined' && chrome.storage) {
         chrome.storage.local.get([getFieldKey(field)], (result) => {
           const noteData = result[getFieldKey(field)];
-          if (noteData) {
-            showPasswordSuggestion(field, noteData);
-          } else {
-            // 如果没有备注，直接显示编辑弹窗
-            showEditNotePopup(field);
-          }
+          // 无论是否有备注，都使用同一个展示方式
+          showPasswordSuggestion(field, noteData);
         });
       }
     });
@@ -220,7 +216,9 @@ function showPasswordSuggestion(field, noteData) {
   const suggestion = document.createElement('div');
   suggestion.className = 'password-suggestion';
   
-  const note = noteData.note;
+  // 处理没有备注的情况
+  const hasNote = noteData && noteData.note;
+  const note = hasNote ? noteData.note : '';
   const isLongText = note.length > 100;
   const displayText = isLongText ? `${note.slice(0, 100)}...` : note;
 
@@ -228,38 +226,88 @@ function showPasswordSuggestion(field, noteData) {
     <div class="suggestion-header">
       <img src="${chrome.runtime.getURL('icons/icon48.png')}" class="suggestion-icon" />
       <span>备注信息</span>
-      <button class="edit-note-btn" title="编辑备注">✏️</button>
     </div>
     <div class="suggestion-content">
       <div class="suggestion-note">
-        <span class="note-text">${displayText}</span>
+        <input type="text" 
+          class="note-text ${!hasNote ? 'empty-note' : ''}" 
+          value="${hasNote ? displayText : ''}" 
+          placeholder="${!hasNote ? '点击添加备注' : '点击编辑备注'}"
+          readonly>
         ${isLongText ? `
           <button class="toggle-text-btn" data-expanded="false">
             展开
           </button>
         ` : ''}
       </div>
-      <div class="suggestion-meta">
-        <span class="meta-text">上次更新: ${new Date(noteData.updateTime).toLocaleString()}</span>
-      </div>
+      ${hasNote ? `
+        <div class="suggestion-meta">
+          <span class="meta-text">上次更新: ${new Date(noteData.updateTime).toLocaleString()}</span>
+        </div>
+      ` : ''}
     </div>
   `;
   
-  // 定位在密码框右侧，与表单顶部对齐
+  // 定位弹窗
   const formRect = field.closest('form')?.getBoundingClientRect() || field.getBoundingClientRect();
   const fieldRect = field.getBoundingClientRect();
   suggestion.style.top = `${formRect.top}px`;
   suggestion.style.left = `${fieldRect.right + 10}px`;
   
   document.body.appendChild(suggestion);
+
+  // 获取元素
+  const noteInput = suggestion.querySelector('.note-text');
   
-  // 添加编辑按钮点击事件
-  const editBtn = suggestion.querySelector('.edit-note-btn');
-  editBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    showEditNotePopup(field, noteData.note);
-    suggestion.remove();
+  // 点击文本框时启用编辑
+  noteInput.addEventListener('click', () => {
+    noteInput.readOnly = false;
+    noteInput.focus();
+    if (!hasNote) {
+      noteInput.value = ''; // 清空占位符
+    }
   });
+
+  // 处理编辑完成
+  noteInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const newNote = noteInput.value.trim();
+      if (newNote) {
+        saveNote(newNote, suggestion, field);
+      }
+    } else if (e.key === 'Escape') {
+      noteInput.value = hasNote ? noteData.note : '';
+      noteInput.readOnly = true;
+      noteInput.blur();
+    }
+  });
+
+  // 失去焦点时恢复只读
+  noteInput.addEventListener('blur', () => {
+    noteInput.readOnly = true;
+    if (!noteInput.value.trim() && !hasNote) {
+      noteInput.value = ''; // 保持空值以显示占位符
+    }
+  });
+
+  // 添加展开/收起功能
+  if (isLongText) {
+    const toggleBtn = suggestion.querySelector('.toggle-text-btn');
+    
+    toggleBtn.addEventListener('click', () => {
+      const isExpanded = toggleBtn.dataset.expanded === 'true';
+      if (isExpanded) {
+        noteInput.value = displayText;
+        toggleBtn.textContent = '展开';
+        toggleBtn.dataset.expanded = 'false';
+      } else {
+        noteInput.value = note;
+        toggleBtn.textContent = '收起';
+        toggleBtn.dataset.expanded = 'true';
+      }
+    });
+  }
 
   // 添加动画效果
   setTimeout(() => {
@@ -275,25 +323,6 @@ function showPasswordSuggestion(field, noteData) {
       }, 200);
     }
   }, { once: true });
-
-  // 添加展开/收起功能
-  if (isLongText) {
-    const toggleBtn = suggestion.querySelector('.toggle-text-btn');
-    const noteText = suggestion.querySelector('.note-text');
-    
-    toggleBtn.addEventListener('click', () => {
-      const isExpanded = toggleBtn.dataset.expanded === 'true';
-      if (isExpanded) {
-        noteText.textContent = displayText;
-        toggleBtn.textContent = '展开';
-        toggleBtn.dataset.expanded = 'false';
-      } else {
-        noteText.textContent = note;
-        toggleBtn.textContent = '收起';
-        toggleBtn.dataset.expanded = 'true';
-      }
-    });
-  }
 }
 
 // 显示编辑备注的弹窗

@@ -111,7 +111,26 @@
 
 .note-text {
   flex: 1;
-  transition: all 0.3s ease;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+  color: #202124;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.note-text:not([readonly]) {
+  border-bottom: 1px solid #1a73e8;
+  cursor: text;
+  padding-bottom: 2px;
+}
+
+.note-text:focus {
+  outline: none;
+  background: rgba(26, 115, 232, 0.05);
 }
 
 .suggestion-site {
@@ -274,4 +293,14 @@
 
 .toggle-text-btn:hover {
   background: rgba(26, 115, 232, 0.1);
+} 
+
+.note-text.empty-note {
+  color: #5f6368;
+  font-style: italic;
+}
+
+.note-text.empty-note:not([readonly]) {
+  color: #202124;
+  font-style: normal;
 } 
