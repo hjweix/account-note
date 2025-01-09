@@ -61,7 +61,21 @@
   20% { opacity: 1; }
   80% { opacity: 1; }
   100% { opacity: 0; }
-} 
+}
+
+.password-note-toast.info {
+  background: #323232;
+  color: white;
+}
+
+.password-note-toast.error {
+  background: #d32f2f;
+  color: white;
+}
+
+.toast-icon {
+  font-size: 16px;
+}
 
 .password-suggestion {
   position: absolute;

@@ -79,53 +79,54 @@ function createNotePopup(field) {
 
 // 保存备注
 function saveNote(note, popup, field) {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    alert('存储API不可用');
-    return;
-  }
-
-  const domain = window.location.origin;
-  const usernameField = findUsernameField(field);
-  const username = usernameField ? usernameField.value.trim() : '';
-  
-  // 验证必要数据
-  if (!note.trim() || !username) {
-    alert('请确保输入了备注内容，并且能够找到用户名输入框');
-    return;
-  }
-
-  const key = getFieldKey(field);
-  const noteData = {
-    key: key,
-    note: note.trim(),
-    createTime: new Date().toISOString(),
-    updateTime: new Date().toISOString(),
-    domain: domain,
-    username: username
-  };
-
-  chrome.storage.local.get([key], (result) => {
-    if (result[key]) {
-      noteData.createTime = result[key].createTime;
+  try {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+      throw new Error('存储API不可用');
     }
 
-    chrome.storage.local.set({
-      [key]: noteData
-    }, () => {
-      popup.style.display = 'none';
-      // 显示保存成功提示
-      const toast = document.createElement('div');
-      toast.className = 'password-note-toast';
-      toast.textContent = '备注已保存';
-      document.body.appendChild(toast);
-      
-      setTimeout(() => {
-        toast.remove();
-      }, 2000);
-      
-      field.dataset.hasStoredNote = 'true';
+    const domain = window.location.origin;
+    const usernameField = findUsernameField(field);
+    const username = usernameField ? usernameField.value.trim() : '';
+    
+    if (!note.trim()) {
+      throw new Error('备注内容不能为空');
+    }
+    
+    if (!username) {
+      throw new Error('请先输入用户名');
+    }
+
+    const key = getFieldKey(field);
+    const noteData = {
+      key: key,
+      note: note.trim(),
+      createTime: new Date().toISOString(),
+      updateTime: new Date().toISOString(),
+      domain: domain,
+      username: username
+    };
+
+    chrome.storage.local.get([key], (result) => {
+      if (chrome.runtime.lastError) {
+        throw new Error('读取数据失败：' + chrome.runtime.lastError.message);
+      }
+
+      if (result[key]) {
+        noteData.createTime = result[key].createTime;
+      }
+
+      chrome.storage.local.set({ [key]: noteData }, () => {
+        if (chrome.runtime.lastError) {
+          throw new Error('保存数据失败：' + chrome.runtime.lastError.message);
+        }
+        popup.style.display = 'none';
+        showToast('备注已保存');
+      });
     });
-  });
+  } catch (error) {
+    showToast(error.message, 'error');
+    console.error('SaveNote Error:', error);
+  }
 }
 
 // 生成输入框的唯一标识
@@ -139,29 +140,35 @@ function getFieldKey(field) {
 
 // 添加查找用户名输入框的函数
 function findUsernameField(passwordField) {
-  // 1. 尝试在同一表单中查找
-  if (passwordField.form) {
-    const inputs = Array.from(passwordField.form.getElementsByTagName('input'));
-    const index = inputs.indexOf(passwordField);
+  try {
+    // 1. 尝试在同一表单中查找
+    if (passwordField.form) {
+      const inputs = Array.from(passwordField.form.getElementsByTagName('input'));
+      const index = inputs.indexOf(passwordField);
+      if (index > 0) {
+        const prevInput = inputs[index - 1];
+        if (isUsernameField(prevInput)) {
+          return prevInput;
+        }
+      }
+    }
+    
+    // 2. 尝试查找密码框前面的输入框
+    const allInputs = Array.from(document.getElementsByTagName('input'));
+    const index = allInputs.indexOf(passwordField);
     if (index > 0) {
-      const prevInput = inputs[index - 1];
+      const prevInput = allInputs[index - 1];
       if (isUsernameField(prevInput)) {
         return prevInput;
       }
     }
+    
+    // 如果没有找到用户名输入框
+    throw new Error('未找到关联的用户名输入框');
+  } catch (error) {
+    console.error('FindUsername Error:', error);
+    return null;
   }
-  
-  // 2. 尝试查找密码框前面的输入框
-  const allInputs = Array.from(document.getElementsByTagName('input'));
-  const index = allInputs.indexOf(passwordField);
-  if (index > 0) {
-    const prevInput = allInputs[index - 1];
-    if (isUsernameField(prevInput)) {
-      return prevInput;
-    }
-  }
-  
-  return null;
 }
 
 // 判断是否为用户名输入框
@@ -215,11 +222,9 @@ function showPasswordSuggestion(field, noteData) {
 
   // 添加 HTML 转义函数
   function escapeHtml(text) {
-    console.log('Escaping text:', text); // 添加日志
     const div = document.createElement('div');
     div.textContent = text;
     const escaped = div.innerHTML;
-    console.log('Escaped result:', escaped); // 添加日志
     return escaped;
   }
 
@@ -507,4 +512,48 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       showPasswordSuggestion(passwordField, null);
     }
   }
+}); 
+
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = 'password-note-toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  // Toast 会通过 CSS 动画自动消失
+  setTimeout(() => {
+    toast.remove();
+  }, 2000);
+} 
+
+function validateNoteData(noteData) {
+  const errors = [];
+  
+  if (!noteData.note || !noteData.note.trim()) {
+    errors.push('备注内容不能为空');
+  }
+  
+  if (!noteData.username || !noteData.username.trim()) {
+    errors.push('用户名不能为空');
+  }
+  
+  if (!noteData.domain) {
+    errors.push('网站域名无效');
+  }
+  
+  if (errors.length > 0) {
+    throw new Error(errors.join('\n'));
+  }
+  
+  return true;
+} 
+
+window.addEventListener('error', (event) => {
+  console.error('Global Error:', event.error);
+  showToast('操作出错，请重试', 'error');
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled Promise Rejection:', event.reason);
+  showToast('操作出错，请重试', 'error');
 }); 
