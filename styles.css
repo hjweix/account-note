@@ -68,9 +68,9 @@
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  padding: 8px 12px;
-  min-width: 200px;
-  max-width: 300px;
+  padding: 12px 16px;
+  min-width: 240px;
+  max-width: 320px;
   z-index: 10000;
   opacity: 0;
   transform: translateY(-4px);
@@ -88,14 +88,29 @@
 
 .note-text {
   width: 100%;
-  padding: 8px;
+  min-height: 45px;
+  max-height: 200px;
+  padding: 11px 12px;
   border: 1px solid transparent;
   border-radius: 6px;
   font-size: 14px;
   line-height: 1.5;
   color: #202124;
   background: transparent;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  resize: none;
+  overflow-y: auto;
+  font-family: inherit;
+  box-sizing: border-box;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.note-text:not([data-is-expanded="true"]) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .note-text:hover {
@@ -119,16 +134,14 @@
 }
 
 .note-text:not([readonly]) {
-  color: #202124;
-  font-style: normal;
-  background: white;
   border-color: #dadce0;
+  background: white;
 }
 
 .toggle-text-btn {
   position: absolute;
   right: 8px;
-  bottom: -24px;
+  bottom: -28px;
   padding: 4px 8px;
   font-size: 12px;
   color: #1a73e8;
@@ -136,11 +149,11 @@
   border: none;
   cursor: pointer;
   transition: all 0.2s;
+  border-radius: 4px;
 }
 
 .toggle-text-btn:hover {
   background: rgba(26, 115, 232, 0.1);
-  border-radius: 4px;
 }
 
 .suggestion-header {
@@ -309,4 +322,21 @@
 .meta-text {
   font-size: 12px;
   color: #666;
+} 
+
+.note-text::-webkit-scrollbar {
+  width: 6px;
+}
+
+.note-text::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.note-text::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+.note-text::-webkit-scrollbar-thumb:hover {
+  background: #ccc;
 } 

@@ -215,9 +215,12 @@ function showPasswordSuggestion(field, noteData) {
 
   // 添加 HTML 转义函数
   function escapeHtml(text) {
+    console.log('Escaping text:', text); // 添加日志
     const div = document.createElement('div');
     div.textContent = text;
-    return div.innerHTML;
+    const escaped = div.innerHTML;
+    console.log('Escaped result:', escaped); // 添加日志
+    return escaped;
   }
 
   const suggestion = document.createElement('div');
@@ -226,21 +229,23 @@ function showPasswordSuggestion(field, noteData) {
   const hasNote = noteData && noteData.note;
   const note = hasNote ? noteData.note : '';
   const isLongText = note.length > 100;
-  const displayText = isLongText ? `${note.slice(0, 100)}...` : note;
+  
+  // 修改这里：确保 fullText 是完整的文本
+  const fullText = note;
+  const shortText = isLongText ? note.slice(0, 100) + '...' : note;
 
   suggestion.innerHTML = `
     <div class="suggestion-content">
-      <input type="text" 
+      <textarea 
         class="note-text ${!hasNote ? 'empty-note' : ''}" 
-        value="${escapeHtml(hasNote ? displayText : '')}" 
         placeholder="${!hasNote ? '添加备注' : '编辑备注'}"
-        data-full-text="${escapeHtml(note)}"
-        data-short-text="${escapeHtml(displayText)}"
-        readonly>
+        data-full-text="${escapeHtml(fullText)}"
+        data-short-text="${escapeHtml(shortText)}"
+        data-is-expanded="false"
+        readonly
+      >${escapeHtml(shortText)}</textarea>
       ${isLongText ? `
-        <button class="toggle-text-btn" data-expanded="false">
-          展开
-        </button>
+        <button class="toggle-text-btn" title="展开/收起">展开</button>
       ` : ''}
     </div>
   `;
@@ -255,7 +260,36 @@ function showPasswordSuggestion(field, noteData) {
 
   // 获取元素
   const noteInput = suggestion.querySelector('.note-text');
+  const toggleBtn = suggestion.querySelector('.toggle-text-btn');
+
+  // 设置初始高度
+  noteInput.style.height = '45px'; // 使用新的最小高度
   
+  // 处理展开/收起功能
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isExpanded = noteInput.dataset.isExpanded === 'true';
+      
+      if (isExpanded) {
+        // 收起
+        noteInput.value = noteInput.dataset.shortText;
+        toggleBtn.textContent = '展开';
+        noteInput.dataset.isExpanded = 'false';
+        noteInput.style.height = '45px'; // 使用新的最小高度
+      } else {
+        // 展开
+        noteInput.value = noteInput.dataset.fullText;
+        toggleBtn.textContent = '收起';
+        noteInput.dataset.isExpanded = 'true';
+        // 计算展开后的高度
+        noteInput.style.height = 'auto';
+        const scrollHeight = noteInput.scrollHeight;
+        noteInput.style.height = `${scrollHeight}px`;
+      }
+    });
+  }
+
   // 点击文本框时启用编辑
   noteInput.addEventListener('click', () => {
     noteInput.readOnly = false;
@@ -357,27 +391,6 @@ function showPasswordSuggestion(field, noteData) {
       noteInput.value = ''; // 保持空值以显示占位符
     }
   });
-
-  // 修复展开/收起功能
-  if (isLongText) {
-    const toggleBtn = suggestion.querySelector('.toggle-text-btn');
-    const noteInput = suggestion.querySelector('.note-text');
-    
-    toggleBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isExpanded = toggleBtn.dataset.expanded === 'true';
-      
-      if (isExpanded) {
-        noteInput.value = noteInput.dataset.shortText;
-        toggleBtn.textContent = '展开';
-        toggleBtn.dataset.expanded = 'false';
-      } else {
-        noteInput.value = noteInput.dataset.fullText;
-        toggleBtn.textContent = '收起';
-        toggleBtn.dataset.expanded = 'true';
-      }
-    });
-  }
 
   // 修改点击事件监听的处理方式
   const handleOutsideClick = (e) => {
