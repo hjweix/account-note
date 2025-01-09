@@ -223,32 +223,25 @@ function showPasswordSuggestion(field, noteData) {
   const suggestion = document.createElement('div');
   suggestion.className = 'password-suggestion';
   
-  // 处理没有备注的情况
   const hasNote = noteData && noteData.note;
   const note = hasNote ? noteData.note : '';
   const isLongText = note.length > 100;
   const displayText = isLongText ? `${note.slice(0, 100)}...` : note;
 
   suggestion.innerHTML = `
-    <div class="suggestion-header">
-      <img src="${chrome.runtime.getURL('icons/icon48.png')}" class="suggestion-icon" />
-      <span>备注信息</span>
-    </div>
     <div class="suggestion-content">
-      <div class="suggestion-note">
-        <input type="text" 
-          class="note-text ${!hasNote ? 'empty-note' : ''}" 
-          value="${escapeHtml(hasNote ? displayText : '')}" 
-          placeholder="${!hasNote ? '点击添加备注,回车保存' : '点击编辑备注'}"
-          data-full-text="${escapeHtml(note)}"
-          data-short-text="${escapeHtml(displayText)}"
-          readonly>
-        ${isLongText ? `
-          <button class="toggle-text-btn" data-expanded="false">
-            展开
-          </button>
-        ` : ''}
-      </div>
+      <input type="text" 
+        class="note-text ${!hasNote ? 'empty-note' : ''}" 
+        value="${escapeHtml(hasNote ? displayText : '')}" 
+        placeholder="${!hasNote ? '添加备注' : '编辑备注'}"
+        data-full-text="${escapeHtml(note)}"
+        data-short-text="${escapeHtml(displayText)}"
+        readonly>
+      ${isLongText ? `
+        <button class="toggle-text-btn" data-expanded="false">
+          展开
+        </button>
+      ` : ''}
     </div>
   `;
   

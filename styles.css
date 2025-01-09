@@ -66,21 +66,81 @@
 .password-suggestion {
   position: absolute;
   background: white;
-  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 8px;
-  padding: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 10000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  padding: 8px 12px;
   min-width: 200px;
   max-width: 300px;
+  z-index: 10000;
   opacity: 0;
-  transform: translateX(-10px);
-  transition: all 0.2s ease-out;
+  transform: translateY(-4px);
+  transition: all 0.2s ease;
 }
 
 .password-suggestion.show {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateY(0);
+}
+
+.suggestion-content {
+  position: relative;
+}
+
+.note-text {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #202124;
+  background: transparent;
+  transition: all 0.2s;
+}
+
+.note-text:hover {
+  background: #f8f9fa;
+}
+
+.note-text:focus {
+  outline: none;
+  border-color: #1a73e8;
+  background: white;
+}
+
+.note-text.empty-note {
+  color: #5f6368;
+  font-style: italic;
+}
+
+.note-text.empty-note:not([readonly]) {
+  color: #202124;
+  font-style: normal;
+}
+
+.note-text:not([readonly]) {
+  color: #202124;
+  font-style: normal;
+  background: white;
+  border-color: #dadce0;
+}
+
+.toggle-text-btn {
+  position: absolute;
+  right: 8px;
+  bottom: -24px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #1a73e8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-text-btn:hover {
+  background: rgba(26, 115, 232, 0.1);
+  border-radius: 4px;
 }
 
 .suggestion-header {
@@ -100,37 +160,9 @@
   margin-right: 8px;
 }
 
-.suggestion-content {
-  padding: 12px;
-}
-
 .suggestion-note {
   display: flex;
   align-items: flex-start;
-}
-
-.note-text {
-  flex: 1;
-  border: none;
-  background: none;
-  padding: 0;
-  margin: 0;
-  font-size: 14px;
-  color: #202124;
-  width: 100%;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.note-text:not([readonly]) {
-  border-bottom: 1px solid #1a73e8;
-  cursor: text;
-  padding-bottom: 2px;
-}
-
-.note-text:focus {
-  outline: none;
-  background: rgba(26, 115, 232, 0.05);
 }
 
 .suggestion-site {
@@ -277,30 +309,4 @@
 .meta-text {
   font-size: 12px;
   color: #666;
-}
-
-.toggle-text-btn {
-  background: none;
-  border: none;
-  color: #1a73e8;
-  padding: 4px 8px;
-  margin-left: 8px;
-  cursor: pointer;
-  font-size: 12px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.toggle-text-btn:hover {
-  background: rgba(26, 115, 232, 0.1);
-} 
-
-.note-text.empty-note {
-  color: #5f6368;
-  font-style: italic;
-}
-
-.note-text.empty-note:not([readonly]) {
-  color: #202124;
-  font-style: normal;
 } 
