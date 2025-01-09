@@ -316,20 +316,32 @@ function showPasswordSuggestion(field, noteData) {
     });
   }
 
-  // 添加动画效果
-  setTimeout(() => {
-    suggestion.classList.add('show');
-  }, 10);
-  
-  // 点击其他地方时关闭
-  document.addEventListener('click', (e) => {
+  // 修改点击事件监听的处理方式
+  const handleOutsideClick = (e) => {
     if (!suggestion.contains(e.target) && e.target !== field) {
       suggestion.classList.remove('show');
       setTimeout(() => {
         suggestion.remove();
+        // 移除事件监听器
+        document.removeEventListener('click', handleOutsideClick);
       }, 200);
     }
-  }, { once: true });
+  };
+
+  // 延迟添加点击事件监听，避免立即触发
+  setTimeout(() => {
+    document.addEventListener('click', handleOutsideClick);
+  }, 0);
+
+  // 阻止弹窗内的点击事件冒泡
+  suggestion.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+
+  // 添加动画效果
+  setTimeout(() => {
+    suggestion.classList.add('show');
+  }, 10);
 }
 
 // 显示编辑备注的弹窗
