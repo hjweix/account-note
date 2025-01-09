@@ -108,13 +108,74 @@ function addNoteActions() {
   // 编辑按钮
   document.querySelectorAll('.edit-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const noteCard = e.target.closest('.note-card');
+      const noteContent = noteCard.querySelector('.note-content');
       const key = noteCard.dataset.key;
       
-      // 获取备注数据
-      chrome.storage.local.get([key], (result) => {
-        const noteData = result[key];
-        showEditDialog(noteCard, noteData);
+      // 切换到编辑模式，使用 textarea
+      noteContent.innerHTML = `
+        <div class="edit-mode">
+          <textarea class="edit-input" placeholder="输入备注内容">${noteContent.getAttribute('title')}</textarea>
+          <div class="edit-actions">
+            <button class="save-edit-btn">保存</button>
+            <button class="cancel-edit-btn">取消</button>
+          </div>
+        </div>
+      `;
+
+      const editInput = noteContent.querySelector('.edit-input');
+      const saveBtn = noteContent.querySelector('.save-edit-btn');
+      const cancelBtn = noteContent.querySelector('.cancel-edit-btn');
+      
+      // 自动调整文本框高度
+      editInput.style.height = 'auto';
+      editInput.style.height = editInput.scrollHeight + 'px';
+      
+      // 聚焦输入框并将光标移到末尾
+      editInput.focus();
+      editInput.setSelectionRange(editInput.value.length, editInput.value.length);
+
+      // 保存编辑
+      const saveEdit = () => {
+        const newNote = editInput.value.trim();
+        if (!newNote) return;
+
+        chrome.storage.local.get([key], (result) => {
+          const noteData = result[key];
+          noteData.note = newNote;
+          noteData.updateTime = new Date().toISOString();
+          
+          chrome.storage.local.set({
+            [key]: noteData
+          }, () => {
+            // 更新显示
+            noteContent.innerHTML = newNote.length > 50 ? 
+              `${newNote.slice(0, 50)}...` : newNote;
+            noteContent.setAttribute('title', newNote);
+          });
+        });
+      };
+
+      // 取消编辑
+      const cancelEdit = () => {
+        const originalNote = noteContent.getAttribute('title');
+        noteContent.innerHTML = originalNote.length > 50 ? 
+          `${originalNote.slice(0, 50)}...` : originalNote;
+      };
+
+      // 绑定事件
+      saveBtn.addEventListener('click', saveEdit);
+      cancelBtn.addEventListener('click', cancelEdit);
+
+      // 添加键盘事件
+      editInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          cancelEdit();
+        }
       });
     });
   });
@@ -139,80 +200,6 @@ function addNoteActions() {
         });
       }
     });
-  });
-}
-
-// 显示编辑对话框
-function showEditDialog(noteCard, noteData) {
-  // 创建编辑对话框
-  const dialog = document.createElement('div');
-  dialog.className = 'edit-dialog';
-  dialog.innerHTML = `
-    <div class="edit-dialog-content">
-      <div class="edit-header">
-        <h3>编辑备注</h3>
-        <button class="close-btn">×</button>
-      </div>
-      <div class="edit-body">
-        <input type="text" class="edit-input" value="${noteData.note}" placeholder="输入备注内容">
-      </div>
-      <div class="edit-footer">
-        <button class="cancel-btn">取消</button>
-        <button class="save-btn">保存</button>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(dialog);
-  
-  // 获取元素
-  const input = dialog.querySelector('.edit-input');
-  const closeBtn = dialog.querySelector('.close-btn');
-  const cancelBtn = dialog.querySelector('.cancel-btn');
-  const saveBtn = dialog.querySelector('.save-btn');
-  
-  // 聚焦输入框
-  input.focus();
-  
-  // 绑定事件
-  const closeDialog = () => {
-    dialog.remove();
-  };
-  
-  closeBtn.onclick = closeDialog;
-  cancelBtn.onclick = closeDialog;
-  
-  // 保存功能
-  saveBtn.onclick = () => {
-    const newNote = input.value.trim();
-    if (!newNote) return;
-    
-    // 更新数据
-    noteData.note = newNote;
-    noteData.updateTime = new Date().toISOString();
-    
-    chrome.storage.local.set({
-      [noteData.key]: noteData
-    }, () => {
-      // 更新显示
-      noteCard.querySelector('.note-content').textContent = newNote;
-      noteCard.querySelector('.note-info').innerHTML = `
-        <span>用户名: ${noteData.username}</span>
-        <span>·</span>
-        <span>更新于 ${new Date(noteData.updateTime).toLocaleString()}</span>
-      `;
-      closeDialog();
-    });
-  };
-  
-  // 添加回车保存功能
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      saveBtn.click();
-    } else if (e.key === 'Escape') {
-      closeDialog();
-    }
   });
 }
 

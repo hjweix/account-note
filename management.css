@@ -281,4 +281,66 @@ h1 {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* 编辑模式样式 */
+.edit-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-input {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #202124;
+  background: white;
+  transition: all 0.2s;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.save-edit-btn,
+.cancel-edit-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.save-edit-btn {
+  background: #1a73e8;
+  color: white;
+}
+
+.save-edit-btn:hover {
+  background: #1557b0;
+}
+
+.cancel-edit-btn {
+  background: #f1f3f4;
+  color: #3c4043;
+}
+
+.cancel-edit-btn:hover {
+  background: #e8eaed;
 } 
