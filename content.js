@@ -213,6 +213,13 @@ function showPasswordSuggestion(field, noteData) {
     existingSuggestion.remove();
   }
 
+  // 添加 HTML 转义函数
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   const suggestion = document.createElement('div');
   suggestion.className = 'password-suggestion';
   
@@ -231,8 +238,10 @@ function showPasswordSuggestion(field, noteData) {
       <div class="suggestion-note">
         <input type="text" 
           class="note-text ${!hasNote ? 'empty-note' : ''}" 
-          value="${hasNote ? displayText : ''}" 
+          value="${escapeHtml(hasNote ? displayText : '')}" 
           placeholder="${!hasNote ? '点击添加备注' : '点击编辑备注'}"
+          data-full-text="${escapeHtml(note)}"
+          data-short-text="${escapeHtml(displayText)}"
           readonly>
         ${isLongText ? `
           <button class="toggle-text-btn" data-expanded="false">
@@ -240,11 +249,6 @@ function showPasswordSuggestion(field, noteData) {
           </button>
         ` : ''}
       </div>
-      ${hasNote ? `
-        <div class="suggestion-meta">
-          <span class="meta-text">上次更新: ${new Date(noteData.updateTime).toLocaleString()}</span>
-        </div>
-      ` : ''}
     </div>
   `;
   
@@ -291,18 +295,21 @@ function showPasswordSuggestion(field, noteData) {
     }
   });
 
-  // 添加展开/收起功能
+  // 修复展开/收起功能
   if (isLongText) {
     const toggleBtn = suggestion.querySelector('.toggle-text-btn');
+    const noteInput = suggestion.querySelector('.note-text');
     
-    toggleBtn.addEventListener('click', () => {
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const isExpanded = toggleBtn.dataset.expanded === 'true';
+      
       if (isExpanded) {
-        noteInput.value = displayText;
+        noteInput.value = noteInput.dataset.shortText;
         toggleBtn.textContent = '展开';
         toggleBtn.dataset.expanded = 'false';
       } else {
-        noteInput.value = note;
+        noteInput.value = noteInput.dataset.fullText;
         toggleBtn.textContent = '收起';
         toggleBtn.dataset.expanded = 'true';
       }

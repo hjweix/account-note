@@ -33,17 +33,15 @@ function displayNotes(notes) {
     domainNotes.map(note => `
       <div class="note-card" data-key="${note.key}">
         <div class="note-domain">${domain}</div>
-        <div class="note-content">${note.note}</div>
-        <div class="note-meta">
-          <div class="note-info">
-            <span>用户名: ${note.username}</span>
-            <span>·</span>
-            <span>更新于 ${new Date(note.updateTime).toLocaleString()}</span>
+        <div class="note-main">
+          <div class="note-username">用户名: ${note.username}</div>
+          <div class="note-content" title="${note.note}">
+            ${note.note.length > 50 ? note.note.slice(0, 50) + '...' : note.note}
           </div>
-          <div class="note-actions">
-            <button class="action-btn edit-btn">编辑</button>
-            <button class="action-btn delete-btn">删除</button>
-          </div>
+        </div>
+        <div class="note-actions">
+          <button class="action-btn edit-btn">编辑</button>
+          <button class="action-btn delete-btn">删除</button>
         </div>
       </div>
     `).join('')
