@@ -412,4 +412,23 @@ function addNoteIndicator(field, note) {
   indicator.style.left = `${fieldRect.right - 24}px`;
   
   document.body.appendChild(indicator);
-} 
+}
+
+// 在 content.js 中添加消息监听
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'focusPasswordField') {
+    // 找到对应的密码框并聚焦
+    const passwordFields = document.querySelectorAll('input[type="password"]');
+    passwordFields.forEach(field => {
+      if (getFieldKey(field) === request.key) {
+        field.focus();
+      }
+    });
+  } else if (request.action === 'showAddNotePopup') {
+    // 找到第一个密码框并显示添加备注弹窗
+    const passwordField = document.querySelector('input[type="password"]');
+    if (passwordField) {
+      showPasswordSuggestion(passwordField, null);
+    }
+  }
+}); 

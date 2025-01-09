@@ -1,170 +1,68 @@
-// 获取当前标签页的URL
-async function getCurrentTab() {
+document.addEventListener('DOMContentLoaded', async () => {
+  // 获取当前标签页信息
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tab;
-}
-
-// 显示当前网站的备注
-async function showCurrentSiteNotes() {
-  const tab = await getCurrentTab();
   const domain = new URL(tab.url).origin;
-  
-  // 获取所有备注
-  chrome.storage.local.get(null, (result) => {
-    const notesContainer = document.getElementById('current-notes');
-    const currentSiteNotes = Object.values(result).filter(note => note.domain === domain);
-    
-    if (currentSiteNotes.length === 0) {
-      notesContainer.innerHTML = `
-        <div class="empty-state">
-          当前网站暂无备注
-        </div>
-      `;
-      return;
-    }
-    
-    notesContainer.innerHTML = currentSiteNotes.map(note => `
-      <div class="note-item" data-key="${note.key}">
-        <div class="note-content">${note.note}</div>
-        <div class="note-meta">
-          <div class="note-info">
-            <span>用户名: ${note.username}</span>
-            <span>·</span>
-            <span>更新于 ${new Date(note.updateTime).toLocaleString()}</span>
-          </div>
-          <div class="note-actions">
-            <button class="action-btn edit-btn">编辑</button>
-            <button class="action-btn delete-btn">删除</button>
-          </div>
-        </div>
-      </div>
-    `).join('');
-    
-    // 添加编辑和删除事件监听
-    addNoteActions();
-  });
-}
 
-// 添加备注操作的事件监听
-function addNoteActions() {
-  // 编辑按钮
-  document.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const noteItem = e.target.closest('.note-item');
-      const key = noteItem.dataset.key;
-      
-      // 获取备注数据
-      chrome.storage.local.get([key], (result) => {
-        const noteData = result[key];
-        showEditDialog(noteItem, noteData);
-      });
-    });
-  });
-  
-  // 删除按钮
-  document.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const noteItem = e.target.closest('.note-item');
-      const key = noteItem.dataset.key;
-      
-      if (confirm('确定要删除这条备注吗？')) {
-        chrome.storage.local.remove(key, () => {
-          noteItem.remove();
-          // 如果没有备注了，显示空状态
-          if (document.querySelectorAll('.note-item').length === 0) {
-            document.getElementById('current-notes').innerHTML = `
-              <div class="empty-state">
-                当前网站暂无备注
-              </div>
-            `;
-          }
-        });
-      }
-    });
-  });
-}
+  // 加载当前网站的备注
+  loadSiteNotes(domain);
 
-// 添加编辑对话框功能
-function showEditDialog(noteItem, noteData) {
-  // 创建编辑对话框
-  const dialog = document.createElement('div');
-  dialog.className = 'edit-dialog';
-  dialog.innerHTML = `
-    <div class="edit-dialog-content">
-      <div class="edit-header">
-        <h3>编辑备注</h3>
-        <button class="close-btn">×</button>
-      </div>
-      <div class="edit-body">
-        <input type="text" class="edit-input" value="${noteData.note}" placeholder="输入备注内容">
-      </div>
-      <div class="edit-footer">
-        <button class="cancel-btn">取消</button>
-        <button class="save-btn">保存</button>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(dialog);
-  
-  // 获取元素
-  const input = dialog.querySelector('.edit-input');
-  const closeBtn = dialog.querySelector('.close-btn');
-  const cancelBtn = dialog.querySelector('.cancel-btn');
-  const saveBtn = dialog.querySelector('.save-btn');
-  
-  // 聚焦输入框
-  input.focus();
-  
-  // 绑定事件
-  const closeDialog = () => {
-    dialog.remove();
-  };
-  
-  closeBtn.onclick = closeDialog;
-  cancelBtn.onclick = closeDialog;
-  
-  // 保存功能
-  saveBtn.onclick = () => {
-    const newNote = input.value.trim();
-    if (!newNote) return;
-    
-    // 更新数据
-    noteData.note = newNote;
-    noteData.updateTime = new Date().toISOString();
-    
-    chrome.storage.local.set({
-      [noteData.key]: noteData
-    }, () => {
-      // 更新显示
-      noteItem.querySelector('.note-content').textContent = newNote;
-      noteItem.querySelector('.note-info').innerHTML = `
-        <span>用户名: ${noteData.username}</span>
-        <span>·</span>
-        <span>更新于 ${new Date(noteData.updateTime).toLocaleString()}</span>
-      `;
-      closeDialog();
-    });
-  };
-  
-  // 添加回车保存功能
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      saveBtn.click();
-    } else if (e.key === 'Escape') {
-      closeDialog();
-    }
+  // 添加管理按钮点击事件
+  document.getElementById('openManagement').addEventListener('click', () => {
+    chrome.tabs.create({ url: 'management.html' });
   });
-}
-
-// 查看所有备注
-document.getElementById('showAllNotes').addEventListener('click', () => {
-  // TODO: 实现查看所有备注的功能
-  chrome.tabs.create({ url: 'management.html' });
 });
 
-// 初始化
-document.addEventListener('DOMContentLoaded', () => {
-  showCurrentSiteNotes();
-}); 
+// 加载当前网站的备注
+async function loadSiteNotes(domain) {
+  const notesList = document.getElementById('notesList');
+  
+  chrome.storage.local.get(null, (result) => {
+    // 过滤出当前网站的备注
+    const notes = Object.values(result).filter(note => 
+      note && note.domain === domain && note.username && note.note
+    );
+
+    if (notes.length === 0) {
+      notesList.innerHTML = `
+        <div class="empty-state">
+          <p>当前网站暂无备注</p>
+          <button class="add-note-btn">
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
+            </svg>
+            添加备注
+          </button>
+        </div>
+      `;
+      
+      // 添加新备注按钮事件
+      const addBtn = notesList.querySelector('.add-note-btn');
+      if (addBtn) {
+        addBtn.addEventListener('click', () => {
+          chrome.tabs.sendMessage(tab.id, { action: 'showAddNotePopup' });
+        });
+      }
+    } else {
+      // 显示备注列表
+      notesList.innerHTML = notes.map(note => `
+        <div class="note-item" data-key="${note.key}">
+          <div class="note-username">${note.username}</div>
+          <div class="note-content" title="${note.note}">
+            ${note.note.length > 50 ? note.note.slice(0, 50) + '...' : note.note}
+          </div>
+        </div>
+      `).join('');
+
+      // 添加点击事件，点击备注项时聚焦对应的密码框
+      document.querySelectorAll('.note-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const key = item.dataset.key;
+          chrome.tabs.sendMessage(tab.id, { 
+            action: 'focusPasswordField',
+            key: key
+          });
+        });
+      });
+    }
+  });
+} 
