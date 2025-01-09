@@ -1,0 +1,252 @@
+.password-note-btn {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px;
+  z-index: 10000;
+  position: relative;
+  left: 5px;
+  top: 0;
+  transform: translateY(-50%);
+}
+
+.password-note-btn:hover {
+  background: #e0e0e0;
+}
+
+.password-note-popup {
+  position: absolute;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  z-index: 10001;
+  display: none;
+  min-width: 250px;
+}
+
+.password-note-popup input {
+  width: 200px;
+  padding: 5px;
+  margin-bottom: 10px;
+}
+
+.password-note-popup button {
+  padding: 5px 10px;
+  margin-right: 5px;
+}
+
+.password-note-toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  z-index: 10002;
+  animation: fadeInOut 2s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+} 
+
+.password-suggestion {
+  position: absolute;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  min-width: 200px;
+  max-width: 300px;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.2s ease-out;
+}
+
+.password-suggestion.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.suggestion-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  background: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+  font-size: 13px;
+  justify-content: space-between;
+}
+
+.suggestion-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+}
+
+.suggestion-content {
+  padding: 12px;
+}
+
+.suggestion-note {
+  display: flex;
+  align-items: center;
+}
+
+.note-text {
+  color: #333;
+  font-size: 14px;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.suggestion-site {
+  margin-bottom: 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.note-indicator {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  cursor: help;
+  z-index: 9999;
+  opacity: 0.7;
+}
+
+.note-indicator:hover {
+  opacity: 1;
+}
+
+.edit-note-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.edit-note-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.edit-note-popup {
+  position: absolute;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  width: 300px;
+  opacity: 0;
+  transform: translateX(-10px);
+  animation: popIn 0.2s ease-out forwards;
+}
+
+.edit-note-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  background: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+  font-size: 13px;
+}
+
+.edit-note-content {
+  padding: 16px;
+}
+
+.note-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.note-input:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+}
+
+.edit-note-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.save-btn, .cancel-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.save-btn {
+  background: #4285f4;
+  color: white;
+}
+
+.save-btn:hover {
+  background: #3b78e7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.save-btn:active {
+  background: #3367d6;
+  transform: translateY(1px);
+}
+
+.cancel-btn {
+  background: #f1f3f4;
+  color: #3c4043;
+}
+
+.cancel-btn:hover {
+  background: #e8eaed;
+  color: #202124;
+}
+
+.cancel-btn:active {
+  background: #dadce0;
+  transform: translateY(1px);
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+} 
