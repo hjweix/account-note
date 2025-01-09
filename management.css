@@ -97,11 +97,13 @@ h1 {
   background: white;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  padding: 20px;
+  padding: 16px;
   transition: all 0.2s;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: relative;
+  overflow: hidden;
 }
 
 .note-card:hover {
@@ -109,32 +111,46 @@ h1 {
   transform: translateY(-2px);
 }
 
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .note-domain {
-  font-size: 14px;
-  color: #1a73e8;
-  text-decoration: none;
   display: flex;
   align-items: center;
   gap: 8px;
+  color: #1a73e8;
+  font-size: 14px;
 }
 
 .domain-icon {
   width: 16px;
   height: 16px;
+  border-radius: 4px;
+}
+
+.note-time {
+  font-size: 12px;
+  color: #5f6368;
+}
+
+.note-username {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #202124;
+  margin-bottom: 8px;
+}
+
+.user-icon {
+  color: #5f6368;
 }
 
 .note-main {
   flex: 1;
-}
-
-.note-username {
-  font-size: 15px;
-  font-weight: 500;
-  color: #202124;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .note-content {
@@ -161,40 +177,190 @@ h1 {
   display: none;
   justify-content: flex-end;
   gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid #f1f3f4;
+  margin-top: 12px;
 }
 
 .note-card.editing .edit-actions {
   display: flex;
 }
 
+/* 优化按钮样式 */
 .action-btn {
-  padding: 6px 12px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  background: transparent;
+}
+
+.action-btn svg {
+  width: 20px;
+  height: 20px;
+  transition: all 0.2s ease;
+}
+
+/* 编辑按钮样式 */
+.edit-btn {
+  color: #1a73e8;
+}
+
+.edit-btn:hover {
+  background: rgba(26, 115, 232, 0.1);
+}
+
+.edit-btn:active {
+  background: rgba(26, 115, 232, 0.2);
+}
+
+/* 删除按钮样式 */
+.delete-btn {
+  color: #d93025;
+}
+
+.delete-btn:hover {
+  background: rgba(217, 48, 37, 0.1);
+}
+
+.delete-btn:active {
+  background: rgba(217, 48, 37, 0.2);
+}
+
+/* 保存和取消按钮样式 */
+.save-edit-btn,
+.cancel-edit-btn {
+  padding: 8px 16px;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   border: none;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.edit-btn {
-  background: #e8f0fe;
-  color: #1a73e8;
+.save-edit-btn {
+  background: #1a73e8;
+  color: white;
 }
 
-.edit-btn:hover {
-  background: #d2e3fc;
+.save-edit-btn:hover {
+  background: #1557b0;
 }
 
-.delete-btn {
-  background: #fce8e6;
+.save-edit-btn:active {
+  background: #174ea6;
+}
+
+.save-edit-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cancel-edit-btn {
+  background: #f1f3f4;
+  color: #3c4043;
+}
+
+.cancel-edit-btn:hover {
+  background: #e8eaed;
+}
+
+.cancel-edit-btn:active {
+  background: #dadce0;
+}
+
+/* 批量操作按钮样式 */
+.batch-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.batch-btn:not(.danger) {
+  background: #f1f3f4;
+  color: #3c4043;
+}
+
+.batch-btn:not(.danger):hover {
+  background: #e8eaed;
+}
+
+.batch-btn:not(.danger):active {
+  background: #dadce0;
+}
+
+.batch-btn.danger {
+  background: white;
   color: #d93025;
+  border-color: #d93025;
 }
 
-.delete-btn:hover {
+.batch-btn.danger:hover {
+  background: #fce8e6;
+}
+
+.batch-btn.danger:active {
   background: #fad2cf;
+}
+
+/* 按钮提示优化 */
+.action-btn[title]::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) scale(0.8);
+  background: rgba(32, 33, 36, 0.9);
+  color: white;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.2s;
+  margin-bottom: 8px;
+}
+
+.action-btn[title]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* 添加按钮涟漪效果 */
+.action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.2s;
+}
+
+.action-btn:active::before {
+  opacity: 0.1;
+  transform: scale(1);
 }
 
 /* 编辑模式样式 */
@@ -203,8 +369,12 @@ h1 {
   padding: 0;
   width: 100%;
   background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
+/* 编辑框样式 */
 .edit-input {
   width: 100%;
   box-sizing: border-box;
@@ -217,31 +387,14 @@ h1 {
   resize: vertical;
   background: white;
   font-family: inherit;
-  margin-bottom: 0;
+  margin: 0;
+  transition: all 0.2s;
 }
 
 .edit-input:focus {
   outline: none;
   border-color: #1a73e8;
   box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
-}
-
-.save-edit-btn {
-  background: #1a73e8;
-  color: white;
-}
-
-.save-edit-btn:hover {
-  background: #1557b0;
-}
-
-.cancel-edit-btn {
-  background: #f1f3f4;
-  color: #3c4043;
-}
-
-.cancel-edit-btn:hover {
-  background: #e8eaed;
 }
 
 /* 优化空状态样式 */
@@ -306,6 +459,8 @@ h1 {
   margin-top: 8px;
   font-size: 12px;
   color: #5f6368;
+  padding: 8px 0;
+  border-top: 1px solid #f1f3f4;
 }
 
 .tip-item {
@@ -376,30 +531,6 @@ kbd {
   gap: 8px;
 }
 
-.batch-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  background: #f1f3f4;
-  color: #202124;
-  transition: all 0.2s;
-}
-
-.batch-btn:hover {
-  background: #e8eaed;
-}
-
-.batch-btn.danger {
-  background: #fce8e6;
-  color: #d93025;
-}
-
-.batch-btn.danger:hover {
-  background: #fad2cf;
-}
-
 /* 选择模式下的卡片样式 */
 .note-card .select-checkbox {
   display: none;
@@ -419,4 +550,72 @@ kbd {
 
 .select-mode .note-actions {
   display: none;
+}
+
+/* 优化复选框样式 */
+.select-checkbox {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #dadce0;
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.select-checkbox:checked {
+  background: #1a73e8;
+  border-color: #1a73e8;
+}
+
+.select-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* 全选控件 */
+.select-all-control {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-right: 16px;
+}
+
+.select-mode .select-all-control {
+  display: flex;
+}
+
+/* Toast 提示 */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #323232;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  animation: toastIn 0.3s ease-out;
+}
+
+@keyframes toastIn {
+  from {
+    transform: translate(-50%, 100%);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
 } 

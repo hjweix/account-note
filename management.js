@@ -62,22 +62,50 @@ function displayNotes(notes, searchTerm = '') {
   }
 
   // 修改卡片模板，添加复选框
-  notesList.innerHTML = validNotes.map(note => `
-    <div class="note-card" data-key="${note.key}">
-      <input type="checkbox" class="select-checkbox">
-      <div class="note-domain">${note.domain}</div>
-      <div class="note-main">
-        <div class="note-username">用户名: ${note.username}</div>
-        <div class="note-content" title="${note.note}">
-          ${note.note.length > 50 ? note.note.slice(0, 50) + '...' : note.note}
+  notesList.innerHTML = validNotes.map(note => {
+    // 格式化域名显示
+    const url = new URL(note.domain);
+    const displayDomain = url.hostname.replace(/^www\./, '');
+    const favicon = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`;
+
+    return `
+      <div class="note-card" data-key="${note.key}">
+        <input type="checkbox" class="select-checkbox">
+        <div class="note-header">
+          <div class="note-domain">
+            <img src="${favicon}" class="domain-icon" alt="${displayDomain}">
+            <span>${displayDomain}</span>
+          </div>
+          <div class="note-time" title="${new Date(note.updateTime).toLocaleString()}">
+            ${formatTime(note.updateTime)}
+          </div>
+        </div>
+        <div class="note-main">
+          <div class="note-username">
+            <svg class="user-icon" viewBox="0 0 24 24" width="16" height="16">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/>
+            </svg>
+            ${note.username}
+          </div>
+          <div class="note-content" title="${note.note}">
+            ${note.note.length > 50 ? note.note.slice(0, 50) + '...' : note.note}
+          </div>
+        </div>
+        <div class="note-actions">
+          <button class="action-btn edit-btn" title="编辑">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="action-btn delete-btn" title="删除">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+            </svg>
+          </button>
         </div>
       </div>
-      <div class="note-actions">
-        <button class="action-btn edit-btn">编辑</button>
-        <button class="action-btn delete-btn">删除</button>
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   addNoteActions();
 }
@@ -149,6 +177,15 @@ function addNoteActions() {
       noteContent.innerHTML = `
         <div class="edit-mode">
           <textarea class="edit-input" placeholder="输入备注内容">${noteContent.getAttribute('title')}</textarea>
+          <div class="edit-actions">
+            <button class="save-edit-btn">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor"/>
+              </svg>
+              保存
+            </button>
+            <button class="cancel-edit-btn">取消</button>
+          </div>
           <div class="keyboard-tips">
             <span class="tip-item">
               <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 保存
@@ -157,10 +194,6 @@ function addNoteActions() {
               <kbd>Esc</kbd> 取消
             </span>
           </div>
-        </div>
-        <div class="edit-actions">
-          <button class="action-btn save-edit-btn">保存</button>
-          <button class="action-btn cancel-edit-btn">取消</button>
         </div>
       `;
 
@@ -245,12 +278,27 @@ function addNoteActions() {
   });
 }
 
-// 添加排序和批量操作的事件处理
+// 添加 Toast 提示函数
+function showToast(message, duration = 2000) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translate(-50%, 100%)';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+// 修改 setupControls 函数
 function setupControls() {
   const sortSelect = document.getElementById('sortSelect');
   const sortDirection = document.getElementById('sortDirection');
   const toggleSelect = document.getElementById('toggleSelect');
   const deleteSelected = document.getElementById('deleteSelected');
+  const selectAll = document.getElementById('selectAll');
 
   // 排序事件
   sortSelect.addEventListener('change', (e) => {
@@ -272,11 +320,28 @@ function setupControls() {
     deleteSelected.style.display = isSelectMode ? 'block' : 'none';
   });
 
-  // 批量删除事件
+  // 全选功能
+  selectAll.addEventListener('change', () => {
+    const checkboxes = document.querySelectorAll('.note-card .select-checkbox');
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = selectAll.checked;
+    });
+  });
+
+  // 监听单个复选框变化，更新全选状态
+  document.addEventListener('change', (e) => {
+    if (e.target.matches('.note-card .select-checkbox')) {
+      const checkboxes = document.querySelectorAll('.note-card .select-checkbox');
+      const checkedBoxes = document.querySelectorAll('.note-card .select-checkbox:checked');
+      selectAll.checked = checkboxes.length === checkedBoxes.length;
+    }
+  });
+
+  // 修改批量删除事件，添加提示
   deleteSelected.addEventListener('click', () => {
     const selectedCards = document.querySelectorAll('.note-card input:checked');
     if (selectedCards.length === 0) {
-      alert('请选择要删除的备注');
+      showToast('请选择要删除的备注');
       return;
     }
 
@@ -296,10 +361,37 @@ function setupControls() {
           document.body.classList.remove('select-mode');
           toggleSelect.textContent = '选择';
           deleteSelected.style.display = 'none';
+          showToast(`已删除 ${keys.length} 条备注`);
         });
       });
     }
   });
+}
+
+// 添加时间格式化函数
+function formatTime(timeStr) {
+  const date = new Date(timeStr);
+  const now = new Date();
+  const diff = now - date;
+  
+  // 小于1分钟
+  if (diff < 60000) {
+    return '刚刚';
+  }
+  // 小于1小时
+  if (diff < 3600000) {
+    return `${Math.floor(diff / 60000)}分钟前`;
+  }
+  // 小于24小时
+  if (diff < 86400000) {
+    return `${Math.floor(diff / 3600000)}小时前`;
+  }
+  // 小于7天
+  if (diff < 604800000) {
+    return `${Math.floor(diff / 86400000)}天前`;
+  }
+  // 其他情况显示具体日期
+  return date.toLocaleDateString();
 }
 
 // 初始化
