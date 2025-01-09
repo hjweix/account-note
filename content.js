@@ -81,12 +81,18 @@ function createNotePopup(field) {
 function saveNote(note, popup, field) {
   const domain = window.location.origin;
   const usernameField = findUsernameField(field);
-  const username = usernameField ? usernameField.value : '';
-  const key = getFieldKey(field);
+  const username = usernameField ? usernameField.value.trim() : '';
   
+  // 验证必要数据
+  if (!note.trim() || !username) {
+    alert('请确保输入了备注内容，并且能够找到用户名输入框');
+    return;
+  }
+
+  const key = getFieldKey(field);
   const noteData = {
     key: key,
-    note: note,
+    note: note.trim(),
     createTime: new Date().toISOString(),
     updateTime: new Date().toISOString(),
     domain: domain,
@@ -113,7 +119,6 @@ function saveNote(note, popup, field) {
         toast.remove();
       }, 2000);
       
-      // 更新字段状态
       field.dataset.hasStoredNote = 'true';
     });
   });

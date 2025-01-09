@@ -19,7 +19,12 @@
     "128": "icons/icon128.png"
   },
   "web_accessible_resources": [{
-    "resources": ["icons/*"],
+    "resources": [
+      "icons/*",
+      "management.html",
+      "management.css",
+      "management.js"
+    ],
     "matches": ["<all_urls>"]
   }],
   "action": {
