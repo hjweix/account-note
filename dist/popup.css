@@ -1,0 +1,198 @@
+body {
+  margin: 0;
+  padding: 0;
+  width: 360px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: #ffffff;
+}
+
+.popup-container {
+  min-height: 200px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.popup-header {
+  padding: 12px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e8eaed;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon {
+  width: 24px;
+  height: 24px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 16px;
+  color: #202124;
+  font-weight: 500;
+}
+
+.manage-link {
+  color: #5f6368;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.manage-link:hover {
+  background: #f1f3f4;
+  color: #1a73e8;
+}
+
+.popup-content {
+  padding: 16px;
+}
+
+.site-info h2 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #5f6368;
+  font-weight: normal;
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-item {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.2s;
+}
+
+.note-item:hover {
+  background: #f1f3f4;
+}
+
+.note-username {
+  font-size: 14px;
+  color: #202124;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.note-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-text {
+  flex: 1;
+  font-size: 13px;
+  color: #5f6368;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.edit-btn {
+  opacity: 0;
+  padding: 4px;
+  border: none;
+  background: transparent;
+  color: #1a73e8;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.note-item:hover .edit-btn {
+  opacity: 1;
+}
+
+.edit-btn:hover {
+  background: rgba(26, 115, 232, 0.1);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: #5f6368;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.add-note-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #1a73e8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: all 0.2s;
+}
+
+.add-note-btn:hover {
+  background: #1557b0;
+}
+
+/* 编辑输入框样式 */
+.note-edit-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #202124;
+  background: white;
+  transition: all 0.2s;
+}
+
+.note-edit-input:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+}
+
+/* Toast 提示样式 */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #323232;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  opacity: 1;
+  transition: opacity 0.3s;
+} 

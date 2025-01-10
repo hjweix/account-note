@@ -10,8 +10,8 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["styles.css"]
+      "js": ["dist/content.js"],
+      "css": ["dist/content.css"]
     }
   ],
   "icons": {
@@ -21,9 +21,9 @@
   "web_accessible_resources": [{
     "resources": [
       "icons/*",
-      "management.html",
-      "management.css",
-      "management.js"
+      "dist/management.html",
+      "dist/management.css",
+      "dist/management.js"
     ],
     "matches": ["<all_urls>"]
   }],
