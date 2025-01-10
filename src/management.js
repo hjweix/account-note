@@ -394,6 +394,29 @@ function formatTime(timeStr) {
   return date.toLocaleDateString();
 }
 
+// 添加获取消息的辅助函数
+function getMessage(key, substitutions = null) {
+  return chrome.i18n.getMessage(key, substitutions);
+}
+
+// 修改删除确认
+function confirmDelete(count = 1) {
+  const message = count === 1 ? 
+    getMessage('confirmDelete') : 
+    getMessage('confirmDeleteMultiple', [count.toString()]);
+  return confirm(message);
+}
+
+// 修改删除成功提示
+function showDeleteSuccess(count = 1) {
+  showToast(getMessage('successNoteDeleted'));
+}
+
+// 修改更新成功提示
+function showUpdateSuccess() {
+  showToast(getMessage('successNoteUpdated'));
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
   loadAllNotes();

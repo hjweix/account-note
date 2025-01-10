@@ -1,80 +1,92 @@
-# PassNote - 密码备注浏览器插件
+# Password Note
 
-PassNote是一个浏览器扩展插件，用于增强浏览器内置密码管理器的功能。它允许用户为保存的密码添加备注信息，帮助用户更好地管理和识别不同的账户。
+A browser extension that enhances your password management experience by allowing you to add and manage notes for your passwords.
 
-## 功能特点
+[中文文档](./README_zh.md)
 
-- 🔖 为密码添加自定义备注
-- 📝 密码自动填充时显示相关备注
-- 🔍 支持备注的搜索和管理
-- 🔒 安全的数据加密存储
-- 🌐 支持多浏览器（Chrome、Firefox、Edge）
+## Features
 
-## 安装方法
+- 🔍 Smart Detection: Automatically identifies password fields and usernames
+- 📝 Quick Notes: Add notes directly next to password fields
+- 🔒 Secure Storage: All data is stored locally for maximum security
+- 📱 Easy Management: Centralized management of all your password notes
+- 🎯 Precise Association: Notes are bound to specific sites and usernames
+- 🔍 Quick Search: Search by website, username, or note content
 
-### Chrome
-1. 访问 Chrome 网上应用店
-2. 搜索 "PassNote"
-3. 点击 "添加到 Chrome"
+## Installation
 
-### Firefox
-1. 访问 Firefox 附加组件商店
-2. 搜索 "PassNote"
-3. 点击 "添加到 Firefox"
+### Chrome Web Store
+1. Visit [Chrome Web Store](https://chrome.google.com/webstore)
+2. Search for "Password Note"
+3. Click "Add to Chrome"
 
-### Edge
-1. 访问 Microsoft Edge 外接程序商店
-2. 搜索 "PassNote"
-3. 点击 "获取"
+### Manual Installation (Developer Mode)
+1. Download or clone this repository
+2. Open Chrome and go to `chrome://extensions/`
+3. Enable "Developer mode"
+4. Click "Load unpacked" and select the `dist` folder
 
-## 使用说明
+## Usage
 
-### 添加备注
-1. 在任意登录页面，密码输入框旁会出现一个备注图标
-2. 点击图标添加或编辑备注
-3. 输入备注内容并保存
+### Adding Notes
+1. Click on any password field
+2. A note icon will appear next to the field
+3. Click the icon to add or edit notes
+4. Press Enter to save or Esc to cancel
 
-### 查看备注
-- 当密码自动填充时，相关备注会自动显示
-- 点击扩展图标可查看所有已保存的备注
+### Managing Notes
+- Click the extension icon in toolbar to view site notes
+- Use the management page to view and organize all notes
+- Search notes by website, username, or content
+- Batch select and delete notes as needed
 
-### 管理备注
-1. 点击浏览器工具栏中的PassNote图标
-2. 选择"管理备注"选项
-3. 可以搜索、编辑或删除已保存的备注
+## Privacy & Security
 
-## 隐私说明
+- All data is stored locally in your browser
+- No data is uploaded to any server
+- Notes are associated with websites and usernames only
+- No passwords are ever stored or accessed
 
-- 所有备注信息均使用加密方式存储在本地
-- 插件不会收集或上传任何密码信息
-- 仅获取必要的页面访问权限
+## Development
 
-## 开发者信息
-
-### 本地开发环境搭建
-
+### Setup
 ```bash
-# 克隆项目
-git clone https://github.com/yourusername/PassNote.git
-
-# 安装依赖
+# Install dependencies
 npm install
 
-# 启动开发环境
-npm run dev
-```
+# Start development mode
+npm run watch
 
-### 构建方法
-
-```bash
-# 构建生产版本
+# Build for production
 npm run build
 ```
 
-## 贡献指南
+### Project Structure
+```
+project/
+├── src/          # Source files
+├── dist/         # Compiled files
+├── icons/        # Extension icons
+└── docs/         # Documentation
+```
 
-欢迎提交Issues和Pull Requests来帮助改进这个项目。
+## Contributing
 
-## 许可证
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-本项目采用 MIT 许可证。
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Thanks to all contributors who have helped with this project
+- Special thanks to the open source community
+
+## Support
+
+If you encounter any issues or have suggestions, please [open an issue](https://github.com/yourusername/PassNote/issues).

@@ -1,0 +1,66 @@
+{
+  "extName": {
+    "message": "Password Note 密码备注助手",
+    "description": "扩展名称"
+  },
+  "extDesc": {
+    "message": "一个智能助手，帮助您为密码添加和管理备注信息，使账户管理更轻松、更有条理。",
+    "description": "扩展描述"
+  },
+  "addNote": {
+    "message": "添加备注",
+    "description": "添加备注按钮文本"
+  },
+  "editNote": {
+    "message": "编辑备注",
+    "description": "编辑备注按钮文本"
+  },
+  "errorStorageAPI": {
+    "message": "存储 API 不可用",
+    "description": "存储 API 不可用时的错误提示"
+  },
+  "errorEmptyNote": {
+    "message": "备注内容不能为空",
+    "description": "备注内容为空时的错误提示"
+  },
+  "errorEmptyUsername": {
+    "message": "请先输入用户名",
+    "description": "用户名为空时的错误提示"
+  },
+  "errorReadData": {
+    "message": "读取数据失败：$1",
+    "description": "读取数据失败时的错误提示"
+  },
+  "errorSaveData": {
+    "message": "保存数据失败：$1",
+    "description": "保存数据失败时的错误提示"
+  },
+  "successNoteSaved": {
+    "message": "备注已保存",
+    "description": "保存备注成功时的提示"
+  },
+  "successNoteDeleted": {
+    "message": "备注已删除",
+    "description": "删除备注成功时的提示"
+  },
+  "successNoteUpdated": {
+    "message": "备注已更新",
+    "description": "更新备注成功时的提示"
+  },
+  "confirmDelete": {
+    "message": "确定要删除这条备注吗？",
+    "description": "删除备注时的确认提示"
+  },
+  "confirmDeleteMultiple": {
+    "message": "确定要删除选中的 $1 条备注吗？",
+    "description": "批量删除备注时的确认提示"
+  },
+  "emptyStateTitle": {
+    "message": "暂无备注",
+    "description": "空状态标题"
+  },
+  "emptyStateDesc": {
+    "message": "当您在登录页面添加备注后，备注信息会显示在这里",
+    "description": "空状态描述"
+  }
+} 

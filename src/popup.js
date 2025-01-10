@@ -24,17 +24,7 @@ async function loadSiteNotes(domain) {
 
     if (notes.length === 0) {
       // 保持原有的空状态显示
-      notesList.innerHTML = `
-        <div class="empty-state">
-          <p>当前网站暂无备注</p>
-          <button class="add-note-btn">
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
-            </svg>
-            添加备注
-          </button>
-        </div>
-      `;
+      showEmptyState(notesList);
       
       // 添加新备注按钮事件
       const addBtn = notesList.querySelector('.add-note-btn');
@@ -113,7 +103,7 @@ function displayNotes(notes) {
               }, () => {
                 noteText.textContent = newNote;
                 noteText.title = newNote;
-                showToast('备注已更新');
+                showToast(getMessage('successNoteUpdated'));
               });
             });
           }
@@ -166,14 +156,33 @@ function displayNotes(notes) {
 }
 
 // 添加 Toast 提示函数
-function showToast(message, duration = 2000) {
+function showToast(message) {
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.textContent = message;
   document.body.appendChild(toast);
   
   setTimeout(() => {
-    toast.style.opacity = '0';
-    setTimeout(() => toast.remove(), 300);
-  }, duration);
+    toast.remove();
+  }, 2000);
+}
+
+// 修改空状态显示
+function showEmptyState(notesList) {
+  notesList.innerHTML = `
+    <div class="empty-state">
+      <p>${getMessage('emptyStateTitle')}</p>
+      <button class="add-note-btn">
+        <svg viewBox="0 0 24 24" width="18" height="18">
+          <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
+        </svg>
+        ${getMessage('addNote')}
+      </button>
+    </div>
+  `;
+}
+
+// 添加获取消息的辅助函数
+function getMessage(key, substitutions = null) {
+  return chrome.i18n.getMessage(key, substitutions);
 } 

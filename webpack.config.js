@@ -71,6 +71,7 @@ module.exports = {
         },
         { from: "icons", to: "icons" },
         { from: "*.html" },
+        { from: "_locales", to: "_locales" }
       ],
     }),
   ]

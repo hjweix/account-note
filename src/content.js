@@ -77,11 +77,16 @@ function createNotePopup(field) {
   return popup;
 }
 
-// 保存备注
+// 添加获取消息的辅助函数
+function getMessage(key, substitutions = null) {
+  return chrome.i18n.getMessage(key, substitutions);
+}
+
+// 修改 saveNote 函数中的错误处理
 function saveNote(note, popup, field) {
   try {
     if (typeof chrome === 'undefined' || !chrome.storage) {
-      throw new Error('存储API不可用');
+      throw new Error(getMessage('errorStorageAPI'));
     }
 
     const domain = window.location.origin;
@@ -89,11 +94,11 @@ function saveNote(note, popup, field) {
     const username = usernameField ? usernameField.value.trim() : '';
     
     if (!note.trim()) {
-      throw new Error('备注内容不能为空');
+      throw new Error(getMessage('errorEmptyNote'));
     }
     
     if (!username) {
-      throw new Error('请先输入用户名');
+      throw new Error(getMessage('errorEmptyUsername'));
     }
 
     const key = getFieldKey(field);
@@ -108,7 +113,7 @@ function saveNote(note, popup, field) {
 
     chrome.storage.local.get([key], (result) => {
       if (chrome.runtime.lastError) {
-        throw new Error('读取数据失败：' + chrome.runtime.lastError.message);
+        throw new Error(getMessage('errorReadData', [chrome.runtime.lastError.message]));
       }
 
       if (result[key]) {
@@ -117,10 +122,10 @@ function saveNote(note, popup, field) {
 
       chrome.storage.local.set({ [key]: noteData }, () => {
         if (chrome.runtime.lastError) {
-          throw new Error('保存数据失败：' + chrome.runtime.lastError.message);
+          throw new Error(getMessage('errorSaveData', [chrome.runtime.lastError.message]));
         }
         popup.style.display = 'none';
-        showToast('备注已保存');
+        showToast(getMessage('successNoteSaved'));
       });
     });
   } catch (error) {

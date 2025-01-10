@@ -1,8 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "密码备注助手 (PassNote)",
+  "name": "__MSG_extName__",
   "version": "1.0",
-  "description": "为浏览器密码管理器添加备注功能",
+  "description": "__MSG_extDesc__",
+  "default_locale": "en",
+  "author": "Your Name",
+  "homepage_url": "https://github.com/yourusername/PassNote",
   "permissions": [
     "storage",
     "activeTab"
