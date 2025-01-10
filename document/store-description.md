@@ -1,9 +1,9 @@
-# PassNote (密码备注助手) - 商店描述
+# Account Notes - 账号备注助手
 
 ## 中文版本
 
 ### 简介
-PassNote 是一款智能的密码备注助手，让您可以为不同网站的登录账号添加个性化备注，帮助您更好地管理和记忆账号信息。
+Account Notes 是一个帮助您管理账号备注的浏览器扩展。我们不会存储任何密码，只在本地保存您的备注信息。
 
 ### 主要功能
 - 🔍 智能识别：自动识别网页中的密码输入框和关联的用户名
@@ -29,7 +29,7 @@ PassNote 是一款智能的密码备注助手，让您可以为不同网站的�
 ## English Version
 
 ### Introduction
-PassNote is a smart password note assistant that helps you add personalized notes to your login accounts across different websites, making account management and information recall easier.
+Account Notes is a smart password note assistant that helps you add personalized notes to your login accounts across different websites, making account management and information recall easier.
 
 ### Key Features
 - 🔍 Smart Detection: Automatically identifies password fields and associated usernames

@@ -1,10 +1,10 @@
 {
   "extName": {
-    "message": "Password Note",
+    "message": "Account Notes",
     "description": "Extension name"
   },
   "extDesc": {
-    "message": "A smart assistant that helps you add and manage notes for your passwords, making account management easier and more organized.",
+    "message": "A smart assistant that helps you add and manage notes for your accounts. We never store passwords - only your notes are saved locally.",
     "description": "Extension description"
   },
   "addNote": {
