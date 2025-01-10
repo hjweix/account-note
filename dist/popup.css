@@ -134,32 +134,13 @@ h1 {
 
 .empty-state {
   text-align: center;
-  padding: 32px 16px;
-  color: #5f6368;
+  padding: 20px;
+  color: #666;
 }
 
 .empty-state p {
   margin: 0;
   font-size: 14px;
-}
-
-.add-note-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #1a73e8;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  margin-top: 12px;
-  transition: all 0.2s;
-}
-
-.add-note-btn:hover {
-  background: #1557b0;
 }
 
 /* 编辑输入框样式 */

@@ -171,13 +171,7 @@ function showToast(message) {
 function showEmptyState(notesList) {
   notesList.innerHTML = `
     <div class="empty-state">
-      <p>${getMessage('emptyStateTitle')}</p>
-      <button class="add-note-btn">
-        <svg viewBox="0 0 24 24" width="18" height="18">
-          <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
-        </svg>
-        ${getMessage('addNote')}
-      </button>
+      <p>暂无备注</p>
     </div>
   `;
 }

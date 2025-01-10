@@ -70,7 +70,7 @@ function displayNotes(notes, searchTerm = '') {
 
     return `
       <div class="note-card" data-key="${note.key}">
-        <input type="checkbox" class="select-checkbox">
+        <input type="checkbox" class="select-checkbox" aria-label="选择备注">
         <div class="note-header">
           <div class="note-domain">
             <img src="${favicon}" class="domain-icon" alt="${displayDomain}">
@@ -337,33 +337,68 @@ function setupControls() {
     }
   });
 
-  // 修改批量删除事件，添加提示
-  deleteSelected.addEventListener('click', () => {
-    const selectedCards = document.querySelectorAll('.note-card input:checked');
-    if (selectedCards.length === 0) {
+  // 添加数据验证函数
+  async function validateKeys(keys) {
+    if (!Array.isArray(keys) || keys.length === 0) {
+      throw new Error('无效的删除数据');
+    }
+    
+    // 验证所有 key 是否存在
+    const data = await chrome.storage.local.get(keys);
+    const validKeys = keys.filter(key => data[key]);
+    
+    if (validKeys.length === 0) {
+      throw new Error('未找到要删除的数据');
+    }
+    
+    return validKeys;
+  }
+
+  // 修改删除处理函数
+  async function deleteNotes(keys) {
+    try {
+      // 验证要删除的 keys
+      const validKeys = await validateKeys(keys);
+      
+      // 执行删除操作
+      await chrome.storage.local.remove(validKeys);
+      
+      // 返回成功删除的数量
+      return validKeys.length;
+    } catch (error) {
+      console.error('删除笔记失败:', error);
+      throw error;
+    }
+  }
+
+  // 更新批量删除事件处理
+  deleteSelected.addEventListener('click', async () => {
+    const selectedNotes = document.querySelectorAll('.note-card .select-checkbox:checked');
+    if (selectedNotes.length === 0) {
       showToast('请选择要删除的备注');
       return;
     }
 
-    if (confirm(`确定要删除选中的 ${selectedCards.length} 条备注吗？`)) {
-      const keys = Array.from(selectedCards).map(checkbox => 
-        checkbox.closest('.note-card').dataset.key
-      );
-
-      chrome.storage.local.get(null, (result) => {
-        keys.forEach(key => {
-          delete result[key];
-        });
-
-        chrome.storage.local.set(result, () => {
-          loadAllNotes();
-          isSelectMode = false;
-          document.body.classList.remove('select-mode');
-          toggleSelect.textContent = '选择';
-          deleteSelected.style.display = 'none';
-          showToast(`已删除 ${keys.length} 条备注`);
-        });
-      });
+    if (confirm(`确定要删除选中的 ${selectedNotes.length} 条备注吗？`)) {
+      try {
+        const keys = Array.from(selectedNotes).map(checkbox => 
+          checkbox.closest('.note-card').dataset.key
+        );
+        
+        const deletedCount = await deleteNotes(keys);
+        showToast(`成功删除 ${deletedCount} 条备注`);
+        
+        // 重置选择状态
+        isSelectMode = false;
+        document.body.classList.remove('select-mode');
+        document.getElementById('toggleSelect').textContent = '选择';
+        document.getElementById('deleteSelected').style.display = 'none';
+        
+        // 重新加载数据
+        await loadAllNotes();
+      } catch (error) {
+        showToast(error.message || '删除失败，请重试');
+      }
     }
   });
 }
