@@ -3,51 +3,51 @@
 ## 中文版本
 
 ### 简介
-Account Notes 是一个帮助您管理账号备注的浏览器扩展。我们不会存储任何密码，只在本地保存您的备注信息。
+Account Notes 是一个帮助您管理账号备注的智能助手。它可以让您为不同网站的账号添加备注信息，帮助您更好地管理和记忆账号的用途。所有备注信息仅保存在本地，完全不会存储任何密码。
 
 ### 主要功能
-- 🔍 智能识别：自动识别网页中的密码输入框和关联的用户名
-- 📝 快速备注：在密码框旁直接添加和编辑备注信息
-- 🔒 安全存储：所有数据均存储在本地，确保信息安全
-- 📱 便捷管理：集中管理所有网站的账号备注
-- 🎯 精准关联：备注信息与具体网站和用户名绑定
-- 🔍 快速搜索：支持按网站、用户名和备注内容搜索
+- 🔍 智能识别：自动识别登录表单，方便快速添加备注
+- 📝 便捷记录：在登录时直接添加和编辑账号备注
+- 🔒 安全可靠：完全不存储密码，所有备注仅保存在本地
+- 📱 集中管理：统一管理所有网站的账号备注信息
+- 🎯 精准匹配：备注信息与具体网站和账号精确关联
+- 🔍 快速查找：支持按网站、账号和备注内容搜索
 
 ### 使用场景
-- 区分多个测试账号的用途
-- 记录不同账号的登录限制
-- 标注账号的重要信息
-- 备注账号的特殊说明
-- 管理多个子账号信息
+- 记录测试账号的用途和权限
+- 标注不同账号的登录限制
+- 备注账号的特殊说明和提醒
+- 区分多个账号的使用场景
+- 管理企业内部账号信息
 
 ### 核心优势
-1. 简单直观：无需复杂设置，输入密码时自动显示备注
-2. 智能关联：准确识别用户名和密码框的对应关系
-3. 便捷操作：支持快捷键操作，提升使用效率
-4. 安全可靠：数据本地存储，无需担心隐私泄露
+1. 简单易用：无需复杂设置，登录时自动显示备注
+2. 安全可靠：不存储密码，所有数据本地保存
+3. 智能匹配：准确识别账号和备注的对应关系
+4. 高效便捷：支持快捷键操作，提升使用效率
 
 ## English Version
 
 ### Introduction
-Account Notes is a smart password note assistant that helps you add personalized notes to your login accounts across different websites, making account management and information recall easier.
+Account Notes is a smart assistant that helps you manage account notes across different websites. It allows you to add personalized notes to your accounts, making account management easier. All notes are stored locally, and we never store any passwords.
 
 ### Key Features
-- 🔍 Smart Detection: Automatically identifies password fields and associated usernames
-- 📝 Quick Notes: Add and edit notes directly next to password fields
-- 🔒 Secure Storage: All data is stored locally for maximum security
-- 📱 Easy Management: Centralized management of account notes across all sites
-- 🎯 Precise Association: Notes are bound to specific sites and usernames
-- 🔍 Quick Search: Search by website, username, or note content
+- 🔍 Smart Detection: Automatically identifies login forms for quick note-taking
+- 📝 Easy Notes: Add and edit account notes during login
+- 🔒 Secure: Never stores passwords, all notes are saved locally
+- 📱 Centralized: Manage all your account notes in one place
+- 🎯 Precise: Notes are accurately linked to specific sites and accounts
+- 🔍 Search: Find notes by website, account, or content
 
 ### Use Cases
-- Distinguish between multiple test accounts
-- Record login restrictions for different accounts
-- Mark important account information
-- Note special instructions
-- Manage multiple sub-account information
+- Record test account purposes and permissions
+- Note account login restrictions
+- Add special instructions and reminders
+- Distinguish different account scenarios
+- Manage internal account information
 
 ### Core Advantages
-1. Simple & Intuitive: No complex setup, notes appear automatically when entering passwords
-2. Smart Association: Accurately identifies username and password field relationships
-3. Efficient Operation: Supports keyboard shortcuts for enhanced efficiency
-4. Safe & Reliable: Local data storage ensures privacy protection 
+1. Easy to Use: No complex setup, notes appear automatically during login
+2. Secure: No password storage, all data saved locally
+3. Smart: Accurately matches accounts with their notes
+4. Efficient: Keyboard shortcuts for enhanced productivity 

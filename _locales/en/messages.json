@@ -4,7 +4,7 @@
     "description": "Extension name"
   },
   "extDesc": {
-    "message": "A smart assistant that helps you add and manage notes for your accounts. We never store passwords - only your notes are saved locally.",
+    "message": "A smart assistant that helps you add and manage notes for your accounts. All notes are stored locally - we never store passwords.",
     "description": "Extension description"
   },
   "addNote": {
