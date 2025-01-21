@@ -62,7 +62,7 @@ function displayNotes(notes) {
     
     // 备注文本容器
     const noteText = document.createElement('div');
-    noteText.className = 'note-text';
+    noteText.className = 'account-note-text';
     noteText.textContent = note.note;
     noteText.title = note.note;
     

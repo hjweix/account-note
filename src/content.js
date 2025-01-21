@@ -247,8 +247,8 @@ function showPasswordSuggestion(field, noteData) {
   suggestion.innerHTML = `
     <div class="suggestion-content">
       <textarea 
-        class="note-text ${!hasNote ? 'empty-note' : ''}" 
-        placeholder="${!hasNote ? '添加备注' : '编辑备注'}"
+        class="account-note-text ${!hasNote ? 'empty-note' : ''}" 
+        placeholder="${!hasNote ? '添加备注，回车保存' : '编辑备注'}"
         data-full-text="${escapeHtml(fullText)}"
         data-short-text="${escapeHtml(shortText)}"
         data-is-expanded="false"
@@ -269,7 +269,7 @@ function showPasswordSuggestion(field, noteData) {
   document.body.appendChild(suggestion);
 
   // 获取元素
-  const noteInput = suggestion.querySelector('.note-text');
+  const noteInput = suggestion.querySelector('.account-note-text');
   const toggleBtn = suggestion.querySelector('.toggle-text-btn');
 
   // 设置初始高度

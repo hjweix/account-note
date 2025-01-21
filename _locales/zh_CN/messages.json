@@ -8,7 +8,7 @@
     "description": "扩展描述"
   },
   "addNote": {
-    "message": "添加备注",
+    "message": "添加备注，回车保存",
     "description": "添加备注按钮文本"
   },
   "editNote": {

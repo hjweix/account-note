@@ -100,7 +100,7 @@
   position: relative;
 }
 
-.note-text {
+.account-note-text {
   width: 100%;
   min-height: 45px;
   max-height: 200px;
@@ -121,33 +121,33 @@
   align-items: center;
 }
 
-.note-text:not([data-is-expanded="true"]) {
+.account-note-text:not([data-is-expanded="true"]) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.note-text:hover {
+.account-note-text:hover {
   background: #f8f9fa;
 }
 
-.note-text:focus {
+.account-note-text:focus {
   outline: none;
   border-color: #1a73e8;
   background: white;
 }
 
-.note-text.empty-note {
+.account-note-text.empty-note {
   color: #5f6368;
   font-style: italic;
 }
 
-.note-text.empty-note:not([readonly]) {
+.account-note-text.empty-note:not([readonly]) {
   color: #202124;
   font-style: normal;
 }
 
-.note-text:not([readonly]) {
+.account-note-text:not([readonly]) {
   border-color: #dadce0;
   background: white;
 }
@@ -338,19 +338,19 @@
   color: #666;
 } 
 
-.note-text::-webkit-scrollbar {
+.account-note-text::-webkit-scrollbar {
   width: 6px;
 }
 
-.note-text::-webkit-scrollbar-track {
+.account-note-text::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.note-text::-webkit-scrollbar-thumb {
+.account-note-text::-webkit-scrollbar-thumb {
   background: #ddd;
   border-radius: 3px;
 }
 
-.note-text::-webkit-scrollbar-thumb:hover {
+.account-note-text::-webkit-scrollbar-thumb:hover {
   background: #ccc;
 } 
