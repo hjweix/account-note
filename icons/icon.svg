@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<svg width="128" height="128" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+ <!-- 主体图形 -->
+ <g class="layer">
+  <title>Layer 1</title>
+  <!-- 记事本背景 -->
+  <rect fill="#2B7DE9" height="128" id="svg_2" rx="16" transform="matrix(1 0 0 1 0 0)" width="128" x="0" y="0"/>
+  <!-- 用户头像设计 -->
+  <g id="svg_3">
+   <!-- 头部轮廓 -->
+   <path d="m64.5,10a18.33,17.55 0 0 1 0,35.1a18.33,17.55 0 0 1 0,-35.1m0,41.68c15.19,0 27.5,5.2 27.5,19.74l0,6.58l-55,0l0,-6.58c0,-14.54 12.31,-19.74 27.5,-19.74" fill="#FFB800" id="svg_4"/>
+  </g>
+  <!-- 记事本线条，优化间距和长度 -->
+  <g id="svg_5" stroke="#FFFFFF" stroke-linecap="round" stroke-width="3" transform="matrix(1 0 0 1 0 0)">
+   <path d="m111,89l-88,0" id="svg_6" opacity="0.9"/>
+   <path d="m97.8,103l-74.8,0" id="svg_7" opacity="0.7"/>
+   <path d="m84.6,117l-61.6,0" id="svg_8" opacity="0.5"/>
+  </g>
+ </g>
+</svg>
