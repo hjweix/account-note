@@ -3,6 +3,11 @@ document.addEventListener('DOMContentLoaded', initPasswordFields);
 const observer = new MutationObserver(initPasswordFields);
 observer.observe(document.body, { childList: true, subtree: true });
 
+// 在页面卸载时断开观察者连接
+window.addEventListener('unload', () => {
+  observer.disconnect();
+});
+
 function initPasswordFields() {
   // 查找所有密码输入框
   const passwordFields = document.querySelectorAll('input[type="password"]');
@@ -222,6 +227,18 @@ function showAccountNote(field, noteData) {
   // 移除可能已存在的弹窗
   const existingSuggestion = document.querySelector('.password-suggestion');
   if (existingSuggestion) {
+    // 移除所有事件监听器
+    const oldToggleBtn = existingSuggestion.querySelector('.toggle-text-btn');
+    if (oldToggleBtn) {
+      oldToggleBtn.removeEventListener('click', oldToggleBtn.clickHandler);
+    }
+    const oldNoteInput = existingSuggestion.querySelector('.account-note-text');
+    if (oldNoteInput) {
+      oldNoteInput.removeEventListener('click', oldNoteInput.clickHandler);
+      oldNoteInput.removeEventListener('keydown', oldNoteInput.keydownHandler);
+      oldNoteInput.removeEventListener('blur', oldNoteInput.blurHandler);
+    }
+    document.removeEventListener('click', existingSuggestion.outsideClickHandler);
     existingSuggestion.remove();
   }
 
@@ -230,6 +247,7 @@ function showAccountNote(field, noteData) {
     const div = document.createElement('div');
     div.textContent = text;
     const escaped = div.innerHTML;
+    div.remove(); // 清理临时DOM元素
     return escaped;
   }
 
@@ -244,9 +262,9 @@ function showAccountNote(field, noteData) {
   measureEl.className = 'account-note-text';
   measureEl.style.position = 'absolute';
   measureEl.style.visibility = 'hidden';
-  measureEl.style.width = '240px'; // 设置与实际文本框相同的最小宽度
-  measureEl.style.height = '45px'; // 使用标准高度
-  measureEl.style.whiteSpace = 'nowrap'; // 确保文本不会换行
+  measureEl.style.width = '240px';
+  measureEl.style.height = '45px';
+  measureEl.style.whiteSpace = 'nowrap';
   measureEl.value = note;
   document.body.appendChild(measureEl);
   
@@ -256,7 +274,7 @@ function showAccountNote(field, noteData) {
   
   // 根据是否需要展开来设置显示文本
   const fullText = note;
-  const shortText = isLongText ? `${note.slice(0, 50)}...` : note; // 如果文本过长，截断显示
+  const shortText = isLongText ? `${note.slice(0, 50)}...` : note;
 
   suggestion.innerHTML = `
     <div class="suggestion-content">
@@ -287,53 +305,50 @@ function showAccountNote(field, noteData) {
   const toggleBtn = suggestion.querySelector('.toggle-text-btn');
 
   // 设置初始高度
-  noteInput.style.height = '45px'; // 使用新的最小高度
+  noteInput.style.height = '45px';
   
   // 处理展开/收起功能
   if (toggleBtn) {
-    toggleBtn.addEventListener('click', (e) => {
+    toggleBtn.clickHandler = (e) => {
       e.stopPropagation();
       const isExpanded = noteInput.dataset.isExpanded === 'true';
       
       if (isExpanded) {
-        // 收起
         noteInput.value = noteInput.dataset.shortText;
         toggleBtn.textContent = '展开';
         noteInput.dataset.isExpanded = 'false';
-        noteInput.style.height = '45px'; // 使用新的最小高度
+        noteInput.style.height = '45px';
       } else {
-        // 展开
         noteInput.value = noteInput.dataset.fullText;
         toggleBtn.textContent = '收起';
         noteInput.dataset.isExpanded = 'true';
-        // 计算展开后的高度
         noteInput.style.height = 'auto';
         const scrollHeight = noteInput.scrollHeight;
         noteInput.style.height = `${scrollHeight}px`;
       }
-    });
+    };
+    toggleBtn.addEventListener('click', toggleBtn.clickHandler);
   }
 
   // 点击文本框时启用编辑
-  noteInput.addEventListener('click', () => {
+  noteInput.clickHandler = () => {
     noteInput.readOnly = false;
     noteInput.focus();
     if (!hasNote) {
-      noteInput.value = ''; // 清空占位符
+      noteInput.value = '';
     }
-  });
+  };
+  noteInput.addEventListener('click', noteInput.clickHandler);
 
   // 处理编辑完成
-  noteInput.addEventListener('keydown', (e) => {
+  noteInput.keydownHandler = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       const newNote = noteInput.value.trim();
       if (newNote) {
-        // 先恢复只读状态
         noteInput.readOnly = true;
         noteInput.blur();
         
-        // 保存备注
         const domain = window.location.origin;
         const usernameField = findUsernameField(field);
         const username = usernameField ? usernameField.value.trim() : '';
@@ -361,7 +376,6 @@ function showAccountNote(field, noteData) {
           chrome.storage.local.set({
             [key]: noteData
           }, () => {
-            // 更新显示状态
             const isLongText = newNote.length > 100;
             const displayText = isLongText ? `${newNote.slice(0, 100)}...` : newNote;
             
@@ -369,7 +383,6 @@ function showAccountNote(field, noteData) {
             noteInput.dataset.fullText = newNote;
             noteInput.dataset.shortText = displayText;
             
-            // 如果需要，添加或更新展开按钮
             let toggleBtn = suggestion.querySelector('.toggle-text-btn');
             if (isLongText && !toggleBtn) {
               toggleBtn = document.createElement('button');
@@ -378,8 +391,7 @@ function showAccountNote(field, noteData) {
               toggleBtn.textContent = '展开';
               noteInput.parentElement.appendChild(toggleBtn);
               
-              // 添加展开/收起功能
-              toggleBtn.addEventListener('click', (e) => {
+              toggleBtn.clickHandler = (e) => {
                 e.stopPropagation();
                 const isExpanded = toggleBtn.dataset.expanded === 'true';
                 
@@ -392,8 +404,10 @@ function showAccountNote(field, noteData) {
                   toggleBtn.textContent = '收起';
                   toggleBtn.dataset.expanded = 'true';
                 }
-              });
+              };
+              toggleBtn.addEventListener('click', toggleBtn.clickHandler);
             } else if (!isLongText && toggleBtn) {
+              toggleBtn.removeEventListener('click', toggleBtn.clickHandler);
               toggleBtn.remove();
             }
             
@@ -406,31 +420,40 @@ function showAccountNote(field, noteData) {
       noteInput.blur();
       noteInput.value = noteInput.dataset.fullText || '';
     }
-  });
+  };
+  noteInput.addEventListener('keydown', noteInput.keydownHandler);
 
   // 失去焦点时恢复只读
-  noteInput.addEventListener('blur', () => {
+  noteInput.blurHandler = () => {
     noteInput.readOnly = true;
     if (!noteInput.value.trim() && !hasNote) {
-      noteInput.value = ''; // 保持空值以显示占位符
+      noteInput.value = '';
     }
-  });
+  };
+  noteInput.addEventListener('blur', noteInput.blurHandler);
 
   // 修改点击事件监听的处理方式
-  const handleOutsideClick = (e) => {
+  suggestion.outsideClickHandler = (e) => {
     if (!suggestion.contains(e.target) && e.target !== field) {
       suggestion.classList.remove('show');
+      // 移除所有事件监听器
+      if (toggleBtn) {
+        toggleBtn.removeEventListener('click', toggleBtn.clickHandler);
+      }
+      noteInput.removeEventListener('click', noteInput.clickHandler);
+      noteInput.removeEventListener('keydown', noteInput.keydownHandler);
+      noteInput.removeEventListener('blur', noteInput.blurHandler);
+      document.removeEventListener('click', suggestion.outsideClickHandler);
+      
       setTimeout(() => {
         suggestion.remove();
-        // 移除事件监听器
-        document.removeEventListener('click', handleOutsideClick);
       }, 200);
     }
   };
 
   // 延迟添加点击事件监听，避免立即触发
   setTimeout(() => {
-    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('click', suggestion.outsideClickHandler);
   }, 0);
 
   // 阻止弹窗内的点击事件冒泡
@@ -503,15 +526,7 @@ function showEditNotePopup(field, currentNote = '') {
 
 // 在 content.js 中添加消息监听
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'focusPasswordField') {
-    // 找到对应的密码框并聚焦
-    const passwordFields = document.querySelectorAll('input[type="password"]');
-    passwordFields.forEach(field => {
-      if (getFieldKey(field) === request.key) {
-        field.focus();
-      }
-    });
-  } else if (request.action === 'showAddNotePopup') {
+  if (request.action === 'showAddNotePopup') {
     // 找到第一个密码框并显示添加备注弹窗
     const passwordField = document.querySelector('input[type="password"]');
     if (passwordField) {
