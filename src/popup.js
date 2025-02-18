@@ -80,7 +80,7 @@ function displayNotes(notes) {
     noteContent.appendChild(editBtn);
     
     // 添加编辑功能
-    editBtn.addEventListener('click', function(e) {
+    const handleEditClick = function(e) {
       e.stopPropagation();
       if (!noteText.isEditing) {
         noteText.isEditing = true;
@@ -147,7 +147,8 @@ function displayNotes(notes) {
         input.focus();
         input.setSelectionRange(input.value.length, input.value.length);
       }
-    });
+    };
+    editBtn.addEventListener('click', handleEditClick);
     
     noteElement.appendChild(username);
     noteElement.appendChild(noteContent);
@@ -179,4 +180,4 @@ function showEmptyState(notesList) {
 // 添加获取消息的辅助函数
 function getMessage(key, substitutions = null) {
   return chrome.i18n.getMessage(key, substitutions);
-} 
+}
