@@ -8,7 +8,7 @@
     "description": "Extension description"
   },
   "addNote": {
-    "message": "Add Note",
+    "message": "Add Note, press Enter to save",
     "description": "Add note button text"
   },
   "editNote": {
@@ -62,5 +62,13 @@
   "emptyStateDesc": {
     "message": "Notes will appear here when you add them on login pages",
     "description": "Empty state description"
+  },
+  "toggleText": {
+    "message": "Expand/Collapse",
+    "description": "Toggle button tooltip text"
+  },
+  "expand": {
+    "message": "Expand",
+    "description": "Expand button text"
   }
-} 
+}

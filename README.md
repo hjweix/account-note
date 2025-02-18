@@ -1,6 +1,6 @@
 # Password Note
 
-A browser extension that enhances your password management experience by allowing you to add and manage notes for your passwords.
+A browser extension that enhances your Account management experience by allowing you to add and manage notes for your Account.
 
 [中文文档](./README_zh.md)
 

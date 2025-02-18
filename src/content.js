@@ -19,7 +19,7 @@ function initPasswordFields() {
         chrome.storage.local.get([getFieldKey(field)], (result) => {
           const noteData = result[getFieldKey(field)];
           // 无论是否有备注，都使用同一个展示方式
-          showPasswordSuggestion(field, noteData);
+          showAccountNote(field, noteData);
         });
       }
     });
@@ -218,7 +218,7 @@ function showNotePopup(popup, field) {
   popup.querySelector('input').focus();
 }
 
-function showPasswordSuggestion(field, noteData) {
+function showAccountNote(field, noteData) {
   // 移除可能已存在的弹窗
   const existingSuggestion = document.querySelector('.password-suggestion');
   if (existingSuggestion) {
@@ -238,24 +238,38 @@ function showPasswordSuggestion(field, noteData) {
   
   const hasNote = noteData && noteData.note;
   const note = hasNote ? noteData.note : '';
-  const isLongText = note.length > 100;
   
-  // 修改这里：确保 fullText 是完整的文本
+  // 创建一个临时元素来测量文本宽度
+  const measureEl = document.createElement('textarea');
+  measureEl.className = 'account-note-text';
+  measureEl.style.position = 'absolute';
+  measureEl.style.visibility = 'hidden';
+  measureEl.style.width = '240px'; // 设置与实际文本框相同的最小宽度
+  measureEl.style.height = '45px'; // 使用标准高度
+  measureEl.style.whiteSpace = 'nowrap'; // 确保文本不会换行
+  measureEl.value = note;
+  document.body.appendChild(measureEl);
+  
+  // 检查是否需要展开按钮
+  const isLongText = measureEl.scrollWidth > measureEl.clientWidth;
+  document.body.removeChild(measureEl);
+  
+  // 根据是否需要展开来设置显示文本
   const fullText = note;
-  const shortText = isLongText ? note.slice(0, 100) + '...' : note;
+  const shortText = isLongText ? `${note.slice(0, 50)}...` : note; // 如果文本过长，截断显示
 
   suggestion.innerHTML = `
     <div class="suggestion-content">
       <textarea 
         class="account-note-text ${!hasNote ? 'empty-note' : ''}" 
-        placeholder="${!hasNote ? '添加备注，回车保存' : '编辑备注'}"
+        placeholder="${!hasNote ? getMessage('addNote') : getMessage('editNote')}"
         data-full-text="${escapeHtml(fullText)}"
         data-short-text="${escapeHtml(shortText)}"
         data-is-expanded="false"
         readonly
       >${escapeHtml(shortText)}</textarea>
       ${isLongText ? `
-        <button class="toggle-text-btn" title="展开/收起">展开</button>
+        <button class="toggle-text-btn" title="${getMessage('toggleText')}">${getMessage('expand')}</button>
       ` : ''}
     </div>
   `;
@@ -486,19 +500,6 @@ function showEditNotePopup(field, currentNote = '') {
   input.focus();
 }
 
-function addNoteIndicator(field, note) {
-  const indicator = document.createElement('div');
-  indicator.className = 'note-indicator';
-  indicator.innerHTML = '📝';
-  indicator.title = note;
-  
-  // 定位在密码框右侧
-  const fieldRect = field.getBoundingClientRect();
-  indicator.style.top = `${fieldRect.top}px`;
-  indicator.style.left = `${fieldRect.right - 24}px`;
-  
-  document.body.appendChild(indicator);
-}
 
 // 在 content.js 中添加消息监听
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -514,7 +515,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // 找到第一个密码框并显示添加备注弹窗
     const passwordField = document.querySelector('input[type="password"]');
     if (passwordField) {
-      showPasswordSuggestion(passwordField, null);
+      showAccountNote(passwordField, null);
     }
   }
 }); 
@@ -561,4 +562,4 @@ window.addEventListener('error', (event) => {
 window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled Promise Rejection:', event.reason);
   showToast('操作出错，请重试', 'error');
-}); 
+});
