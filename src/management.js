@@ -139,32 +139,62 @@ function setupSearch() {
                note.username.toLowerCase().includes(term) ||
                note.note.toLowerCase().includes(term);
       });
-      displayNotes(filteredNotes, searchTerm);  // 传递搜索词
+      displayNotes(filteredNotes, searchTerm);
     });
   };
 
+  // 清除之前的事件监听器
+  searchInput.removeEventListener('input', handleInput);
+  searchInput.removeEventListener('keydown', handleKeydown);
+
   // 输入事件处理
-  searchInput.addEventListener('input', (e) => {
+  function handleInput(e) {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       performSearch(e.target.value);
     }, 300);
-  });
+  }
 
   // 回车键处理
-  searchInput.addEventListener('keydown', (e) => {
+  function handleKeydown(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
+      clearTimeout(debounceTimer); // 清除定时器
       performSearch(searchInput.value);
     }
+  }
+
+  searchInput.addEventListener('input', handleInput);
+  searchInput.addEventListener('keydown', handleKeydown);
+
+  // 在页面卸载时清理
+  window.addEventListener('unload', () => {
+    clearTimeout(debounceTimer);
+    searchInput.removeEventListener('input', handleInput);
+    searchInput.removeEventListener('keydown', handleKeydown);
   });
 }
 
 // 添加备注操作的事件监听
 function addNoteActions() {
+  // 移除之前的事件监听器
+  document.querySelectorAll('.edit-btn').forEach(btn => {
+    const oldHandler = btn.onclick;
+    if (oldHandler) {
+      btn.removeEventListener('click', oldHandler);
+    }
+  });
+
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    const oldHandler = btn.onclick;
+    if (oldHandler) {
+      btn.removeEventListener('click', oldHandler);
+    }
+  });
+
   // 编辑按钮
   document.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    const handleClick = (e) => {
       e.stopPropagation();
       const noteCard = e.target.closest('.note-card');
       const noteContent = noteCard.querySelector('.note-content');
@@ -227,6 +257,11 @@ function addNoteActions() {
             noteContent.innerHTML = newNote.length > 50 ? 
               `${newNote.slice(0, 50)}...` : newNote;
             noteContent.setAttribute('title', newNote);
+
+            // 移除事件监听器
+            saveBtn.removeEventListener('click', saveEdit);
+            cancelBtn.removeEventListener('click', cancelEdit);
+            editInput.removeEventListener('keydown', handleKeydown);
           });
         });
       };
@@ -237,27 +272,37 @@ function addNoteActions() {
         noteCard.classList.remove('editing');
         noteContent.innerHTML = originalNote.length > 50 ? 
           `${originalNote.slice(0, 50)}...` : originalNote;
+
+        // 移除事件监听器
+        saveBtn.removeEventListener('click', saveEdit);
+        cancelBtn.removeEventListener('click', cancelEdit);
+        editInput.removeEventListener('keydown', handleKeydown);
       };
 
-      // 绑定事件
-      saveBtn.addEventListener('click', saveEdit);
-      cancelBtn.addEventListener('click', cancelEdit);
-
-      // 添加键盘事件
-      editInput.addEventListener('keydown', (e) => {
+      // 键盘事件处理
+      const handleKeydown = (e) => {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
           saveEdit();
         } else if (e.key === 'Escape') {
           cancelEdit();
         }
-      });
-    });
+      };
+
+      // 绑定事件
+      saveBtn.addEventListener('click', saveEdit);
+      cancelBtn.addEventListener('click', cancelEdit);
+      editInput.addEventListener('keydown', handleKeydown);
+    };
+
+    btn.addEventListener('click', handleClick);
+    // 存储事件处理函数引用以便后续移除
+    btn.onclick = handleClick;
   });
   
   // 删除按钮
   document.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    const handleClick = (e) => {
       const noteCard = e.target.closest('.note-card');
       const key = noteCard.dataset.key;
       
@@ -266,15 +311,20 @@ function addNoteActions() {
           noteCard.remove();
           // 如果没有备注了，显示空状态
           if (document.querySelectorAll('.note-card').length === 0) {
-            document.getElementById('notesList').innerHTML = `
-              <div class="empty-state">
-                <p>暂无备注信息</p>
-              </div>
-            `;
+            const notesList = document.getElementById('notesList');
+            if (notesList) {
+              notesList.innerHTML = `
+                <div class="empty-state">
+                  <p>暂无备注信息</p>
+                </div>
+              `;
+            }
           }
         });
       }
-    });
+    };
+
+    btn.addEventListener('click', handleClick);
   });
 }
 
@@ -300,41 +350,69 @@ function setupControls() {
   const deleteSelected = document.getElementById('deleteSelected');
   const selectAll = document.getElementById('selectAll');
 
-  // 排序事件
-  sortSelect.addEventListener('change', (e) => {
-    sortConfig.field = e.target.value;
-    loadAllNotes();
+  // 移除之前的事件监听器
+  const elements = [sortSelect, sortDirection, toggleSelect, deleteSelected, selectAll];
+  elements.forEach(el => {
+    const oldHandler = el.onclick;
+    if (oldHandler) {
+      el.removeEventListener('click', oldHandler);
+    }
   });
 
-  sortDirection.addEventListener('click', () => {
+  // 排序事件
+  const handleSortChange = (e) => {
+    sortConfig.field = e.target.value;
+    loadAllNotes();
+  };
+
+  const handleDirectionClick = () => {
     sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
     sortDirection.classList.toggle('desc', sortConfig.direction === 'desc');
     loadAllNotes();
-  });
+  };
+
+  sortSelect.addEventListener('change', handleSortChange);
+  sortDirection.addEventListener('click', handleDirectionClick);
 
   // 批量选择事件
-  toggleSelect.addEventListener('click', () => {
+  const handleToggleSelect = () => {
     isSelectMode = !isSelectMode;
     document.body.classList.toggle('select-mode', isSelectMode);
     toggleSelect.textContent = isSelectMode ? '取消' : '选择';
     deleteSelected.style.display = isSelectMode ? 'block' : 'none';
-  });
+  };
+
+  toggleSelect.addEventListener('click', handleToggleSelect);
 
   // 全选功能
-  selectAll.addEventListener('change', () => {
+  const handleSelectAll = () => {
     const checkboxes = document.querySelectorAll('.note-card .select-checkbox');
     checkboxes.forEach(checkbox => {
       checkbox.checked = selectAll.checked;
     });
-  });
+  };
 
-  // 监听单个复选框变化，更新全选状态
-  document.addEventListener('change', (e) => {
+  selectAll.addEventListener('change', handleSelectAll);
+
+  // 监听单个复选框变化
+  const handleCheckboxChange = (e) => {
     if (e.target.matches('.note-card .select-checkbox')) {
       const checkboxes = document.querySelectorAll('.note-card .select-checkbox');
       const checkedBoxes = document.querySelectorAll('.note-card .select-checkbox:checked');
       selectAll.checked = checkboxes.length === checkedBoxes.length;
     }
+  };
+
+  document.removeEventListener('change', handleCheckboxChange);
+  document.addEventListener('change', handleCheckboxChange);
+
+  // 在页面卸载时清理事件监听器
+  window.addEventListener('unload', () => {
+    sortSelect.removeEventListener('change', handleSortChange);
+    sortDirection.removeEventListener('click', handleDirectionClick);
+    toggleSelect.removeEventListener('click', handleToggleSelect);
+    selectAll.removeEventListener('change', handleSelectAll);
+    document.removeEventListener('change', handleCheckboxChange);
   });
 
   // 添加数据验证函数
@@ -457,4 +535,4 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAllNotes();
   setupSearch();
   setupControls();
-}); 
+});
