@@ -12,6 +12,7 @@ Account Notes 是一个帮助您管理账号备注的智能助手。它可以让
 - 📱 集中管理：统一管理所有网站的账号备注信息
 - 🎯 精准匹配：备注信息与具体网站和账号精确关联
 - 🔍 快速查找：支持按网站、账号和备注内容搜索
+- 💾 数据备份：支持备注数据的导入导出，方便迁移和备份
 
 ### 使用场景
 - 记录测试账号的用途和权限
@@ -38,6 +39,7 @@ Account Notes is a smart assistant that helps you manage account notes across di
 - 📱 Centralized: Manage all your account notes in one place
 - 🎯 Precise: Notes are accurately linked to specific sites and accounts
 - 🔍 Search: Find notes by website, account, or content
+- 💾 Data Backup: Support notes import and export for easy migration and backup
 
 ### Use Cases
 - Record test account purposes and permissions
@@ -50,4 +52,4 @@ Account Notes is a smart assistant that helps you manage account notes across di
 1. Easy to Use: No complex setup, notes appear automatically during login
 2. Secure: No password storage, all data saved locally
 3. Smart: Accurately matches accounts with their notes
-4. Efficient: Keyboard shortcuts for enhanced productivity 
+4. Efficient: Keyboard shortcuts for enhanced productivity
