@@ -5,6 +5,13 @@ let sortConfig = {
 };
 let isSelectMode = false;
 
+// 等待 DOM 加载完成后初始化
+document.addEventListener('DOMContentLoaded', () => {
+  loadAllNotes();
+  setupSearch();
+  setupControls();
+});
+
 // 加载所有备注
 async function loadAllNotes() {
   chrome.storage.local.get(null, (result) => {
@@ -349,15 +356,23 @@ function setupControls() {
   const toggleSelect = document.getElementById('toggleSelect');
   const deleteSelected = document.getElementById('deleteSelected');
   const selectAll = document.getElementById('selectAll');
-
+  const importBtn = document.getElementById('importNotes');
+  const exportBtn = document.getElementById('exportNotes');
+  const fileInput = document.getElementById('importFileInput');
   // 移除之前的事件监听器
-  const elements = [sortSelect, sortDirection, toggleSelect, deleteSelected, selectAll];
+  const elements = [sortSelect, sortDirection, toggleSelect, deleteSelected, selectAll, importBtn, fileInput];
   elements.forEach(el => {
     const oldHandler = el.onclick;
     if (oldHandler) {
       el.removeEventListener('click', oldHandler);
     }
   });
+
+  // 移除文件选择器的change事件监听器
+  const oldChangeHandler = fileInput.onchange;
+  if (oldChangeHandler) {
+    fileInput.removeEventListener('change', oldChangeHandler);
+  }
 
   // 排序事件
   const handleSortChange = (e) => {
@@ -406,6 +421,29 @@ function setupControls() {
   document.removeEventListener('change', handleCheckboxChange);
   document.addEventListener('change', handleCheckboxChange);
 
+  // 导入按钮点击事件
+  const handleImportClick = () => {
+    fileInput.click();
+  };
+  importBtn.addEventListener('click', handleImportClick);
+
+  // 文件选择处理
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.type !== 'application/json') {
+        showToast('请选择JSON格式的文件');
+        return;
+      }
+      importNotes(file);
+      fileInput.value = ''; // 重置文件选择器
+    }
+  };
+  fileInput.addEventListener('change', handleFileChange);
+
+  // 导出按钮点击事件
+  exportBtn.addEventListener('click', exportNotes);
+
   // 在页面卸载时清理事件监听器
   window.addEventListener('unload', () => {
     sortSelect.removeEventListener('change', handleSortChange);
@@ -413,6 +451,7 @@ function setupControls() {
     toggleSelect.removeEventListener('click', handleToggleSelect);
     selectAll.removeEventListener('change', handleSelectAll);
     document.removeEventListener('change', handleCheckboxChange);
+    document.body.removeChild(fileInput);
   });
 
   // 添加数据验证函数
@@ -530,9 +569,138 @@ function showUpdateSuccess() {
   showToast(getMessage('successNoteUpdated'));
 }
 
-// 初始化
-document.addEventListener('DOMContentLoaded', () => {
-  loadAllNotes();
-  setupSearch();
-  setupControls();
-});
+// 导出备注数据
+async function exportNotes() {
+  try {
+    // 从本地存储获取所有备注数据
+    chrome.storage.local.get(null, (result) => {
+      const notes = Object.values(result).filter(note => 
+        note && note.domain && note.note && note.username && note.key
+      );
+
+      // 创建带时间戳的文件名
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `accountNote_backup_${timestamp}.json`;
+
+      // 创建Blob对象
+      const blob = new Blob([JSON.stringify(notes, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      // 创建下载链接并触发下载
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+
+      // 清理
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+
+      // 显示成功提示
+      showToast('备注数据导出成功');
+    });
+  } catch (error) {
+    console.error('导出备注失败:', error);
+    showToast('导出失败，请重试');
+  }
+}
+
+// 导入备注数据
+async function importNotes(file) {
+  try {
+    const reader = new FileReader();
+    
+    reader.onload = async (event) => {
+      try {
+        // 解析JSON数据
+        const importedNotes = JSON.parse(event.target.result);
+        
+        // 验证数据格式
+        if (!Array.isArray(importedNotes)) {
+          throw new Error('无效的数据格式');
+        }
+        
+        // 验证每条数据的结构
+        const validNotes = importedNotes.filter(note => 
+          note && 
+          typeof note === 'object' &&
+          note.domain &&
+          note.note &&
+          note.username &&
+          note.key
+        );
+        
+        if (validNotes.length === 0) {
+          throw new Error('没有找到有效的备注数据');
+        }
+        
+        // 获取现有数据
+        const existingData = await new Promise(resolve => {
+          chrome.storage.local.get(null, resolve);
+        });
+        
+        // 检查是否有重复数据
+        const conflicts = validNotes.filter(note => existingData[note.key]);
+        
+        // 如果有冲突数据，询问用户如何处理
+        if (conflicts.length > 0) {
+          if (!confirm(`发现${conflicts.length}条重复的备注数据，是否覆盖？\n点击确定覆盖现有数据，点击取消跳过重复数据。`)) {
+            // 用户选择跳过重复数据
+            const newNotes = validNotes.filter(note => !existingData[note.key]);
+            if (newNotes.length === 0) {
+              showToast('没有新的备注数据需要导入');
+              return;
+            }
+            // 只导入新数据
+            const importData = newNotes.reduce((acc, note) => {
+              acc[note.key] = note;
+              return acc;
+            }, {});
+            
+            await chrome.storage.local.set(importData);
+            showToast(`成功导入 ${newNotes.length} 条备注`);
+          } else {
+            // 用户选择覆盖所有数据
+            const importData = validNotes.reduce((acc, note) => {
+              acc[note.key] = note;
+              return acc;
+            }, {});
+            
+            await chrome.storage.local.set(importData);
+            showToast(`成功导入 ${validNotes.length} 条备注`);
+          }
+        } else {
+          // 没有冲突，直接导入所有数据
+          const importData = validNotes.reduce((acc, note) => {
+            acc[note.key] = note;
+            return acc;
+          }, {});
+          
+          await chrome.storage.local.set(importData);
+          showToast(`成功导入 ${validNotes.length} 条备注`);
+        }
+        
+        // 重新加载显示
+        await loadAllNotes();
+        
+      } catch (error) {
+        console.error('导入数据处理失败:', error);
+        showToast(error.message || '导入失败，请检查文件格式');
+      }
+    };
+    
+    reader.onerror = () => {
+      showToast('读取文件失败，请重试');
+    };
+    
+    // 开始读取文件
+    reader.readAsText(file);
+    
+  } catch (error) {
+    console.error('导入备注失败:', error);
+    showToast('导入失败，请重试');
+  }
+}
