@@ -1,6 +1,6 @@
 // 监听页面加载完成和DOM变化
-document.addEventListener('DOMContentLoaded', initPasswordFields);
-const observer = new MutationObserver(initPasswordFields);
+document.addEventListener('DOMContentLoaded', initAccountFields);
+const observer = new MutationObserver(initAccountFields);
 observer.observe(document.body, { childList: true, subtree: true });
 
 // 在页面卸载时断开观察者连接
@@ -8,16 +8,19 @@ window.addEventListener('unload', () => {
   observer.disconnect();
 });
 
-function initPasswordFields() {
-  // 查找所有密码输入框
-  const passwordFields = document.querySelectorAll('input[type="password"]');
+function initAccountFields() {
+  // 查找所有可能的账号输入框
+  const accountFields = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"]');
   
-  passwordFields.forEach(field => {
+  accountFields.forEach(field => {
+    // 检查是否为账号输入框
+    if (!isUsernameField(field)) return;
+    
     // 避免重复初始化
     if (field.dataset.hasNote) return;
     field.dataset.hasNote = 'true';
     
-    // 监听密码框的focus事件
+    // 监听账号输入框的focus事件
     field.addEventListener('focus', () => {
       // 确保 chrome.storage API 可用
       if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -26,6 +29,21 @@ function initPasswordFields() {
           // 无论是否有备注，都使用同一个展示方式
           showAccountNote(field, noteData);
         });
+      }
+    });
+
+    // 添加input事件监听，处理用户名变化
+    field.addEventListener('input', () => {
+      const existingSuggestion = document.querySelector('.account-note-suggestion');
+      if (existingSuggestion) {
+        // 获取新的备注数据
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+          chrome.storage.local.get([getFieldKey(field)], (result) => {
+            const noteData = result[getFieldKey(field)];
+            // 更新备注弹窗
+            showAccountNote(field, noteData);
+          });
+        }
       }
     });
   });
@@ -61,7 +79,7 @@ function updatePopupPosition(popup, field) {
 // 创建备注弹出框
 function createNotePopup(field) {
   const popup = document.createElement('div');
-  popup.className = 'password-note-popup';
+  popup.className = 'account-note-popup';
   
   const input = document.createElement('input');
   input.type = 'text';
@@ -95,8 +113,7 @@ function saveNote(note, popup, field) {
     }
 
     const domain = window.location.origin;
-    const usernameField = findUsernameField(field);
-    const username = usernameField ? usernameField.value.trim() : '';
+    const username = field.value.trim();
     
     if (!note.trim()) {
       throw new Error(getMessage('errorEmptyNote'));
@@ -142,62 +159,33 @@ function saveNote(note, popup, field) {
 // 生成输入框的唯一标识
 function getFieldKey(field) {
   const domain = window.location.origin;
-  // 查找用户名输入框（通常是密码框的前一个input）
-  const usernameField = findUsernameField(field);
-  const username = usernameField ? usernameField.value : '';
+  const username = field.value;
   return `${domain}_${username}`;
 }
 
-// 添加查找用户名输入框的函数
-function findUsernameField(passwordField) {
-  try {
-    // 1. 尝试在同一表单中查找
-    if (passwordField.form) {
-      const inputs = Array.from(passwordField.form.getElementsByTagName('input'));
-      const index = inputs.indexOf(passwordField);
-      if (index > 0) {
-        const prevInput = inputs[index - 1];
-        if (isUsernameField(prevInput)) {
-          return prevInput;
-        }
-      }
-    }
-    
-    // 2. 尝试查找密码框前面的输入框
-    const allInputs = Array.from(document.getElementsByTagName('input'));
-    const index = allInputs.indexOf(passwordField);
-    if (index > 0) {
-      const prevInput = allInputs[index - 1];
-      if (isUsernameField(prevInput)) {
-        return prevInput;
-      }
-    }
-    
-    // 如果没有找到用户名输入框
-    throw new Error('未找到关联的用户名输入框');
-  } catch (error) {
-    console.error('FindUsername Error:', error);
-    return null;
-  }
-}
 
 // 判断是否为用户名输入框
 function isUsernameField(input) {
   if (!input || !input.type) return false;
   
   const usernameTypes = ['text', 'email', 'tel'];
-  const usernameIdentifiers = ['user', 'email', 'login', 'name', 'account'];
+  const usernameIdentifiers = ['user', 'email', 'login', 'name', 'account', 'identifier'];
   
   // 检查输入框类型
   if (!usernameTypes.includes(input.type.toLowerCase())) return false;
   
-  // 检查输入框的id、name、placeholder等属性
+  // 检查输入框的id、name、placeholder、aria-label等属性
   const attributes = [
     input.id,
     input.name,
     input.placeholder,
-    input.getAttribute('aria-label')
+    input.getAttribute('aria-label'),
+    input.getAttribute('autocomplete')
   ].map(attr => (attr || '').toLowerCase());
+  
+  // 检查class名称
+  const classNames = (input.className || '').toLowerCase().split(' ');
+  attributes.push(...classNames);
   
   return attributes.some(attr => 
     usernameIdentifiers.some(identifier => attr.includes(identifier))
@@ -225,7 +213,7 @@ function showNotePopup(popup, field) {
 
 function showAccountNote(field, noteData) {
   // 移除可能已存在的弹窗
-  const existingSuggestion = document.querySelector('.password-suggestion');
+  const existingSuggestion = document.querySelector('.account-note-suggestion');
   if (existingSuggestion) {
     // 移除所有事件监听器
     const oldToggleBtn = existingSuggestion.querySelector('.toggle-text-btn');
@@ -252,7 +240,7 @@ function showAccountNote(field, noteData) {
   }
 
   const suggestion = document.createElement('div');
-  suggestion.className = 'password-suggestion';
+  suggestion.className = 'account-note-suggestion';
   
   const hasNote = noteData && noteData.note;
   const note = hasNote ? noteData.note : '';
@@ -332,6 +320,13 @@ function showAccountNote(field, noteData) {
 
   // 点击文本框时启用编辑
   noteInput.clickHandler = () => {
+    const username = field.value.trim();
+    
+    if (!username) {
+      showToast(getMessage('errorEmptyUsername'));
+      return;
+    }
+    
     noteInput.readOnly = false;
     noteInput.focus();
     if (!hasNote) {
@@ -350,14 +345,7 @@ function showAccountNote(field, noteData) {
         noteInput.blur();
         
         const domain = window.location.origin;
-        const usernameField = findUsernameField(field);
-        const username = usernameField ? usernameField.value.trim() : '';
-        
-        if (!username) {
-          showToast('请先输入用户名');
-          return;
-        }
-
+        const username = field.value.trim();
         const key = getFieldKey(field);
         const noteData = {
           key: key,
@@ -537,7 +525,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 function showToast(message, type = 'info') {
   const toast = document.createElement('div');
-  toast.className = 'password-note-toast';
+  toast.className = 'account-note-toast';
   toast.textContent = message;
   document.body.appendChild(toast);
   

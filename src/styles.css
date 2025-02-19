@@ -1,4 +1,4 @@
-.password-note-btn {
+.account-note-btn {
   position: absolute;
   width: 24px;
   height: 24px;
@@ -17,11 +17,11 @@
   transform: translateY(-50%);
 }
 
-.password-note-btn:hover {
+.account-note-btn:hover {
   background: #e0e0e0;
 }
 
-.password-note-popup {
+.account-note-popup {
   position: absolute;
   background: white;
   border: 1px solid #ccc;
@@ -33,18 +33,18 @@
   min-width: 250px;
 }
 
-.password-note-popup input {
+.account-note-popup input {
   width: 200px;
   padding: 5px;
   margin-bottom: 10px;
 }
 
-.password-note-popup button {
+.account-note-popup button {
   padding: 5px 10px;
   margin-right: 5px;
 }
 
-.password-note-toast {
+.account-note-toast {
   position: fixed;
   bottom: 20px;
   right: 20px;
@@ -63,12 +63,12 @@
   100% { opacity: 0; }
 }
 
-.password-note-toast.info {
+.account-note-toast.info {
   background: #323232;
   color: white;
 }
 
-.password-note-toast.error {
+.account-note-toast.error {
   background: #d32f2f;
   color: white;
 }
@@ -77,7 +77,7 @@
   font-size: 16px;
 }
 
-.password-suggestion {
+.account-note-suggestion {
   position: absolute;
   background: white;
   border-radius: 8px;
@@ -91,7 +91,7 @@
   transition: all 0.2s ease;
 }
 
-.password-suggestion.show {
+.account-note-suggestion.show {
   opacity: 1;
   transform: translateY(0);
 }
@@ -109,7 +109,7 @@
   border-radius: 6px;
   font-size: 14px;
   line-height: 1.5;
-  color: #202124;
+  color: #000000 !important;
   background: transparent;
   transition: all 0.2s ease;
   resize: none;
@@ -119,6 +119,7 @@
   margin-bottom: 4px;
   display: flex;
   align-items: center;
+  opacity: 0.87 !important;
 }
 
 .account-note-text:not([data-is-expanded="true"]) {
@@ -138,7 +139,7 @@
 }
 
 .account-note-text.empty-note {
-  color: #5f6368;
+  color: rgba(0, 0, 0, 0.65);
   font-style: italic;
 }
 
@@ -353,4 +354,4 @@
 
 .account-note-text::-webkit-scrollbar-thumb:hover {
   background: #ccc;
-} 
+}
