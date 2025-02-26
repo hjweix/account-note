@@ -1,4 +1,4 @@
-# Password Note
+# Account Note
 
 A browser extension that enhances your Account management experience by allowing you to add and manage notes for your Account.
 
@@ -17,7 +17,7 @@ A browser extension that enhances your Account management experience by allowing
 
 ### Chrome Web Store
 1. Visit [Chrome Web Store](https://chrome.google.com/webstore)
-2. Search for "Password Note"
+2. Search for "Account Note"
 3. Click "Add to Chrome"
 
 ### Manual Installation (Developer Mode)
@@ -89,4 +89,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-If you encounter any issues or have suggestions, please [open an issue](https://github.com/yourusername/PassNote/issues).
+If you encounter any issues or have suggestions, please [open an issue](https://github.com/yourusername/AccountNote/issues).

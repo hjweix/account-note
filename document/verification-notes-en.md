@@ -1,8 +1,8 @@
-# Account Notes - Extension Verification Guide
+# Account Note - Extension Verification Guide
 
 ## Basic Information
 
-- Extension Name: Account Notes
+- Extension Name: Account Note
 - Version: 1.0.0
 - Purpose: Account Note Management Tool
 
@@ -12,7 +12,7 @@ No specific test accounts are required. This extension can be tested on any webs
 
 1. https://github.com/login
 2. https://accounts.google.com
-3. Any login page containing username and password input fields
+3. Any login page containing a login form
 
 ## Functional Testing Steps
 
@@ -20,8 +20,8 @@ No specific test accounts are required. This extension can be tested on any webs
 
 1. Visit any login page
 2. Enter any text in the username input field
-3. Click on the password input field
-4. Enter note information in the note box that appears on the right
+3. Enter username in the login form
+4. Click the note button that appears and enter note information
 5. Press Enter to save
 
 ### 2. Viewing and Editing Notes
@@ -57,7 +57,7 @@ No specific test accounts are required. This extension can be tested on any webs
 3. Privacy Protection:
 
    - Does not collect any user data
-   - Does not store any password information
+   - Does not interfere with login process
    - No online services required
 
 ## Dependency Information

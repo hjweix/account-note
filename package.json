@@ -1,7 +1,7 @@
 {
-  "name": "passnote",
+  "name": "accountnote",
   "version": "1.0.1",
-  "description": "PassNote是一个浏览器扩展插件，用于增强浏览器内置密码管理器的功能。它允许用户为保存的密码添加备注信息，帮助用户更好地管理和识别不同的账户。",
+  "description": "Account Note是一个浏览器扩展插件，用于增强账号管理体验。它允许用户为不同网站的账号添加备注信息，帮助用户更好地管理和识别不同的账户。",
   "main": "webpack.config.js",
   "scripts": {
     "build": "webpack --config webpack.config.js",

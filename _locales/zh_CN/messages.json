@@ -1,10 +1,10 @@
 {
   "extName": {
-    "message": "Account Notes 账号备注助手",
+    "message": "Account Note 账号备注助手",
     "description": "扩展名称"
   },
   "extDesc": {
-    "message": "一个智能助手，帮助您为账号添加和管理备注信息。我们不会存储密码，仅在本地保存您的备注信息。",
+    "message": "一个智能助手，帮助您为账号添加和管理备注信息。我们不涉及任何密码，仅在本地保存您的备注信息。",
     "description": "扩展描述"
   },
   "addNote": {
