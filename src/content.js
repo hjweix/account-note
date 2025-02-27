@@ -22,8 +22,8 @@ function initAccountFields() {
     
     // 监听账号输入框的focus事件
     field.addEventListener('focus', () => {
-      // 确保 chrome.storage API 可用
-      if (typeof chrome !== 'undefined' && chrome.storage) {
+      // 确保 chrome.storage API 可用且输入框有内容
+      if (typeof chrome !== 'undefined' && chrome.storage && field.value.trim()) {
         chrome.storage.local.get([getFieldKey(field)], (result) => {
           const noteData = result[getFieldKey(field)];
           // 无论是否有备注，都使用同一个展示方式
@@ -34,8 +34,8 @@ function initAccountFields() {
 
     // 添加input事件监听，处理用户名变化
     field.addEventListener('input', () => {
-      const existingSuggestion = document.querySelector('.account-note-suggestion');
-      if (existingSuggestion) {
+      // 只有当输入框有内容时才显示或更新备注框
+      if (field.value.trim()) {
         // 获取新的备注数据
         if (typeof chrome !== 'undefined' && chrome.storage) {
           chrome.storage.local.get([getFieldKey(field)], (result) => {
@@ -43,6 +43,12 @@ function initAccountFields() {
             // 更新备注弹窗
             showAccountNote(field, noteData);
           });
+        }
+      } else {
+        // 如果输入框内容为空，移除已存在的备注框
+        const existingSuggestion = document.querySelector('.account-note-suggestion');
+        if (existingSuggestion) {
+          existingSuggestion.remove();
         }
       }
     });
