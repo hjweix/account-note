@@ -108,7 +108,33 @@ function createNotePopup(field) {
 
 // 添加获取消息的辅助函数
 function getMessage(key, substitutions = null) {
-  return chrome.i18n.getMessage(key, substitutions);
+  try {
+    if (typeof chrome !== 'undefined' && chrome.i18n) {
+      return chrome.i18n.getMessage(key, substitutions) || getDefaultMessage(key);
+    }
+    return getDefaultMessage(key);
+  } catch (error) {
+    console.error('Error getting message:', error);
+    return getDefaultMessage(key);
+  }
+}
+
+// 添加默认消息函数，确保即使i18n API不可用也能显示文本
+function getDefaultMessage(key) {
+  const defaultMessages = {
+    'addNote': '添加备注',
+    'editNote': '编辑备注',
+    'toggleText': '切换显示',
+    'expand': '展开',
+    'collapse': '收起',
+    'errorEmptyNote': '备注内容不能为空',
+    'errorEmptyUsername': '用户名不能为空',
+    'errorStorageAPI': '存储API不可用',
+    'errorReadData': '读取数据失败',
+    'errorSaveData': '保存数据失败',
+    'successNoteSaved': '备注已保存'
+  };
+  return defaultMessages[key] || key;
 }
 
 // 修改 saveNote 函数中的错误处理
@@ -271,7 +297,6 @@ function showAccountNote(field, noteData) {
   const shortText = isLongText ? `${note.slice(0, 50)}...` : note;
 
   suggestion.innerHTML = `
-    <div class="suggestion-content">
       <textarea 
         class="account-note-text ${!hasNote ? 'empty-note' : ''}" 
         placeholder="${!hasNote ? getMessage('addNote') : getMessage('editNote')}"
@@ -283,15 +308,34 @@ function showAccountNote(field, noteData) {
       ${isLongText ? `
         <button class="toggle-text-btn" title="${getMessage('toggleText')}">${getMessage('expand')}</button>
       ` : ''}
-    </div>
   `;
   
   // 定位弹窗
-  const formRect = field.closest('form')?.getBoundingClientRect() || field.getBoundingClientRect();
   const fieldRect = field.getBoundingClientRect();
-  suggestion.style.top = `${formRect.top}px`;
-  suggestion.style.left = `${fieldRect.right + 10}px`;
-  
+  const viewportHeight = window.innerHeight;
+  const viewportWidth = window.innerWidth;
+
+  // 计算最佳位置
+  let top = fieldRect.top;
+  let left = fieldRect.right + 10;
+
+  // 检查是否超出视口右侧
+  if (left + 260 > viewportWidth) {
+    left = fieldRect.left - 270; // 放在输入框左侧
+    if (left < 0) left = 10; // 如果左侧也放不下，则放在左侧边缘
+  }
+
+  // 检查是否超出视口底部
+  if (top + 150 > viewportHeight) {
+    top = viewportHeight - 160;
+    if (top < 0) top = 10; // 确保不会超出顶部
+  }
+
+  // 设置弹窗位置
+  suggestion.style.position = 'fixed';
+  suggestion.style.top = `${top}px`;
+  suggestion.style.left = `${left}px`;
+
   document.body.appendChild(suggestion);
 
   // 获取元素
@@ -383,7 +427,7 @@ function showAccountNote(field, noteData) {
               toggleBtn.className = 'toggle-text-btn';
               toggleBtn.dataset.expanded = 'false';
               toggleBtn.textContent = '展开';
-              noteInput.parentElement.appendChild(toggleBtn);
+              suggestion.appendChild(toggleBtn);
               
               toggleBtn.clickHandler = (e) => {
                 e.stopPropagation();
@@ -455,6 +499,12 @@ function showAccountNote(field, noteData) {
     e.stopPropagation();
   });
 
+  // 确保弹窗可见
+  suggestion.style.display = 'block';
+  suggestion.style.opacity = '1';
+  suggestion.style.visibility = 'visible';
+  suggestion.style.zIndex = '9999';
+
   // 添加动画效果
   setTimeout(() => {
     suggestion.classList.add('show');
@@ -471,7 +521,7 @@ function showEditNotePopup(field, currentNote = '') {
       <span>编辑备注</span>
     </div>
     <div class="edit-note-content">
-      <input type="text" class="note-input" value="${currentNote}" placeholder="输入备注信息">
+      <textarea class="note-input" placeholder="输入备注信息">${currentNote}</textarea>
       <div class="edit-note-buttons">
         <button class="cancel-btn">取消</button>
         <button class="save-btn">保存</button>
@@ -481,16 +531,59 @@ function showEditNotePopup(field, currentNote = '') {
 
   document.body.appendChild(popup);
 
-  // 定位弹窗，与表单顶部对齐
-  const formRect = field.closest('form')?.getBoundingClientRect() || field.getBoundingClientRect();
+  // 定位弹窗，使用与showAccountNote相同的逻辑
   const fieldRect = field.getBoundingClientRect();
-  popup.style.top = `${formRect.top}px`;
-  popup.style.left = `${fieldRect.right + 10}px`;
+  const viewportHeight = window.innerHeight;
+  const viewportWidth = window.innerWidth;
+
+  // 计算最佳位置
+  let top = fieldRect.top;
+  let left = fieldRect.right + 10;
+
+  // 检查是否超出视口右侧
+  if (left + 320 > viewportWidth) {
+    left = fieldRect.left - 330; // 放在输入框左侧
+    if (left < 0) left = 10; // 如果左侧也放不下，则放在左侧边缘
+  }
+
+  // 检查是否超出视口底部
+  if (top + 180 > viewportHeight) {
+    top = viewportHeight - 190;
+    if (top < 0) top = 10; // 确保不会超出顶部
+  }
+
+  // 设置弹窗位置
+  popup.style.position = 'fixed';
+  popup.style.top = `${top}px`;
+  popup.style.left = `${left}px`;
+  popup.style.zIndex = '9999';
+  popup.style.display = 'block';
 
   // 添加按钮事件
   const input = popup.querySelector('.note-input');
   const saveBtn = popup.querySelector('.save-btn');
   const cancelBtn = popup.querySelector('.cancel-btn');
+
+  // 自动调整文本区域高度
+  input.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+    // 限制最大高度
+    if (this.scrollHeight > 150) {
+      this.style.height = '150px';
+      this.style.overflowY = 'auto';
+    }
+  });
+  
+  // 初始化高度
+  setTimeout(() => {
+    input.style.height = 'auto';
+    input.style.height = (input.scrollHeight) + 'px';
+    if (input.scrollHeight > 150) {
+      input.style.height = '150px';
+      input.style.overflowY = 'auto';
+    }
+  }, 0);
 
   // 保存功能
   const handleSave = () => {
@@ -502,7 +595,7 @@ function showEditNotePopup(field, currentNote = '') {
 
   // 添加回车保存功能
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && e.ctrlKey) {
       e.preventDefault();
       handleSave();
     } else if (e.key === 'Escape') {
@@ -530,15 +623,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 }); 
 
 function showToast(message, type = 'info') {
+  // 移除可能已存在的toast
+  const existingToast = document.querySelector('.account-note-toast');
+  if (existingToast) {
+    existingToast.remove();
+  }
+
   const toast = document.createElement('div');
-  toast.className = 'account-note-toast';
-  toast.textContent = message;
-  document.body.appendChild(toast);
+  toast.className = `account-note-toast ${type}`;
   
-  // Toast 会通过 CSS 动画自动消失
+  // 根据类型添加不同的图标
+  let icon = '';
+  if (type === 'error') {
+    icon = '<span class="toast-icon">⚠️</span> ';
+  } else if (type === 'success') {
+    icon = '<span class="toast-icon">✓</span> ';
+  }
+  
+  toast.innerHTML = `${icon}${message}`;
+  document.body.appendChild(toast);
+
+  // 添加进入动画
+  toast.style.animation = 'fadeInOut 2.5s ease-in-out';
+  
+  // 自动移除
   setTimeout(() => {
-    toast.remove();
-  }, 2000);
+    toast.style.opacity = '0';
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.remove();
+      }
+    }, 300);
+  }, 2200);
 } 
 
 function validateNoteData(noteData) {
