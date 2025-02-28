@@ -12,12 +12,18 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAllNotes();
   setupSearch();
   setupControls();
+  setupTabs(); // 添加标签页切换功能初始化
+  setupSettingsSidebar(); // 初始化设置页面
 });
 
 // 初始化国际化文本
 function initI18nTexts() {
   // 设置页面标题
   document.getElementById('pageTitle').textContent = getMessage('pageTitle');
+  
+  // 设置标签页文本
+  document.getElementById('notesTab').textContent = getMessage('notes') || '备注';
+  document.getElementById('settingsTab').textContent = getMessage('settings');
   
   // 设置搜索框占位符
   document.getElementById('searchInput').placeholder = getMessage('searchPlaceholder');
@@ -39,9 +45,18 @@ function initI18nTexts() {
   // 设置删除所选按钮
   document.getElementById('deleteSelected').textContent = getMessage('deleteSelected');
   
-  // 设置导出导入按钮
-  document.getElementById('exportText').textContent = getMessage('exportNotes');
-  document.getElementById('importText').textContent = getMessage('importNotes');
+
+  
+  // 设置卡片标题
+  if (document.getElementById('disabledSitesTitle')) {
+    document.getElementById('disabledSitesTitle').textContent = getMessage('disabledSites') || '已禁用网站';
+  }
+  if (document.getElementById('dataManagementTitle')) {
+    document.getElementById('dataManagementTitle').textContent = getMessage('dataManagement') || '数据管理';
+  }
+  if (document.getElementById('aboutTitle')) {
+    document.getElementById('aboutTitle').textContent = getMessage('about') || '关于';
+  }
 }
 
 // 加载所有备注
@@ -214,6 +229,190 @@ function setupSearch() {
   });
 }
 
+// 设置选项卡切换
+function setupTabs() {
+  const notesTab = document.getElementById('notesTab');
+  const settingsTab = document.getElementById('settingsTab');
+  const notesContent = document.getElementById('notesContent');
+  const settingsContent = document.getElementById('settingsContent');
+  let settingsInitialized = false; // 添加标记，记录设置页面是否已初始化
+  
+  notesTab.addEventListener('click', () => {
+    notesTab.classList.add('active');
+    settingsTab.classList.remove('active');
+    notesContent.classList.add('active');
+    settingsContent.classList.remove('active');
+    activeTab = 'notes';
+  });
+  
+  settingsTab.addEventListener('click', () => {
+    settingsTab.classList.add('active');
+    notesTab.classList.remove('active');
+    settingsContent.classList.add('active');
+    notesContent.classList.remove('active');
+    activeTab = 'settings';
+    
+    // 只在第一次切换到设置页面时初始化
+    if (!settingsInitialized) {
+      console.log('首次初始化设置页面');
+      loadDisabledSites();
+      setupSettingsSidebar();
+      settingsInitialized = true;
+    } else {
+      console.log('设置页面已初始化，仅更新禁用网站列表');
+      loadDisabledSites(); // 仍然需要更新禁用网站列表
+    }
+  });
+}
+
+// 设置卡片布局
+function setupSettingsSidebar() {
+  // 设置卡片标题国际化文本
+  document.getElementById('disabledSitesTitle').textContent = getMessage('disabledSites');
+  document.getElementById('dataManagementTitle').textContent = getMessage('dataManagement') || '数据管理';
+  document.getElementById('aboutTitle').textContent = getMessage('about') || '关于';
+  
+  // 添加网站表单国际化
+  const newSiteInput = document.getElementById('newSiteInput');
+  newSiteInput.placeholder = getMessage('newSiteInputPlaceholder') || '输入网站域名，如 example.com';
+  const addSiteBtn = document.getElementById('addSiteBtn');
+  addSiteBtn.textContent = getMessage('addSite') || '添加';
+  
+  // 数据管理卡片国际化
+  document.getElementById('settingsExportText').textContent = getMessage('exportAllData') || '导出所有数据';
+  document.getElementById('settingsImportText').textContent = getMessage('importData') || '导入数据';
+  document.getElementById('clearDataTitle').textContent = getMessage('clearAllData') || '清除所有数据';
+  document.getElementById('clearDataText').textContent = getMessage('clear') || '清除';
+  
+  // 关于卡片国际化
+  document.getElementById('versionLabel').textContent = getMessage('version') || '版本:';
+  document.getElementById('developerLabel').textContent = getMessage('developer') || '开发者:';
+  document.getElementById('viewChangelogLink').textContent = getMessage('viewChangelog') || '查看更新日志';
+  document.getElementById('reportIssueLink').textContent = getMessage('reportIssue') || '反馈问题';
+  
+  // 添加禁用网站功能
+  setupAddDisabledSite();
+  
+  // 添加数据管理功能
+  setupDataManagement();
+  
+  // 添加关于功能
+  setupAbout();
+}
+
+// 设置添加禁用网站功能
+function setupAddDisabledSite() {
+  const newSiteInput = document.getElementById('newSiteInput');
+  const addSiteBtn = document.getElementById('addSiteBtn');
+  
+  addSiteBtn.addEventListener('click', () => {
+    addDisabledSite();
+  });
+  
+  newSiteInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      addDisabledSite();
+    }
+  });
+  
+  function addDisabledSite() {
+    let site = newSiteInput.value.trim();
+    if (!site) return;
+    
+    // 确保输入的是有效URL
+    if (!site.startsWith('http://') && !site.startsWith('https://')) {
+      site = 'https://' + site;
+    }
+    
+    try {
+      const url = new URL(site);
+      const domain = url.origin;
+      
+      chrome.storage.local.get(['disabledSites'], (result) => {
+        let disabledSites = result.disabledSites || [];
+        
+        // 检查是否已存在
+        if (disabledSites.includes(domain)) {
+          showToast(getMessage('siteAlreadyDisabled') || '该网站已在禁用列表中');
+          return;
+        }
+        
+        disabledSites.push(domain);
+        chrome.storage.local.set({ disabledSites }, () => {
+          newSiteInput.value = '';
+          loadDisabledSites();
+          showToast(getMessage('siteDisabled') || '网站已禁用');
+        });
+      });
+    } catch (error) {
+      showToast(getMessage('invalidUrl') || '无效的URL格式');
+    }
+  }
+}
+
+// 加载禁用网站列表
+function loadDisabledSites() {
+  const disabledSitesList = document.getElementById('disabledSitesList');
+  
+  chrome.storage.local.get(['disabledSites'], (result) => {
+    const disabledSites = result.disabledSites || [];
+    
+    if (disabledSites.length === 0) {
+      disabledSitesList.innerHTML = `
+        <div class="empty-state">
+          <p>${getMessage('noDisabledSites') || '没有禁用的网站'}</p>
+        </div>
+      `;
+      return;
+    }
+    
+    disabledSitesList.innerHTML = '';
+    
+    disabledSites.forEach(site => {
+      try {
+        const url = new URL(site);
+        const displayDomain = url.hostname.replace(/^www\./, '');
+        const favicon = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`;
+        
+        const siteItem = document.createElement('div');
+        siteItem.className = 'disabled-site-item';
+        siteItem.innerHTML = `
+          <div class="site-info">
+            <img src="${favicon}" class="site-icon" alt="${displayDomain}">
+            <span>${displayDomain}</span>
+          </div>
+          <button class="enable-site-btn" data-site="${site}">${getMessage('enableSite')}</button>
+        `;
+        
+        disabledSitesList.appendChild(siteItem);
+      } catch (error) {
+        console.error('Invalid URL:', site);
+      }
+    });
+    
+    // 添加启用网站按钮事件
+    const enableButtons = disabledSitesList.querySelectorAll('.enable-site-btn');
+    enableButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const site = button.dataset.site;
+        enableSite(site);
+      });
+    });
+  });
+}
+
+// 启用网站
+function enableSite(site) {
+  chrome.storage.local.get(['disabledSites'], (result) => {
+    let disabledSites = result.disabledSites || [];
+    disabledSites = disabledSites.filter(s => s !== site);
+    
+    chrome.storage.local.set({ disabledSites }, () => {
+      loadDisabledSites(); // 重新加载禁用网站列表
+    });
+  });
+}
+
 // 添加备注操作的事件监听
 function addNoteActions() {
   // 移除之前的事件监听器
@@ -246,22 +445,24 @@ function addNoteActions() {
       noteContent.innerHTML = `
         <div class="edit-mode">
           <textarea class="edit-input" placeholder="${getMessage('noteInputPlaceholder')}">${noteContent.getAttribute('title')}</textarea>
-          <div class="edit-actions">
-            <button class="save-edit-btn">
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor"/>
-              </svg>
-              ${getMessage('save')}
-            </button>
-            <button class="cancel-edit-btn">${getMessage('cancel')}</button>
-          </div>
-          <div class="keyboard-tips">
-            <span class="tip-item">
-              <kbd>Ctrl</kbd> + <kbd>Enter</kbd> ${getMessage('saveShortcut')}
-            </span>
-            <span class="tip-item">
-              <kbd>Esc</kbd> ${getMessage('cancelShortcut')}
-            </span>
+          <div class="edit-actions-container">
+            <div class="edit-actions">
+              <button class="save-edit-btn">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor"/>
+                </svg>
+                ${getMessage('save')}
+              </button>
+              <button class="cancel-edit-btn">${getMessage('cancel')}</button>
+            </div>
+            <div class="keyboard-tips">
+              <span class="tip-item">
+                <kbd>Ctrl</kbd> + <kbd>Enter</kbd> ${getMessage('saveShortcut')}
+              </span>
+              <span class="tip-item">
+                <kbd>Esc</kbd> ${getMessage('cancelShortcut')}
+              </span>
+            </div>
           </div>
         </div>
       `;
@@ -391,23 +592,14 @@ function setupControls() {
   const toggleSelect = document.getElementById('toggleSelect');
   const deleteSelected = document.getElementById('deleteSelected');
   const selectAll = document.getElementById('selectAll');
-  const importBtn = document.getElementById('importNotes');
-  const exportBtn = document.getElementById('exportNotes');
-  const fileInput = document.getElementById('importFileInput');
   // 移除之前的事件监听器
-  const elements = [sortSelect, sortDirection, toggleSelect, deleteSelected, selectAll, importBtn, fileInput];
+  const elements = [sortSelect, sortDirection, toggleSelect, deleteSelected, selectAll];
   elements.forEach(el => {
     const oldHandler = el.onclick;
     if (oldHandler) {
       el.removeEventListener('click', oldHandler);
     }
   });
-
-  // 移除文件选择器的change事件监听器
-  const oldChangeHandler = fileInput.onchange;
-  if (oldChangeHandler) {
-    fileInput.removeEventListener('change', oldChangeHandler);
-  }
 
   // 排序事件
   const handleSortChange = (e) => {
@@ -456,28 +648,7 @@ function setupControls() {
   document.removeEventListener('change', handleCheckboxChange);
   document.addEventListener('change', handleCheckboxChange);
 
-  // 导入按钮点击事件
-  const handleImportClick = () => {
-    fileInput.click();
-  };
-  importBtn.addEventListener('click', handleImportClick);
 
-  // 文件选择处理
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.type !== 'application/json') {
-        showToast(getMessage('selectFileType'));
-        return;
-      }
-      importNotes(file);
-      fileInput.value = ''; // 重置文件选择器
-    }
-  };
-  fileInput.addEventListener('change', handleFileChange);
-
-  // 导出按钮点击事件
-  exportBtn.addEventListener('click', exportNotes);
 
   // 在页面卸载时清理事件监听器
   window.addEventListener('unload', () => {
@@ -486,7 +657,6 @@ function setupControls() {
     toggleSelect.removeEventListener('click', handleToggleSelect);
     selectAll.removeEventListener('change', handleSelectAll);
     document.removeEventListener('change', handleCheckboxChange);
-    document.body.removeChild(fileInput);
   });
 
   // 添加数据验证函数
@@ -677,7 +847,7 @@ async function importNotes(file) {
           chrome.storage.local.get(null, resolve);
         });
         
-        // 检查是否有重复数据
+        // 检查是否有冲突数据
         const conflicts = validNotes.filter(note => existingData[note.key]);
         
         // 如果有冲突数据，询问用户如何处理
@@ -738,4 +908,86 @@ async function importNotes(file) {
     console.error('导入备注失败:', error);
     showToast(getMessage('importFailed'));
   }
+}
+
+// 设置数据管理功能
+function setupDataManagement() {
+  const settingsExportBtn = document.getElementById('settingsExportBtn');
+  const settingsImportBtn = document.getElementById('settingsImportBtn');
+  const settingsImportFileInput = document.getElementById('settingsImportFileInput');
+  const clearAllDataBtn = document.getElementById('clearAllDataBtn');
+  
+  // 导出按钮点击事件
+  settingsExportBtn.addEventListener('click', exportNotes);
+  
+  // 导入按钮点击事件
+  settingsImportBtn.addEventListener('click', () => {
+    settingsImportFileInput.click();
+  });
+  
+  // 文件选择处理
+  settingsImportFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.type !== 'application/json') {
+        showToast(getMessage('selectFileType'));
+        return;
+      }
+      importNotes(file);
+      settingsImportFileInput.value = ''; // 重置文件选择器
+    }
+  });
+  
+  // 清除所有数据按钮点击事件
+  clearAllDataBtn.addEventListener('click', () => {
+    if (confirm(getMessage('confirmClearAllData') || '确定要清除所有数据吗？这将无法恢复。')) {
+      chrome.storage.local.clear(() => {
+        showToast(getMessage('dataCleared') || '所有数据已清除');
+        loadAllNotes(); // 重新加载（空）备注列表
+        loadDisabledSites(); // 重新加载（空）禁用网站列表
+      });
+    }
+  });
+}
+
+// 为事件处理函数创建全局引用，确保可以正确移除
+let handleViewChangelog;
+let handleReportIssue;
+
+// 设置关于功能
+function setupAbout() {
+  const viewChangelogLink = document.getElementById('viewChangelogLink');
+  const reportIssueLink = document.getElementById('reportIssueLink');
+  
+  console.log('setupAbout 被调用，准备设置事件监听');
+  
+  // 移除旧的事件监听器（如果存在）
+  console.log('尝试移除旧的事件监听器');
+  if (handleViewChangelog) {
+    viewChangelogLink.removeEventListener('click', handleViewChangelog);
+    console.log('已移除旧的更新日志事件监听器');
+  }
+  
+  if (handleReportIssue) {
+    reportIssueLink.removeEventListener('click', handleReportIssue);
+    console.log('已移除旧的反馈问题事件监听器');
+  }
+  
+  // 重新定义事件处理函数
+  handleViewChangelog = function(e) {
+    e.preventDefault();
+    console.log('查看更新日志链接被点击');
+    chrome.tabs.create({ url: 'https://github.com/account-note/account-note/blob/main/document/changelog.md' });
+  };
+  
+  handleReportIssue = function(e) {
+    e.preventDefault();
+    console.log('反馈问题链接被点击');
+    chrome.tabs.create({ url: 'https://github.com/account-note/account-note/issues' });
+  };
+  
+  // 添加新的事件监听器
+  console.log('添加新的事件监听器');
+  viewChangelogLink.addEventListener('click', handleViewChangelog);
+  reportIssueLink.addEventListener('click', handleReportIssue);
 }

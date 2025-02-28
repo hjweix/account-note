@@ -1,12 +1,120 @@
 // 监听页面加载完成和DOM变化
-document.addEventListener('DOMContentLoaded', initAccountFields);
-const observer = new MutationObserver(initAccountFields);
+// 添加CSS样式
+const disableOptionsStyle = document.createElement('link');
+disableOptionsStyle.rel = 'stylesheet';
+disableOptionsStyle.href = chrome.runtime.getURL('disable-options.css');
+document.head.appendChild(disableOptionsStyle);
+
+// 检查是否应该显示备注
+function shouldShowNote() {
+  return new Promise(resolve => {
+    const domain = window.location.origin;
+    
+    chrome.storage.local.get(['disabledGlobal', 'disabledSites'], (result) => {
+      // 检查全局禁用设置
+      if (result.disabledGlobal) {
+        resolve(false);
+        return;
+      }
+      
+      // 检查当前网站是否在禁用列表中
+      const disabledSites = result.disabledSites || [];
+      if (disabledSites.includes(domain)) {
+        resolve(false);
+        return;
+      }
+      
+      // 检查会话禁用设置
+      const sessionKey = `sessionDisabled_${domain}`;
+      if (sessionStorage.getItem(sessionKey)) {
+        resolve(false);
+        return;
+      }
+      
+      resolve(true);
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (await shouldShowNote()) {
+    initAccountFields();
+  }
+});
+
+const observer = new MutationObserver(async () => {
+  if (await shouldShowNote()) {
+    initAccountFields();
+  }
+});
 observer.observe(document.body, { childList: true, subtree: true });
 
 // 在页面卸载时断开观察者连接
 window.addEventListener('unload', () => {
   observer.disconnect();
 });
+
+// 显示禁用选项菜单
+function showDisableOptions(suggestion, field) {
+  // 移除可能已存在的菜单
+  const existingMenu = document.querySelector('.disable-options-menu');
+  if (existingMenu) {
+    existingMenu.remove();
+  }
+  
+  const domain = window.location.origin;
+  const disableMenu = document.createElement('div');
+  disableMenu.className = 'disable-options-menu';
+  
+  disableMenu.innerHTML = `
+    <h3>${getMessage('disableOptions')}</h3>
+    <div class="disable-option" data-action="session">
+      ${getMessage('disableSession')}
+    </div>
+    <div class="disable-option" data-action="site">
+      ${getMessage('disableSite')}
+    </div>
+    <div class="disable-option" data-action="global">
+      ${getMessage('disableGlobal')}
+    </div>
+  `;
+  
+  suggestion.appendChild(disableMenu);
+  
+  // 添加选项点击事件
+  const options = disableMenu.querySelectorAll('.disable-option');
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      const action = option.dataset.action;
+      
+      switch (action) {
+        case 'session':
+          // 仅在当前会话中禁用
+          sessionStorage.setItem(`sessionDisabled_${domain}`, 'true');
+          break;
+          
+        case 'site':
+          // 在当前网站禁用
+          chrome.storage.local.get(['disabledSites'], (result) => {
+            const disabledSites = result.disabledSites || [];
+            if (!disabledSites.includes(domain)) {
+              disabledSites.push(domain);
+              chrome.storage.local.set({ disabledSites });
+            }
+          });
+          break;
+          
+        case 'global':
+          // 全局禁用
+          chrome.storage.local.set({ disabledGlobal: true });
+          break;
+      }
+      
+      // 移除备注弹窗
+      suggestion.remove();
+    });
+  });
+}
 
 function initAccountFields() {
   // 查找所有可能的账号输入框
@@ -314,6 +422,9 @@ function showAccountNote(field, noteData) {
   const shortText = isLongText ? `${note.slice(0, 50)}...` : note;
 
   suggestion.innerHTML = `
+      <div class="note-header-actions">
+        <button class="close-note-btn" title="${getMessage('close')}">×</button>
+      </div>
       <textarea 
         class="account-note-text ${!hasNote ? 'empty-note' : ''}" 
         placeholder="${!hasNote ? getMessage('addNote') : getMessage('editNote')}"
@@ -358,6 +469,7 @@ function showAccountNote(field, noteData) {
   // 获取元素
   const noteInput = suggestion.querySelector('.account-note-text');
   const toggleBtn = suggestion.querySelector('.toggle-text-btn');
+  const closeBtn = suggestion.querySelector('.close-note-btn');
 
   // 设置初始高度
   noteInput.style.height = '45px';
@@ -486,6 +598,12 @@ function showAccountNote(field, noteData) {
     }
   };
   noteInput.addEventListener('blur', noteInput.blurHandler);
+
+  // 添加关闭按钮点击事件
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showDisableOptions(suggestion, field);
+  });
 
   // 修改点击事件监听的处理方式
   suggestion.outsideClickHandler = (e) => {

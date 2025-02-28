@@ -1,0 +1,100 @@
+/* 关闭按钮样式 */
+.close-note-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  transition: all 0.2s;
+}
+
+.close-note-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #333;
+}
+
+.note-header-actions {
+  position: relative;
+  height: 24px;
+  margin-bottom: 4px;
+}
+
+/* 禁用选项菜单样式 */
+.disable-options-menu {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 10002;
+  overflow: hidden;
+}
+
+.disable-options-menu h3 {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  color: #333;
+}
+
+.disable-option {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+.disable-option:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.disable-option:last-child {
+  border-bottom: none;
+}
+
+/* 暗黑模式支持 */
+@media (prefers-color-scheme: dark) {
+  .disable-options-menu {
+    background: #292a2d;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .disable-options-menu h3 {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+    color: #e8eaed;
+  }
+  
+  .disable-option {
+    color: #e8eaed;
+  }
+  
+  .disable-option:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .close-note-btn {
+    color: #aaa;
+  }
+  
+  .close-note-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #e8eaed;
+  }
+}

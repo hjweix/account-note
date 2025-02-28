@@ -47,6 +47,70 @@
     "message": "备注已更新",
     "description": "更新备注成功时的提示"
   },
+  "close": {
+    "message": "关闭",
+    "description": "关闭按钮文本"
+  },
+  "disableOptions": {
+    "message": "禁用备注弹窗",
+    "description": "禁用选项标题"
+  },
+  "disableSession": {
+    "message": "隐藏直到下次访问",
+    "description": "当前会话禁用选项"
+  },
+  "disableSite": {
+    "message": "在此网站禁用",
+    "description": "当前网站禁用选项"
+  },
+  "disableGlobal": {
+    "message": "全局禁用",
+    "description": "全局禁用选项"
+  },
+  "settings": {
+    "message": "设置",
+    "description": "设置选项卡标题"
+  },
+  "disabledSites": {
+    "message": "已禁用网站",
+    "description": "已禁用网站部分标题"
+  },
+  "generalSettings": {
+    "message": "通用设置",
+    "description": "通用设置部分标题"
+  },
+  "generalSettingsPlaceholder": {
+    "message": "更多设置项即将推出...",
+    "description": "通用设置占位文本"
+  },
+  "newSiteInputPlaceholder": {
+    "message": "输入网站域名，如 example.com",
+    "description": "添加禁用网站输入框占位文本"
+  },
+  "addSite": {
+    "message": "添加",
+    "description": "添加网站按钮文本"
+  },
+  "siteAlreadyDisabled": {
+    "message": "该网站已在禁用列表中",
+    "description": "网站已存在提示"
+  },
+  "siteDisabled": {
+    "message": "网站已禁用",
+    "description": "禁用网站成功提示"
+  },
+  "invalidUrl": {
+    "message": "无效的URL格式",
+    "description": "URL格式错误提示"
+  },
+  "noDisabledSites": {
+    "message": "没有禁用的网站",
+    "description": "无禁用网站提示"
+  },
+  "enableSite": {
+    "message": "启用",
+    "description": "启用网站按钮文本"
+  },
   "confirmDelete": {
     "message": "确定要删除这条备注吗？",
     "description": "删除备注时的确认提示"
@@ -78,6 +142,10 @@
   "manage": {
     "message": "管理所有备注",
     "description": "管理按钮提示文本"
+  },
+  "notes": {
+    "message": "备注",
+    "description": "备注标签页标题"
   },
   "pageTitle": {
     "message": "账号备注管理",
@@ -230,5 +298,53 @@
   "noteInputPlaceholder": {
     "message": "输入备注内容",
     "description": "备注输入框占位文本"
+  },
+  "dataManagement": {
+    "message": "数据管理",
+    "description": "数据管理卡片标题"
+  },
+  "exportAllData": {
+    "message": "导出所有数据",
+    "description": "导出所有数据按钮文本"
+  },
+  "importData": {
+    "message": "导入数据",
+    "description": "导入数据按钮文本"
+  },
+  "clearAllData": {
+    "message": "清除所有数据",
+    "description": "清除所有数据标题"
+  },
+  "clear": {
+    "message": "清除",
+    "description": "清除按钮文本"
+  },
+  "confirmClearAllData": {
+    "message": "确定要清除所有数据吗？这将无法恢复。",
+    "description": "清除所有数据确认提示"
+  },
+  "dataCleared": {
+    "message": "所有数据已清除",
+    "description": "数据清除成功提示"
+  },
+  "about": {
+    "message": "关于",
+    "description": "关于卡片标题"
+  },
+  "version": {
+    "message": "版本:",
+    "description": "版本标签"
+  },
+  "developer": {
+    "message": "开发者:",
+    "description": "开发者标签"
+  },
+  "viewChangelog": {
+    "message": "查看更新日志",
+    "description": "查看更新日志链接文本"
+  },
+  "reportIssue": {
+    "message": "反馈问题",
+    "description": "反馈问题链接文本"
   }
 }

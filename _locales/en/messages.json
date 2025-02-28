@@ -83,6 +83,38 @@
     "message": "Account Note Management",
     "description": "Management page title"
   },
+  "generalSettings": {
+    "message": "General Settings",
+    "description": "General settings section title"
+  },
+  "generalSettingsPlaceholder": {
+    "message": "More settings coming soon...",
+    "description": "General settings placeholder text"
+  },
+  "newSiteInputPlaceholder": {
+    "message": "Enter website domain, e.g. example.com",
+    "description": "Add disabled site input placeholder"
+  },
+  "addSite": {
+    "message": "Add",
+    "description": "Add site button text"
+  },
+  "siteAlreadyDisabled": {
+    "message": "This site is already in the disabled list",
+    "description": "Site already exists prompt"
+  },
+  "siteDisabled": {
+    "message": "Site disabled",
+    "description": "Site disabled success prompt"
+  },
+  "invalidUrl": {
+    "message": "Invalid URL format",
+    "description": "URL format error prompt"
+  },
+  "noDisabledSites": {
+    "message": "No disabled sites",
+    "description": "No disabled sites prompt"
+  },
   "searchPlaceholder": {
     "message": "Search websites or usernames...",
     "description": "Search input placeholder"
@@ -230,5 +262,85 @@
   "noteInputPlaceholder": {
     "message": "Enter note content",
     "description": "Note input placeholder"
+  },
+  "close": {
+    "message": "Close",
+    "description": "Close button text"
+  },
+  "disableOptions": {
+    "message": "Disable note popup",
+    "description": "Disable options title"
+  },
+  "disableSession": {
+    "message": "Hide until next visit",
+    "description": "Disable for current session option"
+  },
+  "disableSite": {
+    "message": "Disable on this website",
+    "description": "Disable for current site option"
+  },
+  "disableGlobal": {
+    "message": "Disable on all websites",
+    "description": "Disable globally option"
+  },
+  "settings": {
+    "message": "Settings",
+    "description": "Settings tab title"
+  },
+  "disabledSites": {
+    "message": "Disabled websites",
+    "description": "Disabled sites section title"
+  },
+  "enableSite": {
+    "message": "Enable",
+    "description": "Enable site button text"
+  },
+  "dataManagement": {
+    "message": "Data Management",
+    "description": "Data management card title"
+  },
+  "exportAllData": {
+    "message": "Export All Data",
+    "description": "Export all data button text"
+  },
+  "importData": {
+    "message": "Import Data",
+    "description": "Import data button text"
+  },
+  "clearAllData": {
+    "message": "Clear All Data",
+    "description": "Clear all data title"
+  },
+  "clear": {
+    "message": "Clear",
+    "description": "Clear button text"
+  },
+  "confirmClearAllData": {
+    "message": "Are you sure you want to clear all data? This cannot be undone.",
+    "description": "Clear all data confirmation prompt"
+  },
+  "dataCleared": {
+    "message": "All data has been cleared",
+    "description": "Data cleared success message"
+  },
+  "about": {
+    "message": "About",
+    "description": "About card title"
+  },
+  "version": {
+    "message": "Version:",
+    "description": "Version label"
+  },
+  "developer": {
+    "message": "Developer:",
+    "description": "Developer label"
+  },
+  "viewChangelog": {
+    "message": "View Changelog",
+    "description": "View changelog link text"
+  },
+  "reportIssue": {
+    "message": "Report Issue",
+    "description": "Report issue link text"
   }
 }

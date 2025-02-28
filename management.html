@@ -24,6 +24,11 @@
     </header>
 
     <main class="main-content">
+      <div class="tabs">
+        <button id="notesTab" class="tab-btn active">Notes</button>
+        <button id="settingsTab" class="tab-btn">Settings</button>
+      </div>
+      <div id="notesContent" class="tab-content active">
       <div class="control-bar">
         <div class="sort-controls">
           <select id="sortSelect" class="sort-select">
@@ -46,24 +51,79 @@
           <button id="deleteSelected" class="batch-btn danger" style="display: none;">
             删除所选
           </button>
-          <button id="exportNotes" class="batch-btn">
-            <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px;">
-              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>
-            </svg>
-            <span id="exportText">导出备注</span>
-          </button>
-          <button id="importNotes" class="batch-btn">
-            <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px;">
-              <path d="M5 15h4v6h6v-6h4l-7-7-7 7zM5 4v2h14V4H5z" fill="currentColor"/>
-            </svg>
-            <span id="importText">导入备注</span>
-          </button>
-          <input type="file" id="importFileInput" accept=".json" style="display: none;">
+
         </div>
       </div>
 
       <div class="notes-grid" id="notesList">
         <!-- 备注列表将通过 JS 动态插入 -->
+      </div>
+      </div>
+      <div id="settingsContent" class="tab-content">
+        <div class="settings-container">
+          <!-- 已禁用网站卡片 -->
+          <div class="settings-card">
+            <h2 id="disabledSitesTitle" class="card-title">已禁用网站</h2>
+            <div class="card-content">
+              <div class="add-site-form">
+                <input type="text" id="newSiteInput" placeholder="输入网站域名，如 example.com">
+                <button id="addSiteBtn">添加</button>
+              </div>
+              <div class="disabled-sites-list" id="disabledSitesList">
+                <!-- 禁用网站列表将通过 JS 动态插入 -->
+              </div>
+            </div>
+          </div>
+          
+          <!-- 数据管理卡片 -->
+          <div class="settings-card">
+            <h2 id="dataManagementTitle" class="card-title">数据管理</h2>
+            <div class="card-content">
+              <div class="data-management-actions">
+                <button id="settingsExportBtn" class="settings-btn">
+                  <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px;">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>
+                  </svg>
+                  <span id="settingsExportText">导出所有数据</span>
+                </button>
+                <button id="settingsImportBtn" class="settings-btn">
+                  <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px;">
+                    <path d="M5 15h4v6h6v-6h4l-7-7-7 7zM5 4v2h14V4H5z" fill="currentColor"/>
+                  </svg>
+                  <span id="settingsImportText">导入数据</span>
+                </button>
+                <input type="file" id="settingsImportFileInput" accept=".json" style="display: none;">
+              </div>
+              <div class="data-management-actions danger-zone">
+                <h3 id="clearDataTitle">清除所有数据</h3>
+                <button id="clearAllDataBtn" class="settings-btn danger">
+                  <span id="clearDataText">清除</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 关于卡片 -->
+          <div class="settings-card">
+            <h2 id="aboutTitle" class="card-title">关于</h2>
+            <div class="card-content">
+              <div class="about-info">
+                <div class="info-row">
+                  <span class="info-label" id="versionLabel">版本:</span>
+                  <span class="info-value" id="versionValue">1.0.2</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label" id="developerLabel">开发者:</span>
+                  <span class="info-value" id="developerValue">Account Note Team</span>
+                </div>
+                <div class="about-actions">
+                  <a href="#" id="viewChangelogLink" class="text-link">查看更新日志</a>
+                  <a href="#" id="reportIssueLink" class="text-link">反馈问题</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
