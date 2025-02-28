@@ -1,16 +1,38 @@
 // 监听页面加载完成和DOM变化
-// 添加CSS样式
-const disableOptionsStyle = document.createElement('link');
-disableOptionsStyle.rel = 'stylesheet';
-disableOptionsStyle.href = chrome.runtime.getURL('disable-options.css');
-document.head.appendChild(disableOptionsStyle);
+// 检查扩展上下文是否有效
+function isExtensionContextValid() {
+  return typeof chrome !== 'undefined' && chrome.runtime && !chrome.runtime.lastError;
+}
+
+// 添加CSS样式，确保在扩展上下文有效时才执行
+if (isExtensionContextValid()) {
+  try {
+    const disableOptionsStyle = document.createElement('link');
+    disableOptionsStyle.rel = 'stylesheet';
+    disableOptionsStyle.href = chrome.runtime.getURL('disable-options.css');
+    document.head.appendChild(disableOptionsStyle);
+  } catch (error) {
+    console.error('Failed to add disable-options.css:', error);
+  }
+}
 
 // 检查是否应该显示备注
 function shouldShowNote() {
   return new Promise(resolve => {
+    if (!isExtensionContextValid()) {
+      resolve(false);
+      return;
+    }
+
     const domain = window.location.origin;
     
     chrome.storage.local.get(['disabledGlobal', 'disabledSites'], (result) => {
+      if (chrome.runtime.lastError) {
+        console.warn('Failed to get storage:', chrome.runtime.lastError);
+        resolve(false);
+        return;
+      }
+      
       // 检查全局禁用设置
       if (result.disabledGlobal) {
         resolve(false);
@@ -67,7 +89,6 @@ function showDisableOptions(suggestion, field) {
   disableMenu.className = 'disable-options-menu';
   
   disableMenu.innerHTML = `
-    <h3>${getMessage('disableOptions')}</h3>
     <div class="disable-option" data-action="session">
       ${getMessage('disableSession')}
     </div>
@@ -79,7 +100,29 @@ function showDisableOptions(suggestion, field) {
     </div>
   `;
   
-  suggestion.appendChild(disableMenu);
+  // 将菜单添加到body而不是suggestion内部，以避免定位问题
+  document.body.appendChild(disableMenu);
+  
+  // 定位菜单到关闭按钮附近
+  const closeBtn = suggestion.querySelector('.close-note-btn');
+  const closeBtnRect = closeBtn.getBoundingClientRect();
+  
+  disableMenu.style.position = 'fixed';
+  disableMenu.style.top = `${closeBtnRect.bottom + 5}px`;
+  disableMenu.style.left = `${closeBtnRect.left}px`;
+  
+  // 确保菜单不超出视口
+  const menuRect = disableMenu.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  if (menuRect.right > viewportWidth) {
+    disableMenu.style.left = `${viewportWidth - menuRect.width - 10}px`;
+  }
+  
+  if (menuRect.bottom > viewportHeight) {
+    disableMenu.style.top = `${closeBtnRect.top - menuRect.height - 5}px`;
+  }
   
   // 添加选项点击事件
   const options = disableMenu.querySelectorAll('.disable-option');
@@ -110,10 +153,24 @@ function showDisableOptions(suggestion, field) {
           break;
       }
       
-      // 移除备注弹窗
+      // 移除备注弹窗和禁用选项菜单
+      disableMenu.remove();
       suggestion.remove();
     });
   });
+  
+  // 点击其他区域关闭菜单
+  const closeMenuOnOutsideClick = (e) => {
+    if (!disableMenu.contains(e.target) && !closeBtn.contains(e.target)) {
+      disableMenu.remove();
+      document.removeEventListener('click', closeMenuOnOutsideClick);
+    }
+  };
+  
+  // 延迟添加事件监听，避免立即触发
+  setTimeout(() => {
+    document.addEventListener('click', closeMenuOnOutsideClick);
+  }, 10);
 }
 
 function initAccountFields() {
@@ -165,14 +222,18 @@ function initAccountFields() {
 
 // 修改其他使用 chrome.storage 的函数
 function loadExistingNote(field) {
-  if (typeof chrome !== 'undefined' && chrome.storage) {
-    chrome.storage.local.get([getFieldKey(field)], (result) => {
-      const noteData = result[getFieldKey(field)];
-      if (noteData) {
-        field.dataset.hasStoredNote = 'true';
-      }
-    });
-  }
+  if (!isExtensionContextValid()) return;
+
+  chrome.storage.local.get([getFieldKey(field)], (result) => {
+    if (chrome.runtime.lastError) {
+      console.warn('Failed to load note:', chrome.runtime.lastError);
+      return;
+    }
+    const noteData = result[getFieldKey(field)];
+    if (noteData) {
+      field.dataset.hasStoredNote = 'true';
+    }
+  });
 }
 
 // 更新弹窗位置
@@ -422,9 +483,6 @@ function showAccountNote(field, noteData) {
   const shortText = isLongText ? `${note.slice(0, 50)}...` : note;
 
   suggestion.innerHTML = `
-      <div class="note-header-actions">
-        <button class="close-note-btn" title="${getMessage('close')}">×</button>
-      </div>
       <textarea 
         class="account-note-text ${!hasNote ? 'empty-note' : ''}" 
         placeholder="${!hasNote ? getMessage('addNote') : getMessage('editNote')}"
@@ -433,9 +491,12 @@ function showAccountNote(field, noteData) {
         data-is-expanded="false"
         readonly
       >${escapeHtml(shortText)}</textarea>
-      ${isLongText ? `
-        <button class="toggle-text-btn" title="${getMessage('toggleText')}">${getMessage('expand')}</button>
-      ` : ''}
+      <div class="note-footer-actions">
+        ${isLongText ? `
+          <button class="toggle-text-btn" title="${getMessage('toggleText')}">${getMessage('expand')}</button>
+        ` : ''}
+        <button class="close-note-btn" title="${getMessage('close')}">${getMessage('close')}</button>
+      </div>
   `;
   
   // 定位弹窗

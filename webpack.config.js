@@ -6,7 +6,7 @@ const CopyPlugin = require('copy-webpack-plugin');
 module.exports = {
   mode: 'production',
   entry: {
-    content: ['./src/content.js', './src/styles.css'],
+    content: ['./src/content.js', './src/styles.css', './src/disable-options.css'],
     popup: ['./src/popup.js', './src/popup.css'],
     management: ['./src/management.js', './src/management.css']
   },
@@ -75,4 +75,4 @@ module.exports = {
       ],
     }),
   ]
-}; 
+};
