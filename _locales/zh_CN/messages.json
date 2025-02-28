@@ -70,5 +70,165 @@
   "expand": {
     "message": "展开",
     "description": "展开按钮文本"
+  },
+  "collapse": {
+    "message": "收起",
+    "description": "收起按钮文本"
+  },
+  "manage": {
+    "message": "管理所有备注",
+    "description": "管理按钮提示文本"
+  },
+  "pageTitle": {
+    "message": "账号备注管理",
+    "description": "管理页面标题"
+  },
+  "searchPlaceholder": {
+    "message": "搜索网站或用户名...",
+    "description": "搜索输入框占位文本"
+  },
+  "sortByTime": {
+    "message": "按更新时间排序",
+    "description": "按更新时间排序选项"
+  },
+  "sortByUsername": {
+    "message": "按用户名排序",
+    "description": "按用户名排序选项"
+  },
+  "sortByDomain": {
+    "message": "按网站排序",
+    "description": "按网站排序选项"
+  },
+  "sortDirectionTitle": {
+    "message": "切换排序方向",
+    "description": "排序方向按钮提示文本"
+  },
+  "selectAll": {
+    "message": "全选",
+    "description": "全选复选框标签"
+  },
+  "select": {
+    "message": "选择",
+    "description": "选择按钮文本"
+  },
+  "cancel": {
+    "message": "取消",
+    "description": "取消按钮文本"
+  },
+  "deleteSelected": {
+    "message": "删除所选",
+    "description": "删除所选按钮文本"
+  },
+  "exportNotes": {
+    "message": "导出备注",
+    "description": "导出备注按钮文本"
+  },
+  "importNotes": {
+    "message": "导入备注",
+    "description": "导入备注按钮文本"
+  },
+  "noResults": {
+    "message": "未找到相关备注",
+    "description": "无搜索结果标题"
+  },
+  "noResultsDesc": {
+    "message": "没有找到与 \"$1\" 相关的备注",
+    "description": "无搜索结果描述"
+  },
+  "emptyStateManagement": {
+    "message": "暂无备注信息",
+    "description": "管理页面空状态标题"
+  },
+  "emptyStateManagementDesc": {
+    "message": "当您在登录页面添加备注后，备注信息会显示在这里",
+    "description": "管理页面空状态描述"
+  },
+  "save": {
+    "message": "保存",
+    "description": "保存按钮文本"
+  },
+  "justNow": {
+    "message": "刚刚",
+    "description": "刚刚时间格式"
+  },
+  "minutesAgo": {
+    "message": "$1分钟前",
+    "description": "分钟前时间格式"
+  },
+  "hoursAgo": {
+    "message": "$1小时前",
+    "description": "小时前时间格式"
+  },
+  "daysAgo": {
+    "message": "$1天前",
+    "description": "天前时间格式"
+  },
+  "exportSuccess": {
+    "message": "备注数据导出成功",
+    "description": "导出成功消息"
+  },
+  "exportFailed": {
+    "message": "导出失败，请重试",
+    "description": "导出失败消息"
+  },
+  "importSuccess": {
+    "message": "成功导入 $1 条备注",
+    "description": "导入成功消息"
+  },
+  "importFailed": {
+    "message": "导入失败，请重试",
+    "description": "导入失败消息"
+  },
+  "invalidDataFormat": {
+    "message": "无效的数据格式",
+    "description": "无效数据格式错误"
+  },
+  "noValidNotes": {
+    "message": "没有找到有效的备注数据",
+    "description": "无有效备注错误"
+  },
+  "selectFileType": {
+    "message": "请选择JSON格式的文件",
+    "description": "文件类型选择消息"
+  },
+  "conflictPrompt": {
+    "message": "发现$1条重复的备注数据，是否覆盖？",
+    "description": "冲突解决提示"
+  },
+  "noNewNotes": {
+    "message": "没有新的备注数据需要导入",
+    "description": "无新备注消息"
+  },
+  "pleaseSelectNotes": {
+    "message": "请选择要删除的备注",
+    "description": "请选择备注消息"
+  },
+  "deleteFailure": {
+    "message": "删除失败，请重试",
+    "description": "删除失败消息"
+  },
+  "invalidDeleteData": {
+    "message": "无效的删除数据",
+    "description": "无效删除数据错误"
+  },
+  "noNotesToDelete": {
+    "message": "未找到要删除的数据",
+    "description": "无备注可删除错误"
+  },
+  "keyboardTip": {
+    "message": "键盘快捷键",
+    "description": "键盘快捷键标题"
+  },
+  "saveShortcut": {
+    "message": "保存",
+    "description": "保存快捷键描述"
+  },
+  "cancelShortcut": {
+    "message": "取消",
+    "description": "取消快捷键描述"
+  },
+  "noteInputPlaceholder": {
+    "message": "输入备注内容",
+    "description": "备注输入框占位文本"
   }
 }

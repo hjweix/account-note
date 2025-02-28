@@ -70,5 +70,165 @@
   "expand": {
     "message": "Expand",
     "description": "Expand button text"
+  },
+  "collapse": {
+    "message": "Collapse",
+    "description": "Collapse button text"
+  },
+  "manage": {
+    "message": "Manage all notes",
+    "description": "Manage button tooltip text"
+  },
+  "pageTitle": {
+    "message": "Account Note Management",
+    "description": "Management page title"
+  },
+  "searchPlaceholder": {
+    "message": "Search websites or usernames...",
+    "description": "Search input placeholder"
+  },
+  "sortByTime": {
+    "message": "Sort by update time",
+    "description": "Sort option for update time"
+  },
+  "sortByUsername": {
+    "message": "Sort by username",
+    "description": "Sort option for username"
+  },
+  "sortByDomain": {
+    "message": "Sort by website",
+    "description": "Sort option for domain"
+  },
+  "sortDirectionTitle": {
+    "message": "Toggle sort direction",
+    "description": "Title for sort direction button"
+  },
+  "selectAll": {
+    "message": "Select all",
+    "description": "Select all checkbox label"
+  },
+  "select": {
+    "message": "Select",
+    "description": "Select button text"
+  },
+  "cancel": {
+    "message": "Cancel",
+    "description": "Cancel button text"
+  },
+  "deleteSelected": {
+    "message": "Delete selected",
+    "description": "Delete selected button text"
+  },
+  "exportNotes": {
+    "message": "Export notes",
+    "description": "Export notes button text"
+  },
+  "importNotes": {
+    "message": "Import notes",
+    "description": "Import notes button text"
+  },
+  "noResults": {
+    "message": "No matching notes",
+    "description": "No search results title"
+  },
+  "noResultsDesc": {
+    "message": "No notes found matching \"$1\"",
+    "description": "No search results description"
+  },
+  "emptyStateManagement": {
+    "message": "No notes yet",
+    "description": "Empty state title in management page"
+  },
+  "emptyStateManagementDesc": {
+    "message": "Notes will appear here when you add them on login pages",
+    "description": "Empty state description in management page"
+  },
+  "save": {
+    "message": "Save",
+    "description": "Save button text"
+  },
+  "justNow": {
+    "message": "Just now",
+    "description": "Time format for just now"
+  },
+  "minutesAgo": {
+    "message": "$1 minutes ago",
+    "description": "Time format for minutes ago"
+  },
+  "hoursAgo": {
+    "message": "$1 hours ago",
+    "description": "Time format for hours ago"
+  },
+  "daysAgo": {
+    "message": "$1 days ago",
+    "description": "Time format for days ago"
+  },
+  "exportSuccess": {
+    "message": "Notes exported successfully",
+    "description": "Export success message"
+  },
+  "exportFailed": {
+    "message": "Export failed, please try again",
+    "description": "Export failed message"
+  },
+  "importSuccess": {
+    "message": "Successfully imported $1 notes",
+    "description": "Import success message"
+  },
+  "importFailed": {
+    "message": "Import failed, please try again",
+    "description": "Import failed message"
+  },
+  "invalidDataFormat": {
+    "message": "Invalid data format",
+    "description": "Invalid data format error"
+  },
+  "noValidNotes": {
+    "message": "No valid notes found",
+    "description": "No valid notes error"
+  },
+  "selectFileType": {
+    "message": "Please select a JSON file",
+    "description": "File type selection message"
+  },
+  "conflictPrompt": {
+    "message": "Found $1 duplicate notes. Overwrite existing notes?",
+    "description": "Conflict resolution prompt"
+  },
+  "noNewNotes": {
+    "message": "No new notes to import",
+    "description": "No new notes message"
+  },
+  "pleaseSelectNotes": {
+    "message": "Please select notes to delete",
+    "description": "Please select notes message"
+  },
+  "deleteFailure": {
+    "message": "Delete failed, please try again",
+    "description": "Delete failure message"
+  },
+  "invalidDeleteData": {
+    "message": "Invalid delete data",
+    "description": "Invalid delete data error"
+  },
+  "noNotesToDelete": {
+    "message": "No notes found to delete",
+    "description": "No notes to delete error"
+  },
+  "keyboardTip": {
+    "message": "Keyboard shortcuts",
+    "description": "Keyboard shortcuts title"
+  },
+  "saveShortcut": {
+    "message": "Save",
+    "description": "Save shortcut description"
+  },
+  "cancelShortcut": {
+    "message": "Cancel",
+    "description": "Cancel shortcut description"
+  },
+  "noteInputPlaceholder": {
+    "message": "Enter note content",
+    "description": "Note input placeholder"
   }
 }

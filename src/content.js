@@ -121,7 +121,12 @@ function getMessage(key, substitutions = null) {
 
 // 添加默认消息函数，确保即使i18n API不可用也能显示文本
 function getDefaultMessage(key) {
-  const defaultMessages = {
+  // 检测当前浏览器语言，默认为英文
+  const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+  const isChinese = browserLang.startsWith('zh');
+  
+  // 根据语言提供不同的默认消息
+  const defaultMessages = isChinese ? {
     'addNote': '添加备注',
     'editNote': '编辑备注',
     'toggleText': '切换显示',
@@ -133,6 +138,18 @@ function getDefaultMessage(key) {
     'errorReadData': '读取数据失败',
     'errorSaveData': '保存数据失败',
     'successNoteSaved': '备注已保存'
+  } : {
+    'addNote': 'Add Note',
+    'editNote': 'Edit Note',
+    'toggleText': 'Toggle Display',
+    'expand': 'Expand',
+    'collapse': 'Collapse',
+    'errorEmptyNote': 'Note content cannot be empty',
+    'errorEmptyUsername': 'Username cannot be empty',
+    'errorStorageAPI': 'Storage API is not available',
+    'errorReadData': 'Failed to read data',
+    'errorSaveData': 'Failed to save data',
+    'successNoteSaved': 'Note saved'
   };
   return defaultMessages[key] || key;
 }
@@ -353,12 +370,12 @@ function showAccountNote(field, noteData) {
       
       if (isExpanded) {
         noteInput.value = noteInput.dataset.shortText;
-        toggleBtn.textContent = '展开';
+        toggleBtn.textContent = getMessage('expand');
         noteInput.dataset.isExpanded = 'false';
         noteInput.style.height = '45px';
       } else {
         noteInput.value = noteInput.dataset.fullText;
-        toggleBtn.textContent = '收起';
+        toggleBtn.textContent = getMessage('collapse'); // 使用专门的'collapse'消息
         noteInput.dataset.isExpanded = 'true';
         noteInput.style.height = 'auto';
         const scrollHeight = noteInput.scrollHeight;
@@ -426,7 +443,7 @@ function showAccountNote(field, noteData) {
               toggleBtn = document.createElement('button');
               toggleBtn.className = 'toggle-text-btn';
               toggleBtn.dataset.expanded = 'false';
-              toggleBtn.textContent = '展开';
+              toggleBtn.textContent = getMessage('expand');
               suggestion.appendChild(toggleBtn);
               
               toggleBtn.clickHandler = (e) => {
@@ -435,11 +452,11 @@ function showAccountNote(field, noteData) {
                 
                 if (isExpanded) {
                   noteInput.value = noteInput.dataset.shortText;
-                  toggleBtn.textContent = '展开';
+                  toggleBtn.textContent = getMessage('expand');
                   toggleBtn.dataset.expanded = 'false';
                 } else {
                   noteInput.value = noteInput.dataset.fullText;
-                  toggleBtn.textContent = '收起';
+                  toggleBtn.textContent = getMessage('collapse'); // 使用专门的'collapse'消息
                   toggleBtn.dataset.expanded = 'true';
                 }
               };
@@ -449,7 +466,7 @@ function showAccountNote(field, noteData) {
               toggleBtn.remove();
             }
             
-            showToast('备注已保存');
+            showToast(getMessage('successNoteSaved'));
           });
         });
       }

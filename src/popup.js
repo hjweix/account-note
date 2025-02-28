@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  // 初始化国际化文本
+  initI18nTexts();
+  
   // 获取当前标签页信息
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const domain = new URL(tab.url).origin;
@@ -15,6 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 // 加载当前网站的备注
 async function loadSiteNotes(domain) {
   const notesList = document.getElementById('notesList');
+  
+  // 获取当前标签页，用于后续发送消息
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   
   chrome.storage.local.get(null, (result) => {
     // 过滤出当前网站的备注
@@ -74,7 +80,7 @@ function displayNotes(notes) {
         <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
       </svg>
     `;
-    editBtn.title = '编辑';
+    editBtn.title = getMessage('editNote');
     
     noteContent.appendChild(noteText);
     noteContent.appendChild(editBtn);
@@ -172,7 +178,8 @@ function showToast(message) {
 function showEmptyState(notesList) {
   notesList.innerHTML = `
     <div class="empty-state">
-      <p>暂无备注</p>
+      <p>${getMessage('emptyStateTitle')}</p>
+      <p>${getMessage('emptyStateDesc')}</p>
     </div>
   `;
 }
@@ -180,4 +187,16 @@ function showEmptyState(notesList) {
 // 添加获取消息的辅助函数
 function getMessage(key, substitutions = null) {
   return chrome.i18n.getMessage(key, substitutions);
+}
+
+// 初始化国际化文本
+function initI18nTexts() {
+  // 设置扩展标题
+  document.getElementById('extTitle').textContent = getMessage('extName');
+  
+  // 设置当前网站备注标题
+  document.getElementById('currentSiteNotes').textContent = getMessage('emptyStateTitle');
+  
+  // 设置管理按钮提示文本
+  document.getElementById('openManagement').title = getMessage('manage') || '管理所有备注';
 }

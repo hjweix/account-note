@@ -7,10 +7,42 @@ let isSelectMode = false;
 
 // 等待 DOM 加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
+  // 初始化国际化文本
+  initI18nTexts();
   loadAllNotes();
   setupSearch();
   setupControls();
 });
+
+// 初始化国际化文本
+function initI18nTexts() {
+  // 设置页面标题
+  document.getElementById('pageTitle').textContent = getMessage('pageTitle');
+  
+  // 设置搜索框占位符
+  document.getElementById('searchInput').placeholder = getMessage('searchPlaceholder');
+  
+  // 设置排序选项
+  document.getElementById('sortByTime').textContent = getMessage('sortByTime');
+  document.getElementById('sortByUsername').textContent = getMessage('sortByUsername');
+  document.getElementById('sortByDomain').textContent = getMessage('sortByDomain');
+  
+  // 设置排序方向按钮提示
+  document.getElementById('sortDirection').title = getMessage('sortDirectionTitle');
+  
+  // 设置全选标签
+  document.getElementById('selectAllLabel').textContent = getMessage('selectAll');
+  
+  // 设置选择按钮
+  document.getElementById('toggleSelect').textContent = getMessage('select');
+  
+  // 设置删除所选按钮
+  document.getElementById('deleteSelected').textContent = getMessage('deleteSelected');
+  
+  // 设置导出导入按钮
+  document.getElementById('exportText').textContent = getMessage('exportNotes');
+  document.getElementById('importText').textContent = getMessage('importNotes');
+}
 
 // 加载所有备注
 async function loadAllNotes() {
@@ -48,8 +80,8 @@ function displayNotes(notes, searchTerm = '') {
       // 搜索无结果状态
       notesList.innerHTML = `
         <div class="no-results">
-          <h3>未找到相关备注</h3>
-          <p>没有找到与 "<span class="search-term">${searchTerm}</span>" 相关的备注</p>
+          <h3>${getMessage('noResults')}</h3>
+          <p>${getMessage('noResultsDesc', [searchTerm])}</p>
         </div>
       `;
     } else {
@@ -60,8 +92,8 @@ function displayNotes(notes, searchTerm = '') {
             <path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6zm0 10c-2.2 0-4-1.8-4-4s1.8-4 4-4 4 1.8 4 4-1.8 4-4 4z" fill="currentColor"/>
             <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill="currentColor"/>
           </svg>
-          <h3>暂无备注信息</h3>
-          <p>当您在登录页面添加备注后，备注信息会显示在这里</p>
+          <h3>${getMessage('emptyStateManagement')}</h3>
+          <p>${getMessage('emptyStateManagementDesc')}</p>
         </div>
       `;
     }
@@ -77,7 +109,7 @@ function displayNotes(notes, searchTerm = '') {
 
     return `
       <div class="note-card" data-key="${note.key}">
-        <input type="checkbox" class="select-checkbox" aria-label="选择备注">
+        <input type="checkbox" class="select-checkbox" aria-label="${getMessage('select')}">
         <div class="note-header">
           <div class="note-domain">
             <img src="${favicon}" class="domain-icon" alt="${displayDomain}">
@@ -99,12 +131,12 @@ function displayNotes(notes, searchTerm = '') {
           </div>
         </div>
         <div class="note-actions">
-          <button class="action-btn edit-btn" title="编辑">
+          <button class="action-btn edit-btn" title="${getMessage('editNote')}">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
             </svg>
           </button>
-          <button class="action-btn delete-btn" title="删除">
+          <button class="action-btn delete-btn" title="${getMessage('successNoteDeleted')}">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
             </svg>
@@ -213,22 +245,22 @@ function addNoteActions() {
       // 切换到编辑模式
       noteContent.innerHTML = `
         <div class="edit-mode">
-          <textarea class="edit-input" placeholder="输入备注内容">${noteContent.getAttribute('title')}</textarea>
+          <textarea class="edit-input" placeholder="${getMessage('noteInputPlaceholder')}">${noteContent.getAttribute('title')}</textarea>
           <div class="edit-actions">
             <button class="save-edit-btn">
               <svg viewBox="0 0 24 24" width="16" height="16">
                 <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor"/>
               </svg>
-              保存
+              ${getMessage('save')}
             </button>
-            <button class="cancel-edit-btn">取消</button>
+            <button class="cancel-edit-btn">${getMessage('cancel')}</button>
           </div>
           <div class="keyboard-tips">
             <span class="tip-item">
-              <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 保存
+              <kbd>Ctrl</kbd> + <kbd>Enter</kbd> ${getMessage('saveShortcut')}
             </span>
             <span class="tip-item">
-              <kbd>Esc</kbd> 取消
+              <kbd>Esc</kbd> ${getMessage('cancelShortcut')}
             </span>
           </div>
         </div>
@@ -264,6 +296,9 @@ function addNoteActions() {
             noteContent.innerHTML = newNote.length > 50 ? 
               `${newNote.slice(0, 50)}...` : newNote;
             noteContent.setAttribute('title', newNote);
+
+            // 显示成功提示
+            showToast(getMessage('successNoteUpdated'));
 
             // 移除事件监听器
             saveBtn.removeEventListener('click', saveEdit);
@@ -313,7 +348,7 @@ function addNoteActions() {
       const noteCard = e.target.closest('.note-card');
       const key = noteCard.dataset.key;
       
-      if (confirm('确定要删除这条备注吗？')) {
+      if (confirmDelete()) {
         chrome.storage.local.remove(key, () => {
           noteCard.remove();
           // 如果没有备注了，显示空状态
@@ -322,7 +357,7 @@ function addNoteActions() {
             if (notesList) {
               notesList.innerHTML = `
                 <div class="empty-state">
-                  <p>暂无备注信息</p>
+                  <p>${getMessage('emptyStateManagement')}</p>
                 </div>
               `;
             }
@@ -393,7 +428,7 @@ function setupControls() {
   const handleToggleSelect = () => {
     isSelectMode = !isSelectMode;
     document.body.classList.toggle('select-mode', isSelectMode);
-    toggleSelect.textContent = isSelectMode ? '取消' : '选择';
+    toggleSelect.textContent = isSelectMode ? getMessage('cancel') : getMessage('select');
     deleteSelected.style.display = isSelectMode ? 'block' : 'none';
   };
 
@@ -432,7 +467,7 @@ function setupControls() {
     const file = e.target.files[0];
     if (file) {
       if (file.type !== 'application/json') {
-        showToast('请选择JSON格式的文件');
+        showToast(getMessage('selectFileType'));
         return;
       }
       importNotes(file);
@@ -457,7 +492,7 @@ function setupControls() {
   // 添加数据验证函数
   async function validateKeys(keys) {
     if (!Array.isArray(keys) || keys.length === 0) {
-      throw new Error('无效的删除数据');
+      throw new Error(getMessage('invalidDeleteData'));
     }
     
     // 验证所有 key 是否存在
@@ -465,7 +500,7 @@ function setupControls() {
     const validKeys = keys.filter(key => data[key]);
     
     if (validKeys.length === 0) {
-      throw new Error('未找到要删除的数据');
+      throw new Error(getMessage('noNotesToDelete'));
     }
     
     return validKeys;
@@ -492,29 +527,29 @@ function setupControls() {
   deleteSelected.addEventListener('click', async () => {
     const selectedNotes = document.querySelectorAll('.note-card .select-checkbox:checked');
     if (selectedNotes.length === 0) {
-      showToast('请选择要删除的备注');
+      showToast(getMessage('pleaseSelectNotes'));
       return;
     }
 
-    if (confirm(`确定要删除选中的 ${selectedNotes.length} 条备注吗？`)) {
+    if (confirmDelete(selectedNotes.length)) {
       try {
         const keys = Array.from(selectedNotes).map(checkbox => 
           checkbox.closest('.note-card').dataset.key
         );
         
         const deletedCount = await deleteNotes(keys);
-        showToast(`成功删除 ${deletedCount} 条备注`);
+        showToast(getMessage('importSuccess', [deletedCount.toString()]));
         
         // 重置选择状态
         isSelectMode = false;
         document.body.classList.remove('select-mode');
-        document.getElementById('toggleSelect').textContent = '选择';
+        document.getElementById('toggleSelect').textContent = getMessage('select');
         document.getElementById('deleteSelected').style.display = 'none';
         
         // 重新加载数据
         await loadAllNotes();
       } catch (error) {
-        showToast(error.message || '删除失败，请重试');
+        showToast(error.message || getMessage('deleteFailure'));
       }
     }
   });
@@ -528,19 +563,19 @@ function formatTime(timeStr) {
   
   // 小于1分钟
   if (diff < 60000) {
-    return '刚刚';
+    return getMessage('justNow');
   }
   // 小于1小时
   if (diff < 3600000) {
-    return `${Math.floor(diff / 60000)}分钟前`;
+    return getMessage('minutesAgo', [Math.floor(diff / 60000).toString()]);
   }
   // 小于24小时
   if (diff < 86400000) {
-    return `${Math.floor(diff / 3600000)}小时前`;
+    return getMessage('hoursAgo', [Math.floor(diff / 3600000).toString()]);
   }
   // 小于7天
   if (diff < 604800000) {
-    return `${Math.floor(diff / 86400000)}天前`;
+    return getMessage('daysAgo', [Math.floor(diff / 86400000).toString()]);
   }
   // 其他情况显示具体日期
   return date.toLocaleDateString();
@@ -600,11 +635,11 @@ async function exportNotes() {
       }, 0);
 
       // 显示成功提示
-      showToast('备注数据导出成功');
+      showToast(getMessage('exportSuccess'));
     });
   } catch (error) {
     console.error('导出备注失败:', error);
-    showToast('导出失败，请重试');
+    showToast(getMessage('exportFailed'));
   }
 }
 
@@ -620,7 +655,7 @@ async function importNotes(file) {
         
         // 验证数据格式
         if (!Array.isArray(importedNotes)) {
-          throw new Error('无效的数据格式');
+          throw new Error(getMessage('invalidDataFormat'));
         }
         
         // 验证每条数据的结构
@@ -634,7 +669,7 @@ async function importNotes(file) {
         );
         
         if (validNotes.length === 0) {
-          throw new Error('没有找到有效的备注数据');
+          throw new Error(getMessage('noValidNotes'));
         }
         
         // 获取现有数据
@@ -647,11 +682,11 @@ async function importNotes(file) {
         
         // 如果有冲突数据，询问用户如何处理
         if (conflicts.length > 0) {
-          if (!confirm(`发现${conflicts.length}条重复的备注数据，是否覆盖？\n点击确定覆盖现有数据，点击取消跳过重复数据。`)) {
+          if (!confirm(getMessage('conflictPrompt', [conflicts.length.toString()]))) {
             // 用户选择跳过重复数据
             const newNotes = validNotes.filter(note => !existingData[note.key]);
             if (newNotes.length === 0) {
-              showToast('没有新的备注数据需要导入');
+              showToast(getMessage('noNewNotes'));
               return;
             }
             // 只导入新数据
@@ -661,7 +696,7 @@ async function importNotes(file) {
             }, {});
             
             await chrome.storage.local.set(importData);
-            showToast(`成功导入 ${newNotes.length} 条备注`);
+            showToast(getMessage('importSuccess', [newNotes.length.toString()]));
           } else {
             // 用户选择覆盖所有数据
             const importData = validNotes.reduce((acc, note) => {
@@ -670,7 +705,7 @@ async function importNotes(file) {
             }, {});
             
             await chrome.storage.local.set(importData);
-            showToast(`成功导入 ${validNotes.length} 条备注`);
+            showToast(getMessage('importSuccess', [validNotes.length.toString()]));
           }
         } else {
           // 没有冲突，直接导入所有数据
@@ -680,7 +715,7 @@ async function importNotes(file) {
           }, {});
           
           await chrome.storage.local.set(importData);
-          showToast(`成功导入 ${validNotes.length} 条备注`);
+          showToast(getMessage('importSuccess', [validNotes.length.toString()]));
         }
         
         // 重新加载显示
@@ -688,12 +723,12 @@ async function importNotes(file) {
         
       } catch (error) {
         console.error('导入数据处理失败:', error);
-        showToast(error.message || '导入失败，请检查文件格式');
+        showToast(error.message || getMessage('importFailed'));
       }
     };
     
     reader.onerror = () => {
-      showToast('读取文件失败，请重试');
+      showToast(getMessage('importFailed'));
     };
     
     // 开始读取文件
@@ -701,6 +736,6 @@ async function importNotes(file) {
     
   } catch (error) {
     console.error('导入备注失败:', error);
-    showToast('导入失败，请重试');
+    showToast(getMessage('importFailed'));
   }
 }
