@@ -287,6 +287,10 @@
     "message": "Disable on all websites",
     "description": "Disable globally option"
   },
+  "globalDisableDesc": {
+    "message": "Enable this option to disable note popup on all websites",
+    "description": "Global disable description"
+  },
   "settings": {
     "message": "Settings",
     "description": "Settings tab title"
@@ -346,5 +350,9 @@
   "reportIssue": {
     "message": "Report Issue",
     "description": "Report issue link text"
+  },
+  "notes": {
+    "message": "Notes",
+    "description": "Notes tab title"
   }
 }

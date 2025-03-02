@@ -22,7 +22,7 @@ function initI18nTexts() {
   document.getElementById('pageTitle').textContent = getMessage('pageTitle');
   
   // 设置标签页文本
-  document.getElementById('notesTab').textContent = getMessage('notes') || '备注';
+  document.getElementById('notesTab').textContent = getMessage('notes');
   document.getElementById('settingsTab').textContent = getMessage('settings');
   
   // 设置搜索框占位符
@@ -45,7 +45,15 @@ function initI18nTexts() {
   // 设置删除所选按钮
   document.getElementById('deleteSelected').textContent = getMessage('deleteSelected');
   
-
+  // 设置全局禁用备注文本
+  if (document.getElementById('globalDisableText')) {
+    document.getElementById('globalDisableText').textContent = getMessage('disableGlobal') || '全局禁用备注';
+  }
+  
+  // 设置全局禁用描述文本
+  if (document.getElementById('globalDisableDesc')) {
+    document.getElementById('globalDisableDesc').textContent = getMessage('globalDisableDesc') || '启用此选项将在所有网站上禁用备注弹窗';
+  }
   
   // 设置卡片标题
   if (document.getElementById('disabledSitesTitle')) {
