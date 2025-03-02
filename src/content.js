@@ -4,17 +4,7 @@ function isExtensionContextValid() {
   return typeof chrome !== 'undefined' && chrome.runtime && !chrome.runtime.lastError;
 }
 
-// 添加CSS样式，确保在扩展上下文有效时才执行
-if (isExtensionContextValid()) {
-  try {
-    const disableOptionsStyle = document.createElement('link');
-    disableOptionsStyle.rel = 'stylesheet';
-    disableOptionsStyle.href = chrome.runtime.getURL('disable-options.css');
-    document.head.appendChild(disableOptionsStyle);
-  } catch (error) {
-    console.error('Failed to add disable-options.css:', error);
-  }
-}
+// CSS样式已通过Webpack打包到content.css中，不需要动态加载
 
 // 检查是否应该显示备注
 function shouldShowNote() {
@@ -90,13 +80,13 @@ function showDisableOptions(suggestion, field) {
   
   disableMenu.innerHTML = `
     <div class="disable-option" data-action="session">
-      ${getMessage('disableSession')}
+      ${getMessage('disableSession') || '在本次会话中禁用'}
     </div>
     <div class="disable-option" data-action="site">
-      ${getMessage('disableSite')}
+      ${getMessage('disableSite') || '在此网站上禁用'}
     </div>
     <div class="disable-option" data-action="global">
-      ${getMessage('disableGlobal')}
+      ${getMessage('disableGlobal') || '在所有网站上禁用'}
     </div>
   `;
   
@@ -134,6 +124,7 @@ function showDisableOptions(suggestion, field) {
         case 'session':
           // 仅在当前会话中禁用
           sessionStorage.setItem(`sessionDisabled_${domain}`, 'true');
+          showToast(getMessage('sessionDisabled') || '已在本次会话中禁用备注功能');
           break;
           
         case 'site':
@@ -142,14 +133,18 @@ function showDisableOptions(suggestion, field) {
             const disabledSites = result.disabledSites || [];
             if (!disabledSites.includes(domain)) {
               disabledSites.push(domain);
-              chrome.storage.local.set({ disabledSites });
+              chrome.storage.local.set({ disabledSites }, () => {
+                showToast(getMessage('siteDisabled') || '已在此网站上禁用备注功能');
+              });
             }
           });
           break;
           
         case 'global':
           // 全局禁用
-          chrome.storage.local.set({ disabledGlobal: true });
+          chrome.storage.local.set({ disabledGlobal: true }, () => {
+            showToast(getMessage('globalDisabled') || '已在所有网站上禁用备注功能');
+          });
           break;
       }
       
@@ -186,9 +181,9 @@ function initAccountFields() {
     field.dataset.hasNote = 'true';
     
     // 监听账号输入框的focus事件
-    field.addEventListener('focus', () => {
-      // 确保 chrome.storage API 可用且输入框有内容
-      if (typeof chrome !== 'undefined' && chrome.storage && field.value.trim()) {
+    field.addEventListener('focus', async () => {
+      // 确保 chrome.storage API 可用且输入框有内容，并且网站未被禁用
+      if (typeof chrome !== 'undefined' && chrome.storage && field.value.trim() && await shouldShowNote()) {
         chrome.storage.local.get([getFieldKey(field)], (result) => {
           const noteData = result[getFieldKey(field)];
           // 无论是否有备注，都使用同一个展示方式
@@ -198,9 +193,9 @@ function initAccountFields() {
     });
 
     // 添加input事件监听，处理用户名变化
-    field.addEventListener('input', () => {
-      // 只有当输入框有内容时才显示或更新备注框
-      if (field.value.trim()) {
+    field.addEventListener('input', async () => {
+      // 只有当输入框有内容且网站未被禁用时才显示或更新备注框
+      if (field.value.trim() && await shouldShowNote()) {
         // 获取新的备注数据
         if (typeof chrome !== 'undefined' && chrome.storage) {
           chrome.storage.local.get([getFieldKey(field)], (result) => {
@@ -210,7 +205,7 @@ function initAccountFields() {
           });
         }
       } else {
-        // 如果输入框内容为空，移除已存在的备注框
+        // 如果输入框内容为空或网站被禁用，移除已存在的备注框
         const existingSuggestion = document.querySelector('.account-note-suggestion');
         if (existingSuggestion) {
           existingSuggestion.remove();
@@ -804,7 +799,7 @@ function showEditNotePopup(field, currentNote = '') {
 
   // 自动聚焦输入框
   input.focus();
-}
+  }
 
 
 // 在 content.js 中添加消息监听

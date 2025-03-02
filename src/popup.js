@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
   // 初始化国际化文本
-  initI18nTexts();
+  document.getElementById('extTitle').textContent = getMessage('extName');
+  document.getElementById('currentSiteNotes').textContent = getMessage('notes');
+  document.getElementById('openManagement').title = getMessage('manage') || '管理所有备注';
   
   // 获取当前标签页信息
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -195,7 +197,7 @@ function initI18nTexts() {
   document.getElementById('extTitle').textContent = getMessage('extName');
   
   // 设置当前网站备注标题
-  document.getElementById('currentSiteNotes').textContent = getMessage('emptyStateTitle');
+  document.getElementById('currentSiteNotes').textContent = getMessage('notes');
   
   // 设置管理按钮提示文本
   document.getElementById('openManagement').title = getMessage('manage') || '管理所有备注';

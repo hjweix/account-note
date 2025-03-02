@@ -59,6 +59,10 @@
     "message": "隐藏直到下次访问",
     "description": "当前会话禁用选项"
   },
+  "sessionDisabled": {
+    "message": "已在本次会话中禁用备注功能",
+    "description": "会话禁用成功提示"
+  },
   "disableSite": {
     "message": "在此网站禁用",
     "description": "当前网站禁用选项"

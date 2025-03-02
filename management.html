@@ -65,6 +65,16 @@
           <div class="settings-card">
             <h2 id="disabledSitesTitle" class="card-title">已禁用网站</h2>
             <div class="card-content">
+              <div class="global-disable-switch">
+                <label class="switch-label">
+                  <span id="globalDisableText">全局禁用备注</span>
+                  <div class="switch">
+                    <input type="checkbox" id="globalDisableToggle">
+                    <span class="slider round"></span>
+                  </div>
+                </label>
+                <p class="switch-description" id="globalDisableDesc">启用此选项将在所有网站上禁用备注弹窗</p>
+              </div>
               <div class="add-site-form">
                 <input type="text" id="newSiteInput" placeholder="输入网站域名，如 example.com">
                 <button id="addSiteBtn">添加</button>

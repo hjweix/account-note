@@ -275,6 +275,10 @@
     "message": "Hide until next visit",
     "description": "Disable for current session option"
   },
+  "sessionDisabled": {
+    "message": "Note popup disabled for this session",
+    "description": "Session disable success message"
+  },
   "disableSite": {
     "message": "Disable on this website",
     "description": "Disable for current site option"

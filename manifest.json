@@ -28,8 +28,7 @@
       "icons/*",
       "dist/management.html",
       "dist/management.css",
-      "dist/management.js",
-      "disable-options.css"
+      "dist/management.js"
     ],
     "matches": ["<all_urls>"]
   }],

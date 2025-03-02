@@ -304,6 +304,23 @@ function setupSettingsSidebar() {
 function setupAddDisabledSite() {
   const newSiteInput = document.getElementById('newSiteInput');
   const addSiteBtn = document.getElementById('addSiteBtn');
+  const globalDisableToggle = document.getElementById('globalDisableToggle');
+  
+  // 初始化全局禁用开关状态
+  chrome.storage.local.get(['disabledGlobal'], (result) => {
+    globalDisableToggle.checked = result.disabledGlobal === true;
+  });
+  
+  // 添加全局禁用开关事件
+  globalDisableToggle.addEventListener('change', () => {
+    chrome.storage.local.set({ disabledGlobal: globalDisableToggle.checked }, () => {
+      if (globalDisableToggle.checked) {
+        showToast(getMessage('globalDisableEnabled') || '已全局禁用备注功能');
+      } else {
+        showToast(getMessage('globalDisableDisabled') || '已启用备注功能');
+      }
+    });
+  });
   
   addSiteBtn.addEventListener('click', () => {
     addDisabledSite();
