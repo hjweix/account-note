@@ -3,7 +3,7 @@
 ## Basic Information
 
 - Extension Name: Account Note
-- Version: 1.0.0
+- Version: 1.0.3
 - Purpose: Account Note Management Tool
 
 ## Test Accounts
@@ -39,6 +39,16 @@ No specific test accounts are required. This extension can be tested on any webs
    - Click the "Select" button to enter selection mode
    - Use checkboxes to select notes
    - Click the "Delete" button to delete selected notes
+4. Settings Tab:
+   - Manage disabled sites list
+   - View and manage extension settings
+   - Access about information
+
+### 4. Disable Options
+
+1. Session Disable: Disable the extension for the current session only
+2. Site Disable: Disable the extension for the current website
+3. Global Disable: Disable the extension for all websites
 
 ## Special Notes
 
@@ -72,6 +82,7 @@ No specific test accounts are required. This extension can be tested on any webs
 2. Verify that notes are correctly associated with specific websites and usernames
 3. Test batch operations and search functionality
 4. Confirm that data persists after browser restart
+5. Test all three disable options and verify they work as expected
 
 ## Contact Information
 
