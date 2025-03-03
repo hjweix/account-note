@@ -5,7 +5,7 @@
   "description": "__MSG_extDesc__",
   "default_locale": "en",
   "author": "YueLabs",
-  "homepage_url": "https://github.com/yourusername/PassNote",
+  "homepage_url": "https://github.com/yourusername/AcountNote",
   "permissions": [
     "storage",
     "activeTab"
