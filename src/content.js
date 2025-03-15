@@ -168,6 +168,19 @@ function showDisableOptions(suggestion, field) {
   }, 10);
 }
 
+// 添加防抖函数
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+}
+
+// 记录上一次的字段值，用于比较是否真正变化
+const lastFieldValues = new WeakMap();
+
 function initAccountFields() {
   // 查找所有可能的账号输入框
   const accountFields = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"]');
@@ -184,6 +197,9 @@ function initAccountFields() {
     field.addEventListener('focus', async () => {
       // 确保 chrome.storage API 可用且输入框有内容，并且网站未被禁用
       if (typeof chrome !== 'undefined' && chrome.storage && field.value.trim() && await shouldShowNote()) {
+        // 记录当前值
+        lastFieldValues.set(field, field.value.trim());
+        
         chrome.storage.local.get([getFieldKey(field)], (result) => {
           const noteData = result[getFieldKey(field)];
           // 无论是否有备注，都使用同一个展示方式
@@ -192,26 +208,40 @@ function initAccountFields() {
       }
     });
 
-    // 添加input事件监听，处理用户名变化
-    field.addEventListener('input', async () => {
-      // 只有当输入框有内容且网站未被禁用时才显示或更新备注框
-      if (field.value.trim() && await shouldShowNote()) {
-        // 获取新的备注数据
-        if (typeof chrome !== 'undefined' && chrome.storage) {
-          chrome.storage.local.get([getFieldKey(field)], (result) => {
-            const noteData = result[getFieldKey(field)];
-            // 更新备注弹窗
-            showAccountNote(field, noteData);
-          });
+    // 使用防抖处理input事件，300ms延迟
+    const debouncedInputHandler = debounce(async () => {
+      const currentValue = field.value.trim();
+      const lastValue = lastFieldValues.get(field) || '';
+      
+      // 只有当输入框有内容且值真正变化时才处理
+      if (currentValue && await shouldShowNote()) {
+        // 检查值是否真正变化
+        if (currentValue !== lastValue) {
+          // 更新记录的值
+          lastFieldValues.set(field, currentValue);
+          
+          // 获取新的备注数据
+          if (typeof chrome !== 'undefined' && chrome.storage) {
+            chrome.storage.local.get([getFieldKey(field)], (result) => {
+              const noteData = result[getFieldKey(field)];
+              // 更新备注弹窗
+              showAccountNote(field, noteData);
+            });
+          }
         }
-      } else {
-        // 如果输入框内容为空或网站被禁用，移除已存在的备注框
+      } else if (!currentValue) {
+        // 如果输入框内容为空，移除已存在的备注框
         const existingSuggestion = document.querySelector('.account-note-suggestion');
         if (existingSuggestion) {
           existingSuggestion.remove();
         }
+        // 清除记录的值
+        lastFieldValues.delete(field);
       }
-    });
+    }, 300);
+
+    // 添加input事件监听
+    field.addEventListener('input', debouncedInputHandler);
   });
 }
 
@@ -424,10 +454,24 @@ function showNotePopup(popup, field) {
   popup.querySelector('input').focus();
 }
 
+// 缓存弹窗位置，避免频繁重新计算导致跳动
+const popupPositionCache = new WeakMap();
+
 function showAccountNote(field, noteData) {
-  // 移除可能已存在的弹窗
+  // 检查是否已存在弹窗
   const existingSuggestion = document.querySelector('.account-note-suggestion');
+  
+  // 如果已存在弹窗且内容相同，则不重新创建
   if (existingSuggestion) {
+    const existingNoteInput = existingSuggestion.querySelector('.account-note-text');
+    const existingNote = existingNoteInput ? existingNoteInput.dataset.fullText : '';
+    const newNote = noteData ? noteData.note : '';
+    
+    // 如果备注内容相同，则不需要重新创建弹窗
+    if (existingNote === newNote) {
+      return;
+    }
+    
     // 移除所有事件监听器
     const oldToggleBtn = existingSuggestion.querySelector('.toggle-text-btn');
     if (oldToggleBtn) {
@@ -494,31 +538,40 @@ function showAccountNote(field, noteData) {
       </div>
   `;
   
-  // 定位弹窗
-  const fieldRect = field.getBoundingClientRect();
-  const viewportHeight = window.innerHeight;
-  const viewportWidth = window.innerWidth;
+  // 定位弹窗 - 使用缓存的位置信息或重新计算
+  let position = popupPositionCache.get(field);
+  
+  // 如果没有缓存的位置信息，或者窗口大小发生变化，则重新计算
+  if (!position || position.viewportWidth !== window.innerWidth || position.viewportHeight !== window.innerHeight) {
+    const fieldRect = field.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
 
-  // 计算最佳位置
-  let top = fieldRect.top;
-  let left = fieldRect.right + 10;
+    // 计算最佳位置
+    let top = Math.round(fieldRect.top); // 取整避免小数位变化
+    let left = Math.round(fieldRect.right + 10);
 
-  // 检查是否超出视口右侧
-  if (left + 260 > viewportWidth) {
-    left = fieldRect.left - 270; // 放在输入框左侧
-    if (left < 0) left = 10; // 如果左侧也放不下，则放在左侧边缘
-  }
+    // 检查是否超出视口右侧
+    if (left + 260 > viewportWidth) {
+      left = Math.round(fieldRect.left - 270); // 放在输入框左侧
+      if (left < 0) left = 10; // 如果左侧也放不下，则放在左侧边缘
+    }
 
-  // 检查是否超出视口底部
-  if (top + 150 > viewportHeight) {
-    top = viewportHeight - 160;
-    if (top < 0) top = 10; // 确保不会超出顶部
+    // 检查是否超出视口底部
+    if (top + 150 > viewportHeight) {
+      top = Math.round(viewportHeight - 160);
+      if (top < 0) top = 10; // 确保不会超出顶部
+    }
+    
+    // 缓存计算的位置
+    position = { top, left, viewportWidth, viewportHeight };
+    popupPositionCache.set(field, position);
   }
 
   // 设置弹窗位置
   suggestion.style.position = 'fixed';
-  suggestion.style.top = `${top}px`;
-  suggestion.style.left = `${left}px`;
+  suggestion.style.top = `${position.top}px`;
+  suggestion.style.left = `${position.left}px`;
 
   document.body.appendChild(suggestion);
 
