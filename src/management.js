@@ -4,9 +4,13 @@ let sortConfig = {
   direction: 'desc'
 };
 let isSelectMode = false;
+let currentTheme = 'auto'; // 添加主题状态
 
 // 等待 DOM 加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
+  // 初始化主题
+  initTheme();
+
   // 初始化国际化文本
   initI18nTexts();
   loadAllNotes();
@@ -1015,4 +1019,89 @@ function setupAbout() {
   console.log('添加新的事件监听器');
   viewChangelogLink.addEventListener('click', handleViewChangelog);
   reportIssueLink.addEventListener('click', handleReportIssue);
+}
+
+// ==================== Theme Management ====================
+
+// 初始化主题
+function initTheme() {
+  // 从存储中加载主题设置
+  chrome.storage.local.get(['theme'], (result) => {
+    currentTheme = result.theme || 'auto';
+    applyTheme(currentTheme);
+    updateThemeSelector(currentTheme);
+  });
+
+  // 监听系统主题变化
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  mediaQuery.addEventListener('change', (e) => {
+    if (currentTheme === 'auto') {
+      applyTheme('auto');
+    }
+  });
+
+  // 设置主题选择器事件
+  setupThemeSelector();
+}
+
+// 应用主题
+function applyTheme(theme) {
+  const html = document.documentElement;
+
+  // 移除所有主题类
+  html.removeAttribute('data-theme');
+
+  if (theme === 'dark') {
+    html.setAttribute('data-theme', 'dark');
+  } else if (theme === 'light') {
+    html.setAttribute('data-theme', 'light');
+  }
+  // 'auto' 不设置属性，使用 CSS 媒体查询
+}
+
+// 设置主题选择器事件
+function setupThemeSelector() {
+  const themeOptions = document.querySelectorAll('.theme-option');
+
+  themeOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      const theme = option.dataset.theme;
+      setTheme(theme);
+    });
+  });
+}
+
+// 设置主题
+function setTheme(theme) {
+  currentTheme = theme;
+  applyTheme(theme);
+  updateThemeSelector(theme);
+
+  // 保存到存储
+  chrome.storage.local.set({ theme }, () => {
+    showToast(getThemeLabel(theme) + '主题已应用');
+  });
+}
+
+// 更新主题选择器 UI
+function updateThemeSelector(theme) {
+  const themeOptions = document.querySelectorAll('.theme-option');
+
+  themeOptions.forEach(option => {
+    if (option.dataset.theme === theme) {
+      option.classList.add('active');
+    } else {
+      option.classList.remove('active');
+    }
+  });
+}
+
+// 获取主题标签
+function getThemeLabel(theme) {
+  const labels = {
+    auto: '跟随系统',
+    light: '浅色',
+    dark: '深色'
+  };
+  return labels[theme] || theme;
 }

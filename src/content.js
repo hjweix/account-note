@@ -1,7 +1,25 @@
 // 监听页面加载完成和DOM变化
+// 扩展上下文失效标记
+let isExtensionInvalidated = false;
+let observer = null;
+
 // 检查扩展上下文是否有效
 function isExtensionContextValid() {
-  return typeof chrome !== 'undefined' && chrome.runtime && !chrome.runtime.lastError;
+  try {
+    return typeof chrome !== 'undefined' &&
+           chrome.runtime !== undefined &&
+           chrome.runtime.id !== undefined;
+  } catch (e) {
+    return false;
+  }
+}
+
+// 断开 MutationObserver
+function disconnectObserver() {
+  if (observer) {
+    observer.disconnect();
+    observer = null;
+  }
 }
 
 // CSS样式已通过Webpack打包到content.css中，不需要动态加载
@@ -9,61 +27,106 @@ function isExtensionContextValid() {
 // 检查是否应该显示备注
 function shouldShowNote() {
   return new Promise(resolve => {
-    if (!isExtensionContextValid()) {
+    if (isExtensionInvalidated || !isExtensionContextValid()) {
+      isExtensionInvalidated = true;
+      disconnectObserver();
       resolve(false);
       return;
     }
 
     const domain = window.location.origin;
-    
-    chrome.storage.local.get(['disabledGlobal', 'disabledSites'], (result) => {
-      if (chrome.runtime.lastError) {
-        console.warn('Failed to get storage:', chrome.runtime.lastError);
-        resolve(false);
-        return;
+
+    try {
+      chrome.storage.local.get(['disabledGlobal', 'disabledSites'], (result) => {
+        if (chrome.runtime.lastError) {
+          if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+            isExtensionInvalidated = true;
+            disconnectObserver();
+          }
+          resolve(false);
+          return;
+        }
+
+        // 检查全局禁用设置
+        if (result.disabledGlobal) {
+          resolve(false);
+          return;
+        }
+
+        // 检查当前网站是否在禁用列表中
+        const disabledSites = result.disabledSites || [];
+        if (disabledSites.includes(domain)) {
+          resolve(false);
+          return;
+        }
+
+        // 检查会话禁用设置
+        const sessionKey = `sessionDisabled_${domain}`;
+        if (sessionStorage.getItem(sessionKey)) {
+          resolve(false);
+          return;
+        }
+
+        resolve(true);
+      });
+    } catch (error) {
+      if (error.message?.includes('Extension context invalidated')) {
+        isExtensionInvalidated = true;
+        disconnectObserver();
       }
-      
-      // 检查全局禁用设置
-      if (result.disabledGlobal) {
-        resolve(false);
-        return;
-      }
-      
-      // 检查当前网站是否在禁用列表中
-      const disabledSites = result.disabledSites || [];
-      if (disabledSites.includes(domain)) {
-        resolve(false);
-        return;
-      }
-      
-      // 检查会话禁用设置
-      const sessionKey = `sessionDisabled_${domain}`;
-      if (sessionStorage.getItem(sessionKey)) {
-        resolve(false);
-        return;
-      }
-      
-      resolve(true);
-    });
+      resolve(false);
+    }
   });
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (isExtensionInvalidated || !isExtensionContextValid()) {
+    isExtensionInvalidated = true;
+    return;
+  }
   if (await shouldShowNote()) {
     initAccountFields();
   }
 });
 
-const observer = new MutationObserver(async () => {
-  if (await shouldShowNote()) {
-    initAccountFields();
+// 初始化 MutationObserver
+function initObserver() {
+  if (isExtensionInvalidated || !isExtensionContextValid()) {
+    isExtensionInvalidated = true;
+    return;
   }
-});
-observer.observe(document.body, { childList: true, subtree: true });
+
+  observer = new MutationObserver(async () => {
+    try {
+      if (isExtensionInvalidated || !isExtensionContextValid()) {
+        isExtensionInvalidated = true;
+        disconnectObserver();
+        return;
+      }
+      if (await shouldShowNote()) {
+        initAccountFields();
+      }
+    } catch (error) {
+      if (error.message?.includes('Extension context invalidated')) {
+        isExtensionInvalidated = true;
+        disconnectObserver();
+      }
+    }
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// 启动观察器
+if (document.body) {
+  initObserver();
+} else {
+  document.addEventListener('DOMContentLoaded', initObserver);
+}
 
 // 在页面卸载时断开观察者连接
 window.addEventListener('unload', () => {
-  observer.disconnect();
+  disconnectObserver();
 });
 
 // 显示禁用选项菜单
@@ -129,22 +192,57 @@ function showDisableOptions(suggestion, field) {
           
         case 'site':
           // 在当前网站禁用
-          chrome.storage.local.get(['disabledSites'], (result) => {
-            const disabledSites = result.disabledSites || [];
-            if (!disabledSites.includes(domain)) {
-              disabledSites.push(domain);
-              chrome.storage.local.set({ disabledSites }, () => {
-                showToast(getMessage('siteDisabled') || '已在此网站上禁用备注功能');
-              });
+          try {
+            chrome.storage.local.get(['disabledSites'], (result) => {
+              if (chrome.runtime.lastError) {
+                if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+                  isExtensionInvalidated = true;
+                  disconnectObserver();
+                }
+                return;
+              }
+              const disabledSites = result.disabledSites || [];
+              if (!disabledSites.includes(domain)) {
+                disabledSites.push(domain);
+                chrome.storage.local.set({ disabledSites }, () => {
+                  if (chrome.runtime.lastError) {
+                    if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+                      isExtensionInvalidated = true;
+                      disconnectObserver();
+                    }
+                    return;
+                  }
+                  showToast(getMessage('siteDisabled') || '已在此网站上禁用备注功能');
+                });
+              }
+            });
+          } catch (error) {
+            if (error.message?.includes('Extension context invalidated')) {
+              isExtensionInvalidated = true;
+              disconnectObserver();
             }
-          });
+          }
           break;
-          
+
         case 'global':
           // 全局禁用
-          chrome.storage.local.set({ disabledGlobal: true }, () => {
-            showToast(getMessage('globalDisabled') || '已在所有网站上禁用备注功能');
-          });
+          try {
+            chrome.storage.local.set({ disabledGlobal: true }, () => {
+              if (chrome.runtime.lastError) {
+                if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+                  isExtensionInvalidated = true;
+                  disconnectObserver();
+                }
+                return;
+              }
+              showToast(getMessage('globalDisabled') || '已在所有网站上禁用备注功能');
+            });
+          } catch (error) {
+            if (error.message?.includes('Extension context invalidated')) {
+              isExtensionInvalidated = true;
+              disconnectObserver();
+            }
+          }
           break;
       }
       
@@ -182,51 +280,94 @@ function debounce(func, wait) {
 const lastFieldValues = new WeakMap();
 
 function initAccountFields() {
+  // 检查扩展上下文是否有效
+  if (isExtensionInvalidated || !isExtensionContextValid()) {
+    isExtensionInvalidated = true;
+    return;
+  }
+
   // 查找所有可能的账号输入框
   const accountFields = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"]');
-  
+
   accountFields.forEach(field => {
     // 检查是否为账号输入框
     if (!isUsernameField(field)) return;
-    
+
     // 避免重复初始化
     if (field.dataset.hasNote) return;
     field.dataset.hasNote = 'true';
-    
+
     // 监听账号输入框的focus事件
     field.addEventListener('focus', async () => {
+      // 检查扩展上下文
+      if (isExtensionInvalidated || !isExtensionContextValid()) {
+        isExtensionInvalidated = true;
+        return;
+      }
       // 确保 chrome.storage API 可用且输入框有内容，并且网站未被禁用
-      if (typeof chrome !== 'undefined' && chrome.storage && field.value.trim() && await shouldShowNote()) {
+      if (field.value.trim() && await shouldShowNote()) {
         // 记录当前值
         lastFieldValues.set(field, field.value.trim());
-        
-        chrome.storage.local.get([getFieldKey(field)], (result) => {
-          const noteData = result[getFieldKey(field)];
-          // 无论是否有备注，都使用同一个展示方式
-          showAccountNote(field, noteData);
-        });
+
+        try {
+          chrome.storage.local.get([getFieldKey(field)], (result) => {
+            if (chrome.runtime.lastError) {
+              if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+                isExtensionInvalidated = true;
+                disconnectObserver();
+              }
+              return;
+            }
+            const noteData = result[getFieldKey(field)];
+            // 无论是否有备注，都使用同一个展示方式
+            showAccountNote(field, noteData);
+          });
+        } catch (error) {
+          if (error.message?.includes('Extension context invalidated')) {
+            isExtensionInvalidated = true;
+            disconnectObserver();
+          }
+        }
       }
     });
 
     // 使用防抖处理input事件，300ms延迟
     const debouncedInputHandler = debounce(async () => {
+      // 检查扩展上下文
+      if (isExtensionInvalidated || !isExtensionContextValid()) {
+        isExtensionInvalidated = true;
+        return;
+      }
+
       const currentValue = field.value.trim();
       const lastValue = lastFieldValues.get(field) || '';
-      
+
       // 只有当输入框有内容且值真正变化时才处理
       if (currentValue && await shouldShowNote()) {
         // 检查值是否真正变化
         if (currentValue !== lastValue) {
           // 更新记录的值
           lastFieldValues.set(field, currentValue);
-          
+
           // 获取新的备注数据
-          if (typeof chrome !== 'undefined' && chrome.storage) {
+          try {
             chrome.storage.local.get([getFieldKey(field)], (result) => {
+              if (chrome.runtime.lastError) {
+                if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+                  isExtensionInvalidated = true;
+                  disconnectObserver();
+                }
+                return;
+              }
               const noteData = result[getFieldKey(field)];
               // 更新备注弹窗
               showAccountNote(field, noteData);
             });
+          } catch (error) {
+            if (error.message?.includes('Extension context invalidated')) {
+              isExtensionInvalidated = true;
+              disconnectObserver();
+            }
           }
         }
       } else if (!currentValue) {
@@ -247,18 +388,31 @@ function initAccountFields() {
 
 // 修改其他使用 chrome.storage 的函数
 function loadExistingNote(field) {
-  if (!isExtensionContextValid()) return;
+  if (isExtensionInvalidated || !isExtensionContextValid()) {
+    isExtensionInvalidated = true;
+    return;
+  }
 
-  chrome.storage.local.get([getFieldKey(field)], (result) => {
-    if (chrome.runtime.lastError) {
-      console.warn('Failed to load note:', chrome.runtime.lastError);
-      return;
+  try {
+    chrome.storage.local.get([getFieldKey(field)], (result) => {
+      if (chrome.runtime.lastError) {
+        if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+          isExtensionInvalidated = true;
+          disconnectObserver();
+        }
+        return;
+      }
+      const noteData = result[getFieldKey(field)];
+      if (noteData) {
+        field.dataset.hasStoredNote = 'true';
+      }
+    });
+  } catch (error) {
+    if (error.message?.includes('Extension context invalidated')) {
+      isExtensionInvalidated = true;
+      disconnectObserver();
     }
-    const noteData = result[getFieldKey(field)];
-    if (noteData) {
-      field.dataset.hasStoredNote = 'true';
-    }
-  });
+  }
 }
 
 // 更新弹窗位置
@@ -351,17 +505,24 @@ function getDefaultMessage(key) {
 // 修改 saveNote 函数中的错误处理
 function saveNote(note, popup, field) {
   try {
+    // 检查扩展上下文
+    if (isExtensionInvalidated || !isExtensionContextValid()) {
+      isExtensionInvalidated = true;
+      showToast(getMessage('errorStorageAPI'), 'error');
+      return;
+    }
+
     if (typeof chrome === 'undefined' || !chrome.storage) {
       throw new Error(getMessage('errorStorageAPI'));
     }
 
     const domain = window.location.origin;
     const username = field.value.trim();
-    
+
     if (!note.trim()) {
       throw new Error(getMessage('errorEmptyNote'));
     }
-    
+
     if (!username) {
       throw new Error(getMessage('errorEmptyUsername'));
     }
@@ -378,6 +539,10 @@ function saveNote(note, popup, field) {
 
     chrome.storage.local.get([key], (result) => {
       if (chrome.runtime.lastError) {
+        if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+          isExtensionInvalidated = true;
+          disconnectObserver();
+        }
         throw new Error(getMessage('errorReadData', [chrome.runtime.lastError.message]));
       }
 
@@ -387,6 +552,10 @@ function saveNote(note, popup, field) {
 
       chrome.storage.local.set({ [key]: noteData }, () => {
         if (chrome.runtime.lastError) {
+          if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+            isExtensionInvalidated = true;
+            disconnectObserver();
+          }
           throw new Error(getMessage('errorSaveData', [chrome.runtime.lastError.message]));
         }
         popup.style.display = 'none';
@@ -394,6 +563,10 @@ function saveNote(note, popup, field) {
       });
     });
   } catch (error) {
+    if (error.message?.includes('Extension context invalidated')) {
+      isExtensionInvalidated = true;
+      disconnectObserver();
+    }
     showToast(error.message, 'error');
     console.error('SaveNote Error:', error);
   }
@@ -645,6 +818,14 @@ function showAccountNote(field, noteData) {
         };
 
         chrome.storage.local.get([key], (result) => {
+          if (chrome.runtime.lastError) {
+            if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+              isExtensionInvalidated = true;
+              disconnectObserver();
+            }
+            return;
+          }
+
           if (result[key]) {
             noteData.createTime = result[key].createTime;
           }
@@ -652,13 +833,20 @@ function showAccountNote(field, noteData) {
           chrome.storage.local.set({
             [key]: noteData
           }, () => {
+            if (chrome.runtime.lastError) {
+              if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+                isExtensionInvalidated = true;
+                disconnectObserver();
+              }
+              return;
+            }
             const isLongText = newNote.length > 100;
             const displayText = isLongText ? `${newNote.slice(0, 100)}...` : newNote;
-            
+
             noteInput.value = displayText;
             noteInput.dataset.fullText = newNote;
             noteInput.dataset.shortText = displayText;
-            
+
             let toggleBtn = suggestion.querySelector('.toggle-text-btn');
             if (isLongText && !toggleBtn) {
               toggleBtn = document.createElement('button');
@@ -666,11 +854,11 @@ function showAccountNote(field, noteData) {
               toggleBtn.dataset.expanded = 'false';
               toggleBtn.textContent = getMessage('expand');
               suggestion.appendChild(toggleBtn);
-              
+
               toggleBtn.clickHandler = (e) => {
                 e.stopPropagation();
                 const isExpanded = toggleBtn.dataset.expanded === 'true';
-                
+
                 if (isExpanded) {
                   noteInput.value = noteInput.dataset.shortText;
                   toggleBtn.textContent = getMessage('expand');
@@ -686,7 +874,7 @@ function showAccountNote(field, noteData) {
               toggleBtn.removeEventListener('click', toggleBtn.clickHandler);
               toggleBtn.remove();
             }
-            
+
             showToast(getMessage('successNoteSaved'));
           });
         });
@@ -757,11 +945,30 @@ function showAccountNote(field, noteData) {
 
 // 显示编辑备注的弹窗
 function showEditNotePopup(field, currentNote = '') {
+  // 检查扩展上下文
+  if (isExtensionInvalidated || !isExtensionContextValid()) {
+    isExtensionInvalidated = true;
+    return;
+  }
+
   const popup = document.createElement('div');
   popup.className = 'edit-note-popup';
+
+  // 获取图标 URL，添加错误处理
+  let iconUrl = '';
+  try {
+    iconUrl = chrome.runtime.getURL('icons/icon48.png');
+  } catch (error) {
+    if (error.message?.includes('Extension context invalidated')) {
+      isExtensionInvalidated = true;
+      disconnectObserver();
+      return;
+    }
+  }
+
   popup.innerHTML = `
     <div class="edit-note-header">
-      <img src="${chrome.runtime.getURL('icons/icon48.png')}" class="suggestion-icon" />
+      <img src="${iconUrl}" class="suggestion-icon" />
       <span>编辑备注</span>
     </div>
     <div class="edit-note-content">
@@ -857,6 +1064,12 @@ function showEditNotePopup(field, currentNote = '') {
 
 // 在 content.js 中添加消息监听
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // 检查扩展上下文
+  if (isExtensionInvalidated || !isExtensionContextValid()) {
+    isExtensionInvalidated = true;
+    return;
+  }
+
   if (request.action === 'showAddNotePopup') {
     // 找到第一个密码框并显示添加备注弹窗
     const passwordField = document.querySelector('input[type="password"]');
@@ -864,7 +1077,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       showAccountNote(passwordField, null);
     }
   }
-}); 
+});
 
 function showToast(message, type = 'info') {
   // 移除可能已存在的toast
@@ -875,7 +1088,7 @@ function showToast(message, type = 'info') {
 
   const toast = document.createElement('div');
   toast.className = `account-note-toast ${type}`;
-  
+
   // 根据类型添加不同的图标
   let icon = '';
   if (type === 'error') {
@@ -883,13 +1096,13 @@ function showToast(message, type = 'info') {
   } else if (type === 'success') {
     icon = '<span class="toast-icon">✓</span> ';
   }
-  
+
   toast.innerHTML = `${icon}${message}`;
   document.body.appendChild(toast);
 
   // 添加进入动画
   toast.style.animation = 'fadeInOut 2.5s ease-in-out';
-  
+
   // 自动移除
   setTimeout(() => {
     toast.style.opacity = '0';
@@ -899,7 +1112,7 @@ function showToast(message, type = 'info') {
       }
     }, 300);
   }, 2200);
-} 
+}
 
 function validateNoteData(noteData) {
   const errors = [];
@@ -924,11 +1137,23 @@ function validateNoteData(noteData) {
 } 
 
 window.addEventListener('error', (event) => {
+  if (event.error?.message?.includes('Extension context invalidated')) {
+    isExtensionInvalidated = true;
+    disconnectObserver();
+    event.preventDefault();
+    return;
+  }
   console.error('Global Error:', event.error);
   showToast('操作出错，请重试', 'error');
 });
 
 window.addEventListener('unhandledrejection', (event) => {
+  if (event.reason?.message?.includes('Extension context invalidated')) {
+    isExtensionInvalidated = true;
+    disconnectObserver();
+    event.preventDefault();
+    return;
+  }
   console.error('Unhandled Promise Rejection:', event.reason);
   showToast('操作出错，请重试', 'error');
 });

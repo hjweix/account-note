@@ -1,9 +1,12 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  // 初始化主题
+  initTheme();
+
   // 初始化国际化文本
   document.getElementById('extTitle').textContent = getMessage('extName');
   document.getElementById('currentSiteNotes').textContent = getMessage('notes');
   document.getElementById('openManagement').title = getMessage('manage') || '管理所有备注';
-  
+
   // 获取当前标签页信息
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const domain = new URL(tab.url).origin;
@@ -16,6 +19,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.tabs.create({ url: 'management.html' });
   });
 });
+
+// 初始化主题
+async function initTheme() {
+  try {
+    const result = await chrome.storage.local.get('theme');
+    const theme = result.theme || 'auto';
+
+    if (theme === 'auto') {
+      // 跟随系统，不设置 data-theme，让 CSS 媒体查询生效
+      document.body.removeAttribute('data-theme');
+    } else {
+      // 手动设置浅色或深色
+      document.body.setAttribute('data-theme', theme);
+    }
+  } catch (error) {
+    console.error('Failed to initialize theme:', error);
+  }
+}
 
 // 加载当前网站的备注
 async function loadSiteNotes(domain) {
