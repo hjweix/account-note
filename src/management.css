@@ -628,6 +628,17 @@ h1 {
   gap: var(--space-3);
 }
 
+/* 编辑模式下卡片扩展 */
+.note-card.editing {
+  grid-column: span 2;
+}
+
+@media (max-width: 768px) {
+  .note-card.editing {
+    grid-column: span 1;
+  }
+}
+
 /* 编辑模式下隐藏头像 */
 .note-card.editing .note-body .note-avatar {
   display: none;
@@ -666,6 +677,7 @@ h1 {
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .note-card.editing .edit-actions {
@@ -674,16 +686,16 @@ h1 {
 
 .save-edit-btn,
 .cancel-edit-btn {
-  padding: 10px 20px;
-  border-radius: 12px;
-  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   border: none;
   transition: all 0.2s var(--ease-standard);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-family: inherit;
 }
 
@@ -708,38 +720,47 @@ h1 {
   color: var(--primary-500);
 }
 
-/* Edit Actions Container */
+/* Edit Actions Container - Compact */
 .edit-actions-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Edit Actions - Right side buttons */
+.note-card.editing .edit-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 .keyboard-tips {
   display: flex;
-  gap: var(--space-4);
-  font-size: 12px;
+  gap: var(--space-3);
+  font-size: 11px;
   color: var(--text-tertiary);
+  flex-wrap: wrap;
 }
 
 .tip-item {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: 4px;
 }
 
 kbd {
   display: inline-block;
-  padding: 4px 8px;
+  padding: 2px 6px;
   font-family: "Inter", monospace;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
   color: var(--text-secondary);
   background: var(--bg-tertiary);
   border: 1px solid var(--glass-border);
-  border-radius: 6px;
-  box-shadow: 0 2px 0 var(--glass-border);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 var(--glass-border);
 }
 
 /* Checkbox */
