@@ -244,18 +244,22 @@
   justify-content: center;
 }
 
-/* Suggestion Popup */
+/* Suggestion Popup - Compact Glassmorphism */
 .account-note-suggestion {
   position: absolute;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 12px;
-  box-shadow: var(--glass-shadow), 0 12px 40px rgba(0, 0, 0, 0.15);
+  background: rgba(30, 41, 59, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   z-index: 10001;
-  min-width: 280px;
+  min-width: 260px;
+  max-width: 320px;
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 0.25s var(--ease-standard), transform 0.25s var(--ease-bounce);
@@ -266,132 +270,222 @@
   transform: translateY(0);
 }
 
-/* Suggestion Header */
-.suggestion-header {
+/* Note Header Actions - Compact */
+.note-header-actions {
   display: flex;
-  align-items: center;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--glass-border);
-  background: rgba(99, 102, 241, 0.1);
-  border-radius: 12px 12px 0 0;
-  font-size: 13px;
-  justify-content: space-between;
-  color: var(--text-secondary);
-  font-weight: 600;
+  justify-content: flex-end;
+  margin-bottom: 6px;
 }
 
-.suggestion-icon {
-  width: 18px;
-  height: 18px;
-  margin-right: 8px;
-}
-
-.suggestion-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
-  background: var(--bg-secondary);
-  border-radius: 10px;
-  margin-top: 8px;
+.favorite-btn {
+  background: transparent;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s;
-}
-
-.suggestion-note:hover {
-  background: var(--hover-bg);
-  transform: translateX(4px);
-}
-
-.suggestion-site {
-  margin-bottom: 0;
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
-.suggestion-meta {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--glass-border);
-}
-
-.meta-text {
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-/* Note Indicator */
-.note-indicator {
-  position: absolute;
+  padding: 3px;
   width: 22px;
   height: 22px;
-  cursor: help;
-  z-index: 9999;
-  opacity: 0.8;
-  transition: opacity 0.2s;
-  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-  border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  border-radius: 5px;
+  color: var(--text-tertiary);
+  transition: all 0.2s var(--ease-standard);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.note-indicator:hover {
-  opacity: 1;
+.favorite-btn:hover {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
   transform: scale(1.1);
 }
 
-/* Edit Note Button */
-.edit-note-btn {
-  background: var(--glass-bg);
+.favorite-btn.is-favorite {
+  color: #f59e0b;
+}
+
+.favorite-btn.is-favorite:hover {
+  color: #d97706;
+}
+
+/* Note Input Wrapper */
+.note-input-wrapper {
+  position: relative;
+}
+
+/* Account Note Text - Compact */
+.account-note-text {
+  width: 100%;
+  min-height: 36px;
+  max-height: 80px;
+  padding: 8px 10px;
+  padding-right: 28px;
   border: 1px solid var(--glass-border);
-  cursor: pointer;
-  padding: 6px;
   border-radius: 8px;
-  opacity: 0.7;
-  transition: all 0.2s;
-  backdrop-filter: blur(4px);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: rgba(15, 23, 42, 0.5);
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s var(--ease-standard);
 }
 
-.edit-note-btn:hover {
+.account-note-text:focus {
+  border-color: var(--primary-500);
+  background: rgba(15, 23, 42, 0.7);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.account-note-text.empty-note {
+  color: var(--text-tertiary);
+}
+
+.account-note-text.empty-note:focus {
+  color: var(--text-primary);
+}
+
+/* Tags Container - Compact */
+.note-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+  max-height: 60px;
+  overflow-y: auto;
+}
+
+.note-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary-500);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.2s var(--ease-standard);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.note-tag:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.tag-remove {
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  margin-left: 2px;
+}
+
+.tag-remove:hover {
   opacity: 1;
-  background: var(--hover-bg);
-  transform: scale(1.05);
+  color: var(--danger-color);
 }
 
-/* Edit Note Popup */
-.edit-note-popup {
-  position: absolute;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 0;
-  box-shadow: var(--glass-shadow), 0 20px 60px rgba(0, 0, 0, 0.2);
-  z-index: 10000;
-  width: 340px;
-  opacity: 0;
-  transform: scale(0.9) translateY(-10px);
-  animation: popupIn 0.3s var(--ease-bounce) forwards;
+/* Tag Input Container - Compact */
+.note-tag-input-container {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0;
+  animation: slideDown 0.2s var(--ease-standard);
 }
 
-@keyframes popupIn {
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
 }
 
-.edit-note-header {
-  display: flex;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--glass-border);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%);
-  border-radius: 20px 20px 0 0;
-  font-size: 15px;
-  font-weight: 700;
+.note-tag-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  font-size: 12px;
+  background: rgba(15, 23, 42, 0.5);
   color: var(--text-primary);
-  font-family: "Plus Jakarta Sans", sans-serif;
+  transition: all 0.2s;
+}
+
+.note-tag-input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.note-tag-input::placeholder {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+/* Add Tag Button - Compact */
+.add-tag-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--primary-500);
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.add-tag-btn:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--primary-500);
+}
+
+/* Footer Actions - Compact */
+.note-footer-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  align-items: center;
+}
+
+.toggle-text-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-text-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.close-note-btn {
+  margin-left: auto;
+  padding: 4px 12px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.close-note-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
 }
 
 .edit-note-content {

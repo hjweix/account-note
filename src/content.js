@@ -528,23 +528,29 @@ function saveNote(note, popup, field) {
     }
 
     const key = getFieldKey(field);
-    const noteData = {
-      key: key,
-      note: note.trim(),
-      createTime: new Date().toISOString(),
-      updateTime: new Date().toISOString(),
-      domain: domain,
-      username: username
-    };
 
+    // 先读取现有数据，然后在回调中构建 noteData
     chrome.storage.local.get([key], (result) => {
       if (chrome.runtime.lastError) {
         if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
           isExtensionInvalidated = true;
           disconnectObserver();
         }
-        throw new Error(getMessage('errorReadData', [chrome.runtime.lastError.message]));
+        showToast(getMessage('errorReadData', [chrome.runtime.lastError.message]), 'error');
+        return;
       }
+
+      const noteData = {
+        key: key,
+        note: note.trim(),
+        createTime: new Date().toISOString(),
+        updateTime: new Date().toISOString(),
+        domain: domain,
+        username: username,
+        tags: result[key]?.tags || [],
+        isFavorite: result[key]?.isFavorite || false,
+        favoriteTime: result[key]?.favoriteTime || null
+      };
 
       if (result[key]) {
         noteData.createTime = result[key].createTime;
@@ -556,7 +562,8 @@ function saveNote(note, popup, field) {
             isExtensionInvalidated = true;
             disconnectObserver();
           }
-          throw new Error(getMessage('errorSaveData', [chrome.runtime.lastError.message]));
+          showToast(getMessage('errorSaveData', [chrome.runtime.lastError.message]), 'error');
+          return;
         }
         popup.style.display = 'none';
         showToast(getMessage('successNoteSaved'));
@@ -575,7 +582,8 @@ function saveNote(note, popup, field) {
 // 生成输入框的唯一标识
 function getFieldKey(field) {
   const domain = window.location.origin;
-  const username = field.value;
+  const username = field.value.trim();  // 添加 trim 以保持一致性
+  console.log('[getFieldKey] 生成 key:', { domain, username, key: `${domain}_${username}` });
   return `${domain}_${username}`;
 }
 
@@ -695,18 +703,33 @@ function showAccountNote(field, noteData) {
   const shortText = isLongText ? `${note.slice(0, 50)}...` : note;
 
   suggestion.innerHTML = `
-      <textarea 
-        class="account-note-text ${!hasNote ? 'empty-note' : ''}" 
-        placeholder="${!hasNote ? getMessage('addNote') : getMessage('editNote')}"
-        data-full-text="${escapeHtml(fullText)}"
-        data-short-text="${escapeHtml(shortText)}"
-        data-is-expanded="false"
-        readonly
-      >${escapeHtml(shortText)}</textarea>
+      <div class="note-header-actions">
+        <button class="favorite-btn ${noteData?.isFavorite ? 'is-favorite' : ''}" title="${noteData?.isFavorite ? getMessage('removeFavorite') || '取消收藏' : getMessage('addFavorite') || '收藏'}">
+          <svg viewBox="0 0 24 24" width="14" height="14">
+            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+      <div class="note-input-wrapper">
+        <textarea
+          class="account-note-text ${!hasNote ? 'empty-note' : ''}"
+          placeholder="${!hasNote ? getMessage('addNote') : getMessage('editNote')}" data-full-text="${escapeHtml(fullText)}"
+          data-short-text="${escapeHtml(shortText)}"
+          data-is-expanded="false"
+          readonly
+        >${escapeHtml(shortText)}</textarea>
+      </div>
+      <div class="note-tags-container">
+        ${noteData?.tags?.map(tag => `<span class="note-tag" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span class="tag-remove">×</span></span>`).join('') || ''}
+      </div>
+      <div class="note-tag-input-container" style="display: none;">
+        <input type="text" class="note-tag-input" placeholder="${getMessage('addTagPlaceholder') || '添加标签，按回车或逗号确认'}" />
+      </div>
       <div class="note-footer-actions">
         ${isLongText ? `
           <button class="toggle-text-btn" title="${getMessage('toggleText')}">${getMessage('expand')}</button>
         ` : ''}
+        <button class="add-tag-btn" title="${getMessage('addTag') || '添加标签'}">${getMessage('addTag') || '+ 标签'}</button>
         <button class="close-note-btn" title="${getMessage('close')}">${getMessage('close')}</button>
       </div>
   `;
@@ -804,19 +827,12 @@ function showAccountNote(field, noteData) {
       if (newNote) {
         noteInput.readOnly = true;
         noteInput.blur();
-        
+
         const domain = window.location.origin;
         const username = field.value.trim();
         const key = getFieldKey(field);
-        const noteData = {
-          key: key,
-          note: newNote,
-          createTime: new Date().toISOString(),
-          updateTime: new Date().toISOString(),
-          domain: domain,
-          username: username
-        };
 
+        // 先读取现有数据，然后在回调中构建 noteData
         chrome.storage.local.get([key], (result) => {
           if (chrome.runtime.lastError) {
             if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
@@ -825,6 +841,18 @@ function showAccountNote(field, noteData) {
             }
             return;
           }
+
+          const noteData = {
+            key: key,
+            note: newNote,
+            createTime: new Date().toISOString(),
+            updateTime: new Date().toISOString(),
+            domain: domain,
+            username: username,
+            tags: result[key]?.tags || [],
+            isFavorite: result[key]?.isFavorite || false,
+            favoriteTime: result[key]?.favoriteTime || null
+          };
 
           if (result[key]) {
             noteData.createTime = result[key].createTime;
@@ -901,6 +929,139 @@ function showAccountNote(field, noteData) {
     e.stopPropagation();
     showDisableOptions(suggestion, field);
   });
+
+  // 收藏按钮功能
+  const favoriteBtn = suggestion.querySelector('.favorite-btn');
+  if (favoriteBtn) {
+    favoriteBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const key = getFieldKey(field);
+
+      try {
+        const result = await chrome.storage.local.get([key]);
+        const currentData = result[key];
+        if (!currentData) return;
+
+        const newFavoriteStatus = !currentData.isFavorite;
+        const updatedData = {
+          ...currentData,
+          isFavorite: newFavoriteStatus,
+          favoriteTime: newFavoriteStatus ? new Date().toISOString() : null
+        };
+
+        await chrome.storage.local.set({ [key]: updatedData });
+
+        // 更新UI
+        favoriteBtn.classList.toggle('is-favorite', newFavoriteStatus);
+        favoriteBtn.title = newFavoriteStatus ? (getMessage('removeFavorite') || '取消收藏') : (getMessage('addFavorite') || '收藏');
+
+        showToast(newFavoriteStatus ? (getMessage('addedToFavorites') || '已添加到收藏') : (getMessage('removedFromFavorites') || '已取消收藏'));
+      } catch (error) {
+        console.error('Toggle favorite error:', error);
+      }
+    });
+  }
+
+  // 标签输入功能
+  const addTagBtn = suggestion.querySelector('.add-tag-btn');
+  const tagInputContainer = suggestion.querySelector('.note-tag-input-container');
+  const tagInput = suggestion.querySelector('.note-tag-input');
+  const tagsContainer = suggestion.querySelector('.note-tags-container');
+
+  if (addTagBtn && tagInputContainer && tagInput) {
+    addTagBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isVisible = tagInputContainer.style.display !== 'none';
+      tagInputContainer.style.display = isVisible ? 'none' : 'flex';
+      if (!isVisible) {
+        tagInput.focus();
+      }
+    });
+
+    // 处理标签输入
+    const handleTagInput = async (e) => {
+      if (e.key === 'Enter' || e.key === ',' || e.type === 'blur') {
+        e.preventDefault();
+        const tag = tagInput.value.trim().replace(/,/g, '');
+        if (!tag) return;
+
+        const key = getFieldKey(field);
+        try {
+          const result = await chrome.storage.local.get([key]);
+          const currentData = result[key];
+          if (!currentData) return;
+
+          // 检查标签是否已存在
+          if (currentData.tags && currentData.tags.includes(tag)) {
+            showToast(getMessage('tagExists') || '标签已存在');
+            tagInput.value = '';
+            return;
+          }
+
+          const updatedTags = [...(currentData.tags || []), tag];
+          const updatedData = {
+            ...currentData,
+            tags: updatedTags
+          };
+
+          await chrome.storage.local.set({ [key]: updatedData });
+
+          // 添加标签到UI
+          const tagElement = document.createElement('span');
+          tagElement.className = 'note-tag';
+          tagElement.dataset.tag = tag;
+          tagElement.innerHTML = `${escapeHtml(tag)}<span class="tag-remove">×</span>`;
+          tagsContainer.appendChild(tagElement);
+
+          // 添加删除事件
+          tagElement.querySelector('.tag-remove').addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeTag(key, tag, tagElement);
+          });
+
+          tagInput.value = '';
+          showToast(getMessage('tagAdded') || '标签已添加');
+        } catch (error) {
+          console.error('Add tag error:', error);
+        }
+      }
+    };
+
+    tagInput.addEventListener('keydown', handleTagInput);
+    tagInput.addEventListener('blur', handleTagInput);
+  }
+
+  // 为已有标签添加删除事件
+  tagsContainer.querySelectorAll('.tag-remove').forEach(removeBtn => {
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tagElement = e.target.closest('.note-tag');
+      const tag = tagElement.dataset.tag;
+      const key = getFieldKey(field);
+      removeTag(key, tag, tagElement);
+    });
+  });
+
+  // 移除标签函数
+  async function removeTag(key, tag, tagElement) {
+    try {
+      const result = await chrome.storage.local.get([key]);
+      const currentData = result[key];
+      if (!currentData || !currentData.tags) return;
+
+      const updatedTags = currentData.tags.filter(t => t !== tag);
+      const updatedData = {
+        ...currentData,
+        tags: updatedTags
+      };
+
+      await chrome.storage.local.set({ [key]: updatedData });
+      tagElement.remove();
+      showToast(getMessage('tagRemoved') || '标签已移除');
+    } catch (error) {
+      console.error('Remove tag error:', error);
+    }
+  }
 
   // 修改点击事件监听的处理方式
   suggestion.outsideClickHandler = (e) => {
