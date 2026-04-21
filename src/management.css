@@ -469,100 +469,119 @@ h1 {
 /* Notes Grid */
 .notes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
 }
 
 /* Note Card - Glass Effect */
+/* Note Card - Compact Design */
 .note-card {
   background: var(--glass-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 16px;
   transition: all 0.3s var(--ease-standard);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   position: relative;
   overflow: hidden;
 }
 
-.note-card::before {
+.note-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow), 0 12px 40px rgba(0, 0, 0, 0.12);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+/* 卡片顶部渐变线 - 收藏状态 */
+.note-card.is-favorite {
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.note-card.is-favorite::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-}
-
-.note-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--glass-shadow), 0 12px 40px rgba(0, 0, 0, 0.12);
-  border-color: rgba(99, 102, 241, 0.2);
+  height: 2px;
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  border-radius: 12px 12px 0 0;
 }
 
 .note-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 0;
 }
 
 .note-domain {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 8px;
   color: var(--primary-500);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   font-family: "Outfit", "DM Sans", sans-serif;
 }
 
 .domain-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.note-time {
+/* Note Body - 主体信息区（新增） */
+.note-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* 用户头像 - 新增元素 */
+.note-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
   font-size: 12px;
-  color: var(--text-tertiary);
-  font-weight: 500;
+  color: white;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.note-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .note-username {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
+  margin-bottom: 4px;
   font-family: "Outfit", "DM Sans", sans-serif;
 }
 
-.note-main {
-  flex: 1;
-}
-
 .note-content {
-  font-size: 15px;
+  font-size: 13px;
   color: var(--text-secondary);
-  line-height: 1.6;
-  margin: 12px 0;
+  line-height: 1.5;
 }
 
-/* Note Actions */
+/* Note Actions - Compact */
 .note-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--glass-border);
-  transition: all 0.2s;
+  gap: 4px;
 }
 
 .note-card.editing .note-actions {
@@ -570,45 +589,35 @@ h1 {
 }
 
 .action-btn {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border-radius: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
   cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: 14px;
   transition: all 0.2s var(--ease-standard);
   background: transparent;
-  position: relative;
 }
 
-.action-btn svg {
-  width: 20px;
-  height: 20px;
-  transition: all 0.2s;
-}
-
-.edit-btn {
-  color: var(--primary-500);
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
 }
 
 .edit-btn:hover {
-  background: var(--hover-bg);
-  transform: scale(1.05);
-}
-
-.delete-btn {
-  color: var(--danger-color);
+  color: var(--primary-500);
 }
 
 .delete-btn:hover {
-  background: var(--danger-bg);
-  transform: scale(1.05);
+  color: var(--danger-color);
+  background: rgba(239, 68, 68, 0.1);
 }
 
-/* Edit Mode */
+/* Edit Mode - Compact Adaptation */
 .edit-mode {
   margin: 0;
   padding: 0;
@@ -616,19 +625,35 @@ h1 {
   background: transparent;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
+}
+
+/* 编辑模式下隐藏头像 */
+.note-card.editing .note-body .note-avatar {
+  display: none;
+}
+
+/* 编辑模式下让 note-info 占满宽度 */
+.note-card.editing .note-body {
+  display: block;
 }
 
 .edit-input {
   width: 100%;
   box-sizing: border-box;
-  min-height: 100px;
-  padding: var(--space-4);
+  min-height: 80px;
+  padding: var(--space-3);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
+  border-radius: 12px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5;
   resize: vertical;
+  background: var(--bg-secondary);
+  font-family: inherit;
+  color: var(--text-primary);
+  transition: all 0.2s;
+  backdrop-filter: blur(8px);
+}
   background: var(--bg-secondary);
   font-family: inherit;
   color: var(--text-primary);
@@ -1244,13 +1269,15 @@ input:checked + .slider::before {
   }
 
   .notes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
   }
 }
 
 @media (max-width: 1024px) {
   .notes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
   }
 }
 
@@ -1271,6 +1298,7 @@ input:checked + .slider::before {
 
   .notes-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .control-bar {
@@ -1320,4 +1348,327 @@ input:checked + .slider::before {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.5);
+}
+
+/* ========================================
+   Tags & Favorites Styles
+   ======================================== */
+
+/* Favorite Button - Compact */
+.favorite-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  transition: all 0.2s var(--ease-standard);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.favorite-btn:hover {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  transform: scale(1.1);
+}
+
+.favorite-btn.is-favorite {
+  color: #f59e0b;
+}
+
+.favorite-btn.is-favorite:hover {
+  color: #d97706;
+}
+
+/* Note Card - Favorite State - Compact */
+.note-card.is-favorite {
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+}
+
+/* Remove old favorite before pseudo-element - handled in main .note-card */
+
+/* Tags Container - Compact */
+.note-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Tag Badge - Compact */
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--primary-600);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.2s var(--ease-standard);
+  border: none;
+}
+
+.tag-badge:hover {
+  background: rgba(99, 102, 241, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Filter Container */
+.filter-container {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  background: var(--glass-bg);
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+}
+
+/* Favorite Filter Button */
+.favorite-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-standard);
+}
+
+.favorite-filter-btn:hover {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
+}
+
+.favorite-filter-btn.active {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+/* Tag Filter Select */
+.tag-filter-select {
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 140px;
+}
+
+.tag-filter-select:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Note Footer - Compact */
+.note-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--glass-border);
+  margin-top: 0;
+}
+
+/* Note Time - Compact */
+.note-time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+/* ========================================
+   Tag Management Styles
+   ======================================== */
+
+/* Tag Management Form */
+.add-tag-form {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.add-tag-form input {
+  flex: 1;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.add-tag-form input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.add-tag-form input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.add-tag-form button {
+  padding: 12px 24px;
+  background: var(--primary-600);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-standard);
+  font-family: inherit;
+}
+
+.add-tag-form button:hover {
+  background: var(--primary-700);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+/* Tags List */
+.tags-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tag-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.tag-item:hover {
+  border-color: var(--primary-500);
+  transform: translateX(4px);
+}
+
+.tag-item-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+}
+
+.tag-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.tag-item-count {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.tag-item-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.tag-action-btn {
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tag-action-btn:hover {
+  background: var(--hover-bg);
+  color: var(--primary-500);
+}
+
+.tag-action-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+}
+
+/* Tag Edit Mode */
+.tag-item.editing {
+  background: var(--bg-tertiary);
+}
+
+.tag-edit-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--primary-500);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.tag-edit-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.tag-edit-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.tag-edit-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  border: none;
+}
+
+.tag-edit-btn.save {
+  background: var(--primary-600);
+  color: white;
+}
+
+.tag-edit-btn.save:hover {
+  background: var(--primary-700);
+}
+
+.tag-edit-btn.cancel {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.tag-edit-btn.cancel:hover {
+  background: var(--glass-border);
 }
