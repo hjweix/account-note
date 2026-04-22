@@ -1,5 +1,5 @@
-/* 关闭按钮样式 */
-.close-note-btn {
+/* 关闭按钮样式 - 用于禁用选项菜单 */
+.disable-menu-close-btn {
   position: absolute;
   right: 0;
   bottom: -28px;
@@ -14,21 +14,21 @@
   font-weight: 500;
 }
 
-.close-note-btn:hover {
+.disable-menu-close-btn:hover {
   background: rgba(26, 115, 232, 0.1);
 }
 
-.close-note-btn:focus {
+.disable-menu-close-btn:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.3);
 }
 
 @media (prefers-color-scheme: dark) {
-  .close-note-btn {
+  .disable-menu-close-btn {
     color: #8ab4f8;
   }
-  
-  .close-note-btn:hover {
+
+  .disable-menu-close-btn:hover {
     background: rgba(138, 180, 248, 0.15);
   }
 }

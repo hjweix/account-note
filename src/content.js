@@ -130,17 +130,17 @@ window.addEventListener('unload', () => {
 });
 
 // 显示禁用选项菜单
-function showDisableOptions(suggestion, field) {
+function showDisableOptions(suggestion, field, closeBtn) {
   // 移除可能已存在的菜单
   const existingMenu = document.querySelector('.disable-options-menu');
   if (existingMenu) {
     existingMenu.remove();
   }
-  
+
   const domain = window.location.origin;
   const disableMenu = document.createElement('div');
   disableMenu.className = 'disable-options-menu';
-  
+
   disableMenu.innerHTML = `
     <div class="disable-option" data-action="session">
       ${getMessage('disableSession') || '在本次会话中禁用'}
@@ -152,30 +152,45 @@ function showDisableOptions(suggestion, field) {
       ${getMessage('disableGlobal') || '在所有网站上禁用'}
     </div>
   `;
-  
+
   // 将菜单添加到body而不是suggestion内部，以避免定位问题
   document.body.appendChild(disableMenu);
-  
+
   // 定位菜单到关闭按钮附近
-  const closeBtn = suggestion.querySelector('.close-note-btn');
   const closeBtnRect = closeBtn.getBoundingClientRect();
-  
+
   disableMenu.style.position = 'fixed';
   disableMenu.style.top = `${closeBtnRect.bottom + 5}px`;
   disableMenu.style.left = `${closeBtnRect.left}px`;
-  
+
   // 确保菜单不超出视口
   const menuRect = disableMenu.getBoundingClientRect();
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  
+
   if (menuRect.right > viewportWidth) {
     disableMenu.style.left = `${viewportWidth - menuRect.width - 10}px`;
   }
-  
+
   if (menuRect.bottom > viewportHeight) {
     disableMenu.style.top = `${closeBtnRect.top - menuRect.height - 5}px`;
   }
+
+  // 添加悬停事件 - 鼠标在菜单上时保持显示
+  let menuHideTimeout = null;
+
+  disableMenu.addEventListener('mouseenter', () => {
+    if (menuHideTimeout) {
+      clearTimeout(menuHideTimeout);
+      menuHideTimeout = null;
+    }
+  });
+
+  disableMenu.addEventListener('mouseleave', () => {
+    menuHideTimeout = setTimeout(() => {
+      disableMenu.remove();
+    }, 100);
+  });
   
   // 添加选项点击事件
   const options = disableMenu.querySelectorAll('.disable-option');
@@ -251,19 +266,6 @@ function showDisableOptions(suggestion, field) {
       suggestion.remove();
     });
   });
-  
-  // 点击其他区域关闭菜单
-  const closeMenuOnOutsideClick = (e) => {
-    if (!disableMenu.contains(e.target) && !closeBtn.contains(e.target)) {
-      disableMenu.remove();
-      document.removeEventListener('click', closeMenuOnOutsideClick);
-    }
-  };
-  
-  // 延迟添加事件监听，避免立即触发
-  setTimeout(() => {
-    document.addEventListener('click', closeMenuOnOutsideClick);
-  }, 10);
 }
 
 // 添加防抖函数
@@ -925,10 +927,26 @@ function showAccountNote(field, noteData) {
   };
   noteInput.addEventListener('blur', noteInput.blurHandler);
 
-  // 添加关闭按钮点击事件
-  closeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    showDisableOptions(suggestion, field);
+  // 添加关闭按钮悬停事件
+  let menuHideTimeout = null;
+
+  closeBtn.addEventListener('mouseenter', () => {
+    // 清除隐藏的定时器
+    if (menuHideTimeout) {
+      clearTimeout(menuHideTimeout);
+      menuHideTimeout = null;
+    }
+    showDisableOptions(suggestion, field, closeBtn);
+  });
+
+  closeBtn.addEventListener('mouseleave', (e) => {
+    // 延迟隐藏，给用户时间移动到菜单
+    menuHideTimeout = setTimeout(() => {
+      const disableMenu = document.querySelector('.disable-options-menu');
+      if (disableMenu && !disableMenu.matches(':hover')) {
+        disableMenu.remove();
+      }
+    }, 150);
   });
 
   // 标签输入功能
