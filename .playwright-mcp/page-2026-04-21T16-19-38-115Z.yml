@@ -1,0 +1,118 @@
+- generic [active] [ref=e1]:
+  - heading "Account Note 卡片布局优化方案" [level=1] [ref=e2]
+  - paragraph [ref=e3]: 三种设计方案对比，选择最适合的紧凑精致风格
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - heading "方案一：当前设计" [level=2] [ref=e6]
+      - paragraph [ref=e7]: 宽480px，padding 24px，信息密度低，留白过多
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e10]:
+            - generic [ref=e13]: ipsuat.hwwt2.com
+            - button "★" [ref=e14] [cursor=pointer]
+          - generic [ref=e16]: "110294182"
+          - generic [ref=e17]: 测试环境账号
+          - generic [ref=e19]: UAT
+          - generic [ref=e20]:
+            - generic [ref=e21]: 56分钟前
+            - generic [ref=e22]:
+              - button "✎" [ref=e23] [cursor=pointer]
+              - button "🗑" [ref=e24] [cursor=pointer]
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e29]: ipsuat.hwwt2.com
+            - button "★" [ref=e30] [cursor=pointer]
+          - generic [ref=e32]: OWSCHCSSC
+          - generic [ref=e33]: OW测试
+          - generic [ref=e34]:
+            - generic [ref=e35]: 测试
+            - generic [ref=e36]: 工作
+          - generic [ref=e37]:
+            - generic [ref=e38]: 16分钟前
+            - generic [ref=e39]:
+              - button "✎" [ref=e40] [cursor=pointer]
+              - button "🗑" [ref=e41] [cursor=pointer]
+    - generic [ref=e42]:
+      - heading "方案二：紧凑卡片" [level=2] [ref=e43]
+      - paragraph [ref=e44]: 更小尺寸，更高信息密度，保留卡片形态但更精致
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - generic [ref=e50]: ipsuat.hwwt2.com
+            - button "★" [ref=e51] [cursor=pointer]
+          - generic [ref=e52]:
+            - generic [ref=e53]: H
+            - generic [ref=e54]:
+              - generic [ref=e55]: "110294182"
+              - generic [ref=e56]: 测试环境账号
+          - generic [ref=e57]:
+            - generic [ref=e59]: UAT
+            - generic [ref=e60]:
+              - generic [ref=e61]: 56分钟前
+              - generic [ref=e62]:
+                - button "✎" [ref=e63] [cursor=pointer]
+                - button "🗑" [ref=e64] [cursor=pointer]
+        - generic [ref=e65]:
+          - generic [ref=e66]:
+            - generic [ref=e69]: ipsuat.hwwt2.com
+            - button "★" [ref=e70] [cursor=pointer]
+          - generic [ref=e71]:
+            - generic [ref=e72]: O
+            - generic [ref=e73]:
+              - generic [ref=e74]: OWSCHCSSC
+              - generic [ref=e75]: OW测试，这是一个稍微长一点的备注内容展示
+          - generic [ref=e76]:
+            - generic [ref=e77]:
+              - generic [ref=e78]: 测试
+              - generic [ref=e79]: 工作
+            - generic [ref=e80]:
+              - generic [ref=e81]: 16分钟前
+              - generic [ref=e82]:
+                - button "✎" [ref=e83] [cursor=pointer]
+                - button "🗑" [ref=e84] [cursor=pointer]
+    - generic [ref=e85]:
+      - heading "方案三：列表视图" [level=2] [ref=e86]
+      - paragraph [ref=e87]: 水平排列，信息紧凑，适合大量数据快速浏览
+      - generic [ref=e88]:
+        - generic [ref=e89]:
+          - generic [ref=e90] [cursor=pointer]: ★
+          - generic [ref=e93]: ipsuat.hww...
+          - generic [ref=e94]: "110294182"
+          - generic [ref=e95]: 测试环境账号
+          - generic [ref=e97]: UAT
+          - generic [ref=e98]: 56分钟前
+          - generic [ref=e99]:
+            - button "✎" [ref=e100] [cursor=pointer]
+            - button "🗑" [ref=e101] [cursor=pointer]
+        - generic [ref=e102]:
+          - generic [ref=e103] [cursor=pointer]: ★
+          - generic [ref=e106]: ipsuat.hww...
+          - generic [ref=e107]: OWSCHCSSC
+          - generic [ref=e108]: OW测试备注内容
+          - generic [ref=e110]: 测试
+          - generic [ref=e111]: 16分钟前
+          - generic [ref=e112]:
+            - button "✎" [ref=e113] [cursor=pointer]
+            - button "🗑" [ref=e114] [cursor=pointer]
+        - generic [ref=e115]:
+          - generic [ref=e116] [cursor=pointer]: ★
+          - generic [ref=e119]: github.com
+          - generic [ref=e120]: developer
+          - generic [ref=e121]: 个人开发账号
+          - generic [ref=e122]:
+            - generic [ref=e123]: 开发
+            - generic [ref=e124]: 个人
+          - generic [ref=e125]: 2小时前
+          - generic [ref=e126]:
+            - button "✎" [ref=e127] [cursor=pointer]
+            - button "🗑" [ref=e128] [cursor=pointer]
+        - generic [ref=e129]:
+          - generic [ref=e130] [cursor=pointer]: ★
+          - generic [ref=e133]: notion.so
+          - generic [ref=e134]: team@work
+          - generic [ref=e135]: 团队工作空间账号
+          - generic [ref=e137]: 工作
+          - generic [ref=e138]: 昨天
+          - generic [ref=e139]:
+            - button "✎" [ref=e140] [cursor=pointer]
+            - button "🗑" [ref=e141] [cursor=pointer]

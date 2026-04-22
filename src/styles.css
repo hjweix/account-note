@@ -284,13 +284,6 @@
   transform: translateY(0);
 }
 
-/* Note Header Actions - Compact */
-.note-header-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 6px;
-}
-
 /* Favorite Button - Theme aware */
 .account-note-suggestion[data-theme="light"] .favorite-btn {
   color: #64748b;
@@ -613,9 +606,51 @@
   color: #cbd5e1;
 }
 
-.close-note-btn:hover {
-  background: var(--hover-bg);
-  color: var(--text-secondary);
+/* Favorite Button in Footer - Theme aware */
+.account-note-suggestion[data-theme="light"] .note-footer-actions .favorite-btn {
+  color: #64748b;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.account-note-suggestion[data-theme="dark"] .note-footer-actions .favorite-btn {
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.note-footer-actions .favorite-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-note-suggestion[data-theme="light"] .note-footer-actions .favorite-btn:hover {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.account-note-suggestion[data-theme="dark"] .note-footer-actions .favorite-btn:hover {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.note-footer-actions .favorite-btn.is-favorite {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.note-footer-actions .favorite-btn.is-favorite:hover {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.2);
 }
 
 .edit-note-content {
