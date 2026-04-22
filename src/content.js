@@ -731,11 +731,6 @@ function showAccountNote(field, noteData) {
           <button class="toggle-text-btn" title="${getMessage('toggleText')}">${getMessage('expand')}</button>
         ` : ''}
         <button class="add-tag-btn" title="${getMessage('addTag') || '添加标签'}">${getMessage('addTag') || '+ 标签'}</button>
-        <button class="favorite-btn ${noteData?.isFavorite ? 'is-favorite' : ''}" title="${noteData?.isFavorite ? getMessage('removeFavorite') || '取消收藏' : getMessage('addFavorite') || '收藏'}">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
-          </svg>
-        </button>
         <button class="close-note-btn" title="${getMessage('close')}">${getMessage('close')}</button>
       </div>
   `;
@@ -935,38 +930,6 @@ function showAccountNote(field, noteData) {
     e.stopPropagation();
     showDisableOptions(suggestion, field);
   });
-
-  // 收藏按钮功能
-  const favoriteBtn = suggestion.querySelector('.favorite-btn');
-  if (favoriteBtn) {
-    favoriteBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const key = getFieldKey(field);
-
-      try {
-        const result = await chrome.storage.local.get([key]);
-        const currentData = result[key];
-        if (!currentData) return;
-
-        const newFavoriteStatus = !currentData.isFavorite;
-        const updatedData = {
-          ...currentData,
-          isFavorite: newFavoriteStatus,
-          favoriteTime: newFavoriteStatus ? new Date().toISOString() : null
-        };
-
-        await chrome.storage.local.set({ [key]: updatedData });
-
-        // 更新UI
-        favoriteBtn.classList.toggle('is-favorite', newFavoriteStatus);
-        favoriteBtn.title = newFavoriteStatus ? (getMessage('removeFavorite') || '取消收藏') : (getMessage('addFavorite') || '收藏');
-
-        showToast(newFavoriteStatus ? (getMessage('addedToFavorites') || '已添加到收藏') : (getMessage('removedFromFavorites') || '已取消收藏'));
-      } catch (error) {
-        console.error('Toggle favorite error:', error);
-      }
-    });
-  }
 
   // 标签输入功能
   const addTagBtn = suggestion.querySelector('.add-tag-btn');
