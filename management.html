@@ -33,6 +33,19 @@
         <button id="settingsTab" class="tab-btn">Settings</button>
       </div>
       <div id="notesContent" class="tab-content active">
+        <!-- 筛选区域 -->
+        <div class="filter-container" id="filterContainer">
+          <button id="favoriteFilter" class="favorite-filter-btn" title="只看收藏">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
+            </svg>
+            <span>只看收藏</span>
+          </button>
+          <select id="tagFilter" class="tag-filter-select">
+            <option value="">所有标签</option>
+          </select>
+        </div>
+
       <div class="control-bar">
         <div class="sort-controls">
           <select id="sortSelect" class="sort-select">
@@ -82,6 +95,22 @@
                   <div class="theme-option-icon">🌙</div>
                   <div class="theme-option-label">深色</div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 标签管理卡片 -->
+          <div class="settings-card">
+            <h2 id="tagManagementTitle" class="card-title">标签管理</h2>
+            <div class="card-content">
+              <div class="tag-management-actions">
+                <div class="add-tag-form">
+                  <input type="text" id="newTagInput" placeholder="输入标签名称，如 工作">
+                  <button id="addTagBtn">添加</button>
+                </div>
+              </div>
+              <div class="tags-list" id="tagsList">
+                <!-- 标签列表将通过 JS 动态插入 -->
               </div>
             </div>
           </div>
@@ -145,7 +174,7 @@
               <div class="about-info">
                 <div class="info-row">
                   <span class="info-label" id="versionLabel">版本:</span>
-                  <span class="info-value" id="versionValue">1.0.2</span>
+                  <span class="info-value" id="versionValue">1.1.0</span>
                 </div>
                 <div class="info-row">
                   <span class="info-label" id="developerLabel">开发者:</span>

@@ -679,6 +679,14 @@ function showAccountNote(field, noteData) {
 
   const suggestion = document.createElement('div');
   suggestion.className = 'account-note-suggestion';
+
+  // 检测系统主题
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (prefersDark) {
+    suggestion.setAttribute('data-theme', 'dark');
+  } else {
+    suggestion.setAttribute('data-theme', 'light');
+  }
   
   const hasNote = noteData && noteData.note;
   const note = hasNote ? noteData.note : '';

@@ -74,27 +74,74 @@ async function loadSiteNotes(domain) {
 // 修改 displayNotes 函数
 function displayNotes(notes) {
   const notesList = document.getElementById('notesList');
-  
+
   notes.forEach(note => {
     const noteElement = document.createElement('div');
     noteElement.className = 'note-item';
     noteElement.dataset.key = note.key;
-    
+
+    // 收藏按钮
+    const favoriteBtn = document.createElement('button');
+    favoriteBtn.className = `favorite-btn ${note.isFavorite ? 'is-favorite' : ''}`;
+    favoriteBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="14" height="14">
+        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
+      </svg>
+    `;
+    favoriteBtn.title = note.isFavorite ? getMessage('removeFavorite') : getMessage('addFavorite');
+    favoriteBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        const result = await chrome.storage.local.get([note.key]);
+        const noteData = result[note.key];
+        if (!noteData) return;
+
+        const newFavoriteStatus = !noteData.isFavorite;
+        const updatedData = {
+          ...noteData,
+          isFavorite: newFavoriteStatus,
+          favoriteTime: newFavoriteStatus ? new Date().toISOString() : null
+        };
+
+        await chrome.storage.local.set({ [note.key]: updatedData });
+
+        // 更新UI
+        favoriteBtn.classList.toggle('is-favorite', newFavoriteStatus);
+        favoriteBtn.title = newFavoriteStatus ? getMessage('removeFavorite') : getMessage('addFavorite');
+
+        showToast(newFavoriteStatus ? getMessage('addedToFavorites') : getMessage('removedFromFavorites'));
+      } catch (error) {
+        console.error('Toggle favorite error:', error);
+      }
+    });
+
     // 用户名部分
     const username = document.createElement('div');
     username.className = 'note-username';
     username.textContent = note.username;
-    
+
     // 备注内容部分
     const noteContent = document.createElement('div');
     noteContent.className = 'note-content';
-    
+
     // 备注文本容器
     const noteText = document.createElement('div');
     noteText.className = 'account-note-text';
     noteText.textContent = note.note;
     noteText.title = note.note;
-    
+
+    // 标签容器
+    const tagsContainer = document.createElement('div');
+    tagsContainer.className = 'note-tags';
+    if (note.tags && note.tags.length > 0) {
+      note.tags.forEach(tag => {
+        const tagBadge = document.createElement('span');
+        tagBadge.className = 'tag-badge';
+        tagBadge.textContent = tag;
+        tagsContainer.appendChild(tagBadge);
+      });
+    }
+
     // 编辑按钮
     const editBtn = document.createElement('button');
     editBtn.className = 'edit-btn';
@@ -178,9 +225,14 @@ function displayNotes(notes) {
       }
     };
     editBtn.addEventListener('click', handleEditClick);
-    
+
+    noteContent.appendChild(noteText);
+    noteContent.appendChild(editBtn);
+
+    noteElement.appendChild(favoriteBtn);
     noteElement.appendChild(username);
     noteElement.appendChild(noteContent);
+    noteElement.appendChild(tagsContainer);
     notesList.appendChild(noteElement);
   });
 }

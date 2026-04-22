@@ -354,5 +354,109 @@
   "notes": {
     "message": "Notes",
     "description": "Notes tab title"
+  },
+  "addFavorite": {
+    "message": "Add to Favorites",
+    "description": "Add favorite button text"
+  },
+  "removeFavorite": {
+    "message": "Remove from Favorites",
+    "description": "Remove favorite button text"
+  },
+  "addedToFavorites": {
+    "message": "Added to favorites",
+    "description": "Add favorite success message"
+  },
+  "removedFromFavorites": {
+    "message": "Removed from favorites",
+    "description": "Remove favorite success message"
+  },
+  "addTag": {
+    "message": "+ Tag",
+    "description": "Add tag button text"
+  },
+  "addTagPlaceholder": {
+    "message": "Add tag, press Enter or comma to confirm",
+    "description": "Tag input placeholder"
+  },
+  "tagExists": {
+    "message": "Tag already exists",
+    "description": "Tag exists prompt"
+  },
+  "tagAdded": {
+    "message": "Tag added",
+    "description": "Tag added success message"
+  },
+  "tagRemoved": {
+    "message": "Tag removed",
+    "description": "Tag removed success message"
+  },
+  "filterByTag": {
+    "message": "Filter by Tag",
+    "description": "Filter by tag button text"
+  },
+  "filterByFavorite": {
+    "message": "Favorites Only",
+    "description": "Favorites only filter button text"
+  },
+  "allTags": {
+    "message": "All Tags",
+    "description": "All tags option"
+  },
+  "batchAddTag": {
+    "message": "Batch Add Tags",
+    "description": "Batch add tags button text"
+  },
+  "batchRemoveTag": {
+    "message": "Batch Remove Tags",
+    "description": "Batch remove tags button text"
+  },
+  "batchAddToFavorites": {
+    "message": "Batch Add to Favorites",
+    "description": "Batch add to favorites button text"
+  },
+  "batchRemoveFromFavorites": {
+    "message": "Batch Remove from Favorites",
+    "description": "Batch remove from favorites button text"
+  },
+  "tagManagement": {
+    "message": "Tag Management",
+    "description": "Tag management title"
+  },
+  "editTag": {
+    "message": "Edit Tag",
+    "description": "Edit tag button text"
+  },
+  "deleteTag": {
+    "message": "Delete Tag",
+    "description": "Delete tag button text"
+  },
+  "renameTag": {
+    "message": "Rename Tag",
+    "description": "Rename tag button text"
+  },
+  "changeTagColor": {
+    "message": "Change Tag Color",
+    "description": "Change tag color button text"
+  },
+  "confirmDeleteTag": {
+    "message": "Are you sure you want to delete tag \"$1\"? This will remove it from all notes.",
+    "description": "Delete tag confirmation prompt"
+  },
+  "newTagName": {
+    "message": "New tag name",
+    "description": "New tag name input placeholder"
+  },
+  "tagNameEmpty": {
+    "message": "Tag name cannot be empty",
+    "description": "Empty tag name error"
+  },
+  "noteNotFound": {
+    "message": "Note data not found",
+    "description": "Note data not found error"
+  },
+  "operationFailed": {
+    "message": "Operation failed, please try again",
+    "description": "Generic operation failed error message"
   }
 }

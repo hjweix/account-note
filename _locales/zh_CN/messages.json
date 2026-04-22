@@ -343,12 +343,108 @@
     "message": "开发者:",
     "description": "开发者标签"
   },
-  "viewChangelog": {
-    "message": "查看更新日志",
-    "description": "查看更新日志链接文本"
+  "addFavorite": {
+    "message": "添加收藏",
+    "description": "添加收藏按钮文本"
   },
-  "reportIssue": {
-    "message": "反馈问题",
-    "description": "反馈问题链接文本"
+  "removeFavorite": {
+    "message": "取消收藏",
+    "description": "取消收藏按钮文本"
+  },
+  "addedToFavorites": {
+    "message": "已添加到收藏",
+    "description": "添加收藏成功提示"
+  },
+  "removedFromFavorites": {
+    "message": "已取消收藏",
+    "description": "取消收藏成功提示"
+  },
+  "addTag": {
+    "message": "+ 标签",
+    "description": "添加标签按钮文本"
+  },
+  "addTagPlaceholder": {
+    "message": "添加标签，按回车或逗号确认",
+    "description": "标签输入框占位文本"
+  },
+  "tagExists": {
+    "message": "标签已存在",
+    "description": "标签已存在提示"
+  },
+  "tagAdded": {
+    "message": "标签已添加",
+    "description": "标签添加成功提示"
+  },
+  "tagRemoved": {
+    "message": "标签已移除",
+    "description": "标签移除成功提示"
+  },
+  "filterByTag": {
+    "message": "按标签筛选",
+    "description": "按标签筛选按钮文本"
+  },
+  "filterByFavorite": {
+    "message": "只看收藏",
+    "description": "只看收藏筛选按钮文本"
+  },
+  "allTags": {
+    "message": "所有标签",
+    "description": "所有标签选项"
+  },
+  "batchAddTag": {
+    "message": "批量添加标签",
+    "description": "批量添加标签按钮文本"
+  },
+  "batchRemoveTag": {
+    "message": "批量移除标签",
+    "description": "批量移除标签按钮文本"
+  },
+  "batchAddToFavorites": {
+    "message": "批量收藏",
+    "description": "批量收藏按钮文本"
+  },
+  "batchRemoveFromFavorites": {
+    "message": "批量取消收藏",
+    "description": "批量取消收藏按钮文本"
+  },
+  "tagManagement": {
+    "message": "标签管理",
+    "description": "标签管理标题"
+  },
+  "editTag": {
+    "message": "编辑标签",
+    "description": "编辑标签按钮文本"
+  },
+  "deleteTag": {
+    "message": "删除标签",
+    "description": "删除标签按钮文本"
+  },
+  "renameTag": {
+    "message": "重命名标签",
+    "description": "重命名标签按钮文本"
+  },
+  "changeTagColor": {
+    "message": "修改标签颜色",
+    "description": "修改标签颜色按钮文本"
+  },
+  "confirmDeleteTag": {
+    "message": "确定要删除标签 \"$1\" 吗？这将从所有备注中移除该标签。",
+    "description": "删除标签确认提示"
+  },
+  "newTagName": {
+    "message": "新标签名称",
+    "description": "新标签名称输入占位符"
+  },
+  "tagNameEmpty": {
+    "message": "标签名称不能为空",
+    "description": "标签名称为空错误提示"
+  },
+  "noteNotFound": {
+    "message": "备注数据不存在",
+    "description": "备注数据不存在错误提示"
+  },
+  "operationFailed": {
+    "message": "操作失败，请重试",
+    "description": "通用操作失败错误提示"
   }
 }
