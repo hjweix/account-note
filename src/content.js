@@ -732,7 +732,7 @@ function showAccountNote(field, noteData) {
         ` : ''}
         <button class="add-tag-btn" title="${getMessage('addTag') || '添加标签'}">${getMessage('addTag') || '+ 标签'}</button>
         <button class="favorite-btn ${noteData?.isFavorite ? 'is-favorite' : ''}" title="${noteData?.isFavorite ? getMessage('removeFavorite') || '取消收藏' : getMessage('addFavorite') || '收藏'}">
-          <svg viewBox="0 0 24 24" width="14" height="14">
+          <svg viewBox="0 0 24 24" width="16" height="16">
             <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
           </svg>
         </button>

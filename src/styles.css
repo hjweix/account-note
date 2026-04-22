@@ -620,14 +620,22 @@
 }
 
 .note-footer-actions .favorite-btn {
-  padding: 4px 8px;
+  padding: 4px 12px;
   font-size: 11px;
+  font-weight: 500;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 36px;
+  min-height: 26px;
+}
+
+.note-footer-actions .favorite-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .account-note-suggestion[data-theme="light"] .note-footer-actions .favorite-btn:hover {
