@@ -364,7 +364,7 @@
     "description": "添加标签按钮文本"
   },
   "addTagPlaceholder": {
-    "message": "添加标签，按回车或逗号确认",
+    "message": "添加标签，按回车确认",
     "description": "标签输入框占位文本"
   },
   "tagExists": {
