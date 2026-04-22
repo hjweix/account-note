@@ -465,7 +465,8 @@
 }
 
 .note-tag-input {
-  flex: 1;
+  flex: 0 0 auto;
+  width: 140px;
   padding: 6px 10px;
   border-radius: 8px;
   font-size: 12px;

@@ -726,7 +726,7 @@ function showAccountNote(field, noteData) {
         ${noteData?.tags?.map(tag => `<span class="note-tag" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span class="tag-remove">×</span></span>`).join('') || ''}
       </div>
       <div class="note-tag-input-container" style="display: none;">
-        <input type="text" class="note-tag-input" placeholder="${getMessage('addTagPlaceholder') || '添加标签，按回车或逗号确认'}" />
+        <input type="text" class="note-tag-input" placeholder="${getMessage('addTagPlaceholder') || '添加标签，按回车确认'}" />
       </div>
       <div class="note-footer-actions">
         ${isLongText ? `
