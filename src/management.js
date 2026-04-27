@@ -12,6 +12,163 @@ let currentFilter = {
   searchTerm: ''
 };
 
+/**
+ * 迁移单个备注数据到最新格式
+ * 补充缺失的 tags、isFavorite、favoriteTime 字段
+ */
+function migrateNoteData(note, key) {
+  const migratedNote = { ...note };
+  const needsMigration = [];
+
+  // 检查并补充 tags 字段
+  if (!Array.isArray(migratedNote.tags)) {
+    migratedNote.tags = [];
+    needsMigration.push('tags');
+  }
+
+  // 检查并补充 isFavorite 字段
+  if (typeof migratedNote.isFavorite !== 'boolean') {
+    migratedNote.isFavorite = false;
+    needsMigration.push('isFavorite');
+  }
+
+  // 检查并补充 favoriteTime 字段
+  if (migratedNote.isFavorite && !migratedNote.favoriteTime) {
+    migratedNote.favoriteTime = migratedNote.updateTime || new Date().toISOString();
+    needsMigration.push('favoriteTime');
+  } else if (!migratedNote.isFavorite && migratedNote.favoriteTime !== null) {
+    migratedNote.favoriteTime = null;
+    needsMigration.push('favoriteTime');
+  } else if (migratedNote.favoriteTime === undefined) {
+    migratedNote.favoriteTime = null;
+    needsMigration.push('favoriteTime');
+  }
+
+  // 确保 key 字段存在（兼容旧格式）
+  if (!migratedNote.key) {
+    migratedNote.key = key;
+    needsMigration.push('key');
+  }
+
+  // 确保必要字段存在
+  if (!migratedNote.createTime) {
+    migratedNote.createTime = migratedNote.updateTime || new Date().toISOString();
+    needsMigration.push('createTime');
+  }
+
+  if (!migratedNote.updateTime) {
+    migratedNote.updateTime = new Date().toISOString();
+    needsMigration.push('updateTime');
+  }
+
+  return {
+    note: migratedNote,
+    needsMigration,
+    isMigrated: needsMigration.length > 0
+  };
+}
+
+/**
+ * 批量迁移所有备注数据
+ */
+async function migrateAllNotes() {
+  console.log('[Migration] 开始检查数据迁移...');
+
+  try {
+    const result = await new Promise((resolve) => {
+      chrome.storage.local.get(null, resolve);
+    });
+
+    const migrationUpdates = {};
+    let migratedCount = 0;
+    let totalCount = 0;
+
+    Object.entries(result).forEach(([key, note]) => {
+      if (note && note.domain && note.note && note.username) {
+        totalCount++;
+        const { note: migratedNote, isMigrated } = migrateNoteData(note, key);
+
+        if (isMigrated) {
+          migrationUpdates[key] = migratedNote;
+          migratedCount++;
+          console.log(`[Migration] 迁移备注: ${key}`, {
+            updatedFields: migrateNoteData(note, key).needsMigration
+          });
+        }
+      }
+    });
+
+    if (migratedCount > 0) {
+      console.log(`[Migration] 需迁移 ${migratedCount}/${totalCount} 条备注，开始写入...`);
+      await new Promise((resolve) => {
+        chrome.storage.local.set(migrationUpdates, resolve);
+      });
+      console.log(`[Migration] 数据迁移完成，成功迁移 ${migratedCount} 条备注`);
+
+      if (typeof showToast === 'function') {
+        showToast(`数据升级完成（${migratedCount}条备注已优化）`, 'success');
+      }
+    } else {
+      console.log(`[Migration] 所有 ${totalCount} 条数据已是最新格式，无需迁移`);
+    }
+
+    return { migratedCount, totalCount };
+  } catch (error) {
+    console.error('[Migration] 数据迁移失败:', error);
+    return { migratedCount: 0, totalCount: 0, error: error.message };
+  }
+}
+
+/**
+ * 安全获取备注的 tags
+ */
+function getNoteTags(note) {
+  if (!note) return [];
+  return Array.isArray(note.tags) ? note.tags : [];
+}
+
+/**
+ * 安全获取备注的收藏状态
+ */
+function getNoteIsFavorite(note) {
+  if (!note) return false;
+  return typeof note.isFavorite === 'boolean' ? note.isFavorite : false;
+}
+
+/**
+ * 安全获取备注的收藏时间
+ */
+function getNoteFavoriteTime(note) {
+  if (!note) return null;
+  return note.favoriteTime || null;
+}
+
+/**
+ * 检查备注是否有指定标签
+ */
+function noteHasTag(note, tag) {
+  return getNoteTags(note).includes(tag);
+}
+
+/**
+ * 规范化备注数据
+ */
+function normalizeNoteData(note, key) {
+  if (!note) return null;
+
+  return {
+    key: note.key || key,
+    domain: note.domain || '',
+    username: note.username || '',
+    note: note.note || '',
+    createTime: note.createTime || note.updateTime || new Date().toISOString(),
+    updateTime: note.updateTime || new Date().toISOString(),
+    tags: getNoteTags(note),
+    isFavorite: getNoteIsFavorite(note),
+    favoriteTime: getNoteFavoriteTime(note)
+  };
+}
+
 // 等待 DOM 加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
   // 初始化主题
@@ -81,8 +238,14 @@ function initI18nTexts() {
 // 加载所有备注
 async function loadAllNotes() {
   console.log('[LoadAllNotes] 开始加载备注');
+
+  // 第一步：执行数据迁移
+  await migrateAllNotes();
+
+  // 第二步：加载所有数据（此时已都是最新格式）
   chrome.storage.local.get(null, (result) => {
     console.log('[LoadAllNotes] 原始数据:', Object.keys(result));
+
     const notes = Object.entries(result)
       .filter(([key, note]) =>
         note && note.domain && note.note && note.username
@@ -90,13 +253,25 @@ async function loadAllNotes() {
       .map(([key, note]) => {
         const finalKey = note.key || key;
         console.log(`[LoadAllNotes] 处理备注: 存储key=${key}, note.key=${note.key}, 最终key=${finalKey}`);
+
+        // 确保返回的数据结构完整
         return {
-          ...note,
-          key: finalKey  // 兼容旧数据：如果 note 没有 key，使用存储键
+          key: finalKey,
+          domain: note.domain,
+          username: note.username,
+          note: note.note,
+          createTime: note.createTime || new Date().toISOString(),
+          updateTime: note.updateTime || new Date().toISOString(),
+          tags: getNoteTags(note),
+          isFavorite: getNoteIsFavorite(note),
+          favoriteTime: getNoteFavoriteTime(note)
         };
       });
+
     console.log('[LoadAllNotes] 过滤后的备注数:', notes.length);
-    console.log('[LoadAllNotes] 第一个备注的key:', notes[0]?.key);
+    console.log('[LoadAllNotes] 第一个备注的tags:', notes[0]?.tags);
+    console.log('[LoadAllNotes] 第一个备注的isFavorite:', notes[0]?.isFavorite);
+
     displayNotes(notes, currentFilter.searchTerm);
   });
 }
@@ -110,16 +285,16 @@ function displayNotes(notes, searchTerm = '') {
     note && note.domain && note.note && note.username && note.key
   );
 
-  // 按标签筛选
+  // 按标签筛选（使用安全访问）
   if (currentFilter.tags && currentFilter.tags.length > 0) {
     filteredNotes = filteredNotes.filter(note =>
-      note.tags && currentFilter.tags.some(tag => note.tags.includes(tag))
+      getNoteTags(note).some(tag => currentFilter.tags.includes(tag))
     );
   }
 
-  // 按收藏筛选
+  // 按收藏筛选（使用安全访问）
   if (currentFilter.isFavorite) {
-    filteredNotes = filteredNotes.filter(note => note.isFavorite);
+    filteredNotes = filteredNotes.filter(note => getNoteIsFavorite(note));
   }
 
   // 按搜索词筛选
@@ -129,7 +304,7 @@ function displayNotes(notes, searchTerm = '') {
       note.domain.toLowerCase().includes(term) ||
       note.username.toLowerCase().includes(term) ||
       note.note.toLowerCase().includes(term) ||
-      (note.tags && note.tags.some(tag => tag.toLowerCase().includes(term)))
+      (getNoteTags(note).some(tag => tag.toLowerCase().includes(term)))
     );
   }
 
@@ -937,9 +1112,7 @@ async function getAllTags() {
   );
   const tagsSet = new Set();
   notes.forEach(note => {
-    if (note.tags) {
-      note.tags.forEach(tag => tagsSet.add(tag));
-    }
+    getNoteTags(note).forEach(tag => tagsSet.add(tag));
   });
   return Array.from(tagsSet).sort();
 }
@@ -1176,19 +1349,27 @@ async function importNotes(file) {
 
 // 设置数据管理功能
 function setupDataManagement() {
+  // 防止重复初始化 - 如果已经初始化过则直接返回
+  if (setupDataManagement.initialized) {
+    console.log('[DataManagement] 已经初始化过，跳过重复初始化');
+    return;
+  }
+
+  console.log('[DataManagement] 初始化数据管理功能');
+
   const settingsExportBtn = document.getElementById('settingsExportBtn');
   const settingsImportBtn = document.getElementById('settingsImportBtn');
   const settingsImportFileInput = document.getElementById('settingsImportFileInput');
   const clearAllDataBtn = document.getElementById('clearAllDataBtn');
-  
+
   // 导出按钮点击事件
   settingsExportBtn.addEventListener('click', exportNotes);
-  
+
   // 导入按钮点击事件
   settingsImportBtn.addEventListener('click', () => {
     settingsImportFileInput.click();
   });
-  
+
   // 文件选择处理
   settingsImportFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
@@ -1201,7 +1382,7 @@ function setupDataManagement() {
       settingsImportFileInput.value = ''; // 重置文件选择器
     }
   });
-  
+
   // 清除所有数据按钮点击事件
   clearAllDataBtn.addEventListener('click', () => {
     if (confirm(getMessage('confirmClearAllData') || '确定要清除所有数据吗？这将无法恢复。')) {
@@ -1212,12 +1393,13 @@ function setupDataManagement() {
       });
     }
   });
+
+  // 标记为已初始化
+  setupDataManagement.initialized = true;
 }
 
-// 为事件处理函数创建全局引用，确保可以正确移除
-let handleViewChangelog;
-let handleReportIssue;
-
+// 初始化标志
+setupDataManagement.initialized = false;
 // 设置关于功能
 function setupAbout() {
   const viewChangelogLink = document.getElementById('viewChangelogLink');
