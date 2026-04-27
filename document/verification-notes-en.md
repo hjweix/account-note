@@ -3,7 +3,7 @@
 ## Basic Information
 
 - Extension Name: Account Note
-- Version: 1.0.3
+- Version: 1.1.0
 - Purpose: Account Note Management Tool
 
 ## Test Accounts
@@ -57,13 +57,11 @@ No specific test accounts are required. This extension can be tested on any webs
    - All data is stored locally in the browser
    - Uses chrome.storage.local API
    - No network connection required
-
 2. Permission Details:
 
    - storage: For local data storage
    - activeTab: For identifying login forms on current page
    - tabs: For displaying website information in management page
-
 3. Privacy Protection:
 
    - Does not collect any user data
