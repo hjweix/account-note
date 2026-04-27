@@ -1,6 +1,6 @@
 {
   "name": "accountnote",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Account Note是一个浏览器扩展插件，用于增强账号管理体验。它允许用户为不同网站的账号添加备注信息，帮助用户更好地管理和识别不同的账户。",
   "main": "webpack.config.js",
   "scripts": {
