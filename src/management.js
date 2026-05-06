@@ -1423,13 +1423,13 @@ function setupAbout() {
   handleViewChangelog = function(e) {
     e.preventDefault();
     console.log('查看更新日志链接被点击');
-    chrome.tabs.create({ url: 'https://github.com/account-note/account-note/blob/main/document/changelog.md' });
+    chrome.tabs.create({ url: 'https://github.com/hjweix/account-note/blob/main/document/changelog.md' });
   };
   
   handleReportIssue = function(e) {
     e.preventDefault();
     console.log('反馈问题链接被点击');
-    chrome.tabs.create({ url: 'https://github.com/account-note/account-note/issues' });
+    chrome.tabs.create({ url: 'https://github.com/hjweix/account-note/issues' });
   };
   
   // 添加新的事件监听器
