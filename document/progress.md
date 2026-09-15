@@ -1,5 +1,19 @@
 # 项目进度日志
 
+## 2026-09-16（UI 原生化重设计 M3：管理页）
+
+### 完成的功能
+1. management.css token 级换皮（骨架与布局不动）：四组变量块统一为 M1/M2 同款 Chrome 原生配色（强调色 indigo→#1a73e8/#8ab4f8，页面底 #f8f9fa/#202124，卡片实心 #ffffff/#292a2d，语义色同步）
+2. 定点清除玻璃拟态：全部 backdrop-filter（8 处）、头像 indigo 渐变改单色、收藏琥珀顶条保留但改实心 `var(--warning-color)`、头部点阵纹理删除、搜索框内阴影删除
+3. 动效与形变归原：弹跳曲线降级为标准曲线、去掉卡片/按钮 hover 浮起（translateY/scale）、tab active 投影与收藏卡片 glow 删除
+4. 圆角归一到 8px（tag-badge 芯片保留 10px 胶囊）；滚动条改中性灰
+5. management.html 删除 Google Fonts 外链，字体收归 system-ui
+6. **顺手修复存量 bug**：`setupAbout()` 在赋值前读取未声明的 `handleViewChangelog`/`handleReportIssue`，每次抛 ReferenceError 导致「查看更新日志」「反馈问题」链接监听器从未挂上；补 `let` 声明修复
+
+### 验证
+- 桩注入真机 16/16 断言：外链字体清除、CSS 零 blur/渐变残留、页面/头部/卡片实心、圆角 8px、头像单色、琥珀顶条保留、Tab 切换、明暗主题
+- check:css / check:i18n 门禁通过；明暗双主题截图核验
+
 ## 2026-09-16（UI 原生化重设计 M2：Popup 工具栏）
 
 ### 完成的功能

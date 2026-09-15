@@ -1640,6 +1640,10 @@ function setupDataManagement() {
 // 初始化标志
 setupDataManagement.initialized = false;
 // 设置关于功能
+// 注意：这两个句柄必须先声明再读取——setupAbout 可能被多次调用以重绑监听器，
+// 未声明时 `if (handleViewChangelog)` 直接抛 ReferenceError，导致链接监听器永远挂不上
+let handleViewChangelog = null;
+let handleReportIssue = null;
 function setupAbout() {
   const viewChangelogLink = document.getElementById('viewChangelogLink');
   const reportIssueLink = document.getElementById('reportIssueLink');
