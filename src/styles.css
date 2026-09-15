@@ -3,8 +3,10 @@
    Modern Glassmorphism Design
    ======================================== */
 
-/* CSS Variables */
-:root {
+/* CSS Variables
+   z-index 阶梯（全局唯一事实来源，JS 不得内联覆盖）：
+   10000 悬浮按钮 < 10001 备注弹窗 < 10002 禁用菜单 < 10003 Toast */
+:where(.account-note-btn, .account-note-toast, .account-note-suggestion, .disable-options-menu) {
   --primary-500: #6366f1;
   --primary-600: #4f46e5;
   --primary-700: #4338ca;
@@ -32,7 +34,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :where(.account-note-btn, .account-note-toast, .account-note-suggestion, .disable-options-menu) {
     --primary-500: #818cf8;
     --primary-600: #6366f1;
     --primary-700: #4f46e5;
@@ -83,103 +85,6 @@
   transform: translateY(-50%) scale(0.95);
 }
 
-/* Main Popup - Glassmorphism */
-.account-note-popup {
-  position: absolute;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: var(--glass-shadow), 0 20px 60px rgba(0, 0, 0, 0.15);
-  z-index: 10001;
-  display: none;
-  min-width: 300px;
-  opacity: 0;
-  transform: scale(0.95) translateY(-10px);
-  transition: opacity 0.25s var(--ease-standard), transform 0.25s var(--ease-bounce);
-}
-
-.account-note-popup.show {
-  opacity: 1;
-  transform: scale(1) translateY(0);
-}
-
-.account-note-popup::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  border-radius: 20px 20px 0 0;
-}
-
-/* Popup Input */
-.account-note-popup input {
-  width: 100%;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  font-size: 14px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  transition: all 0.2s;
-  font-family: "Inter", -apple-system, sans-serif;
-}
-
-.account-note-popup input:focus {
-  outline: none;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-}
-
-.account-note-popup input::placeholder {
-  color: var(--text-tertiary);
-}
-
-/* Popup Buttons */
-.account-note-popup button {
-  padding: 10px 20px;
-  margin-right: 10px;
-  border-radius: 10px;
-  border: none;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s var(--ease-standard);
-  font-family: "Inter", sans-serif;
-}
-
-.account-note-popup button.primary {
-  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-}
-
-.account-note-popup button.primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
-}
-
-.account-note-popup button.primary:active {
-  transform: translateY(0);
-}
-
-.account-note-popup button.secondary {
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: 1px solid var(--glass-border);
-}
-
-.account-note-popup button.secondary:hover {
-  background: var(--hover-bg);
-  color: var(--primary-500);
-}
-
 /* Toast Notification */
 .account-note-toast {
   position: fixed;
@@ -191,7 +96,7 @@
   color: var(--text-primary);
   padding: 16px 24px;
   border-radius: 16px;
-  z-index: 10002;
+  z-index: 10003; /* 阶梯顶层：Toast 永远压住其他扩展弹层 */
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow), 0 8px 32px rgba(0, 0, 0, 0.2);
   font-size: 14px;
@@ -203,10 +108,10 @@
   gap: 12px;
   opacity: 0;
   transform: translateX(100px);
-  animation: toastSlideIn 0.4s var(--ease-bounce) forwards;
+  animation: account-note-toast-slide-in 0.4s var(--ease-bounce) forwards;
 }
 
-@keyframes toastSlideIn {
+@keyframes account-note-toast-slide-in {
   to {
     opacity: 1;
     transform: translateX(0);
@@ -214,10 +119,10 @@
 }
 
 .account-note-toast.hiding {
-  animation: toastSlideOut 0.3s var(--ease-standard) forwards;
+  animation: account-note-toast-slide-out 0.3s var(--ease-standard) forwards;
 }
 
-@keyframes toastSlideOut {
+@keyframes account-note-toast-slide-out {
   to {
     opacity: 0;
     transform: translateX(20px);
@@ -237,7 +142,7 @@
   border-left: 4px solid var(--primary-500);
 }
 
-.toast-icon {
+.account-note-toast .toast-icon {
   font-size: 20px;
   display: flex;
   align-items: center;
@@ -293,7 +198,7 @@
   color: #94a3b8;
 }
 
-.favorite-btn {
+.account-note-suggestion .favorite-btn {
   background: transparent;
   border: none;
   cursor: pointer;
@@ -307,22 +212,22 @@
   justify-content: center;
 }
 
-.favorite-btn:hover {
+.account-note-suggestion .favorite-btn:hover {
   background: rgba(245, 158, 11, 0.1);
   color: #f59e0b;
   transform: scale(1.1);
 }
 
-.favorite-btn.is-favorite {
+.account-note-suggestion .favorite-btn.is-favorite {
   color: #f59e0b;
 }
 
-.favorite-btn.is-favorite:hover {
+.account-note-suggestion .favorite-btn.is-favorite:hover {
   color: #d97706;
 }
 
 /* Note Input Wrapper */
-.note-input-wrapper {
+.account-note-suggestion .note-input-wrapper {
   position: relative;
 }
 
@@ -377,7 +282,7 @@
 }
 
 /* Tags Container - Compact */
-.note-tags-container {
+.account-note-suggestion .note-tags-container {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -399,7 +304,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.note-tag {
+.account-note-suggestion .note-tag {
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -418,7 +323,7 @@
   background: rgba(129, 140, 248, 0.25);
 }
 
-.tag-remove {
+.account-note-suggestion .tag-remove {
   cursor: pointer;
   font-size: 12px;
   line-height: 1;
@@ -427,20 +332,20 @@
   margin-left: 2px;
 }
 
-.tag-remove:hover {
+.account-note-suggestion .tag-remove:hover {
   opacity: 1;
   color: #ef4444;
 }
 
 /* Tag Input Container - Compact */
-.note-tag-input-container {
+.account-note-suggestion .note-tag-input-container {
   display: flex;
   gap: 6px;
   margin: 6px 0;
-  animation: slideDown 0.2s var(--ease-standard);
+  animation: account-note-slide-down 0.2s var(--ease-standard);
 }
 
-@keyframes slideDown {
+@keyframes account-note-slide-down {
   from {
     opacity: 0;
     transform: translateY(-10px);
@@ -464,7 +369,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.note-tag-input {
+.account-note-suggestion .note-tag-input {
   flex: 0 0 auto;
   width: 140px;
   padding: 6px 10px;
@@ -508,7 +413,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.add-tag-btn {
+.account-note-suggestion .add-tag-btn {
   padding: 4px 10px;
   font-size: 11px;
   border-radius: 6px;
@@ -528,7 +433,7 @@
 }
 
 /* Footer Actions - Compact */
-.note-footer-actions {
+.account-note-suggestion .note-footer-actions {
   display: flex;
   gap: 6px;
   margin-top: 6px;
@@ -557,7 +462,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.toggle-text-btn {
+.account-note-suggestion .toggle-text-btn {
   padding: 4px 10px;
   font-size: 11px;
   border-radius: 6px;
@@ -588,7 +493,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.close-note-btn {
+.account-note-suggestion .close-note-btn {
   margin-left: auto;
   padding: 4px 12px;
   font-size: 11px;
@@ -620,7 +525,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.note-footer-actions .favorite-btn {
+.account-note-suggestion .note-footer-actions .favorite-btn {
   padding: 4px 12px;
   font-size: 11px;
   font-weight: 500;
@@ -634,7 +539,7 @@
   min-height: 26px;
 }
 
-.note-footer-actions .favorite-btn svg {
+.account-note-suggestion .note-footer-actions .favorite-btn svg {
   width: 16px;
   height: 16px;
 }
@@ -651,112 +556,16 @@
   border-color: rgba(245, 158, 11, 0.4);
 }
 
-.note-footer-actions .favorite-btn.is-favorite {
+.account-note-suggestion .note-footer-actions .favorite-btn.is-favorite {
   color: #f59e0b;
   background: rgba(245, 158, 11, 0.1);
   border-color: rgba(245, 158, 11, 0.3);
 }
 
-.note-footer-actions .favorite-btn.is-favorite:hover {
+.account-note-suggestion .note-footer-actions .favorite-btn.is-favorite:hover {
   color: #f59e0b;
   background: rgba(245, 158, 11, 0.2);
 }
-
-.edit-note-content {
-  padding: 20px;
-}
-
-/* Note Input with Floating Label Style */
-.note-input {
-  width: 100%;
-  padding: 14px 16px;
-  border: 1px solid var(--glass-border);
-  border-radius: 14px;
-  margin-bottom: 16px;
-  font-size: 14px;
-  transition: all 0.2s;
-  box-sizing: border-box;
-  min-height: 100px;
-  max-height: 240px;
-  resize: vertical;
-  line-height: 1.6;
-  font-family: "Inter", sans-serif;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-.note-input:focus {
-  outline: none;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-}
-
-.note-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-/* Scrollbar for textarea */
-.note-input::-webkit-scrollbar {
-  width: 6px;
-}
-
-.note-input::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.note-input::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
-  border-radius: 3px;
-}
-
-.note-input::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.5);
-}
-
-/* Edit Note Buttons */
-.edit-note-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.save-btn, .cancel-btn {
-  padding: 10px 20px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s var(--ease-standard);
-  font-family: "Inter", sans-serif;
-}
-
-.save-btn {
-  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-}
-
-.save-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
-}
-
-.save-btn:active {
-  transform: translateY(0);
-}
-
-.cancel-btn {
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: 1px solid var(--glass-border);
-}
-
-.cancel-btn:hover {
-  background: var(--hover-bg);
-  color: var(--primary-500);
-}
-
 /* Account Note Text Display */
 .account-note-text {
   width: 100%;
@@ -799,7 +608,7 @@
 }
 
 /* Toggle Text Button */
-.toggle-text-btn {
+.account-note-suggestion .toggle-text-btn {
   position: absolute;
   right: 40px;
   bottom: -28px;
@@ -815,7 +624,7 @@
   backdrop-filter: blur(4px);
 }
 
-.toggle-text-btn:hover {
+.account-note-suggestion .toggle-text-btn:hover {
   background: var(--hover-bg);
   transform: translateY(-1px);
 }
@@ -832,7 +641,7 @@
 }
 
 /* Animation */
-@keyframes pulse-border {
+@keyframes account-note-pulse-border {
   0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
   70% { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0); }
   100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }

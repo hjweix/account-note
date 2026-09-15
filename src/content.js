@@ -1,25 +1,25 @@
 // 监听页面加载完成和DOM变化
 // 扩展上下文失效标记
 let isExtensionInvalidated = false;
-let observer = null;
+// 页面级监听是否已注册（幂等标记，替代原先的 MutationObserver 状态）
+let listenersRegistered = false;
 
 // 检查扩展上下文是否有效
 function isExtensionContextValid() {
   try {
-    return typeof chrome !== 'undefined' &&
-           chrome.runtime !== undefined &&
-           chrome.runtime.id !== undefined;
+    return typeof chrome !== 'undefined' && chrome.runtime !== undefined && chrome.runtime.id !== undefined;
   } catch (e) {
     return false;
   }
 }
 
-// 断开 MutationObserver
-function disconnectObserver() {
-  if (observer) {
-    observer.disconnect();
-    observer = null;
-  }
+// 卸载注入到页面上的所有监听，扩展上下文失效后不再打扰宿主页面
+function teardownListeners() {
+  if (!listenersRegistered) return;
+  document.removeEventListener('focusin', onDelegatedFocusIn, true);
+  document.removeEventListener('input', onDelegatedInput, true);
+  document.removeEventListener('change', onDelegatedInput, true);
+  listenersRegistered = false;
 }
 
 // CSS样式已通过Webpack打包到content.css中，不需要动态加载
@@ -29,19 +29,23 @@ function shouldShowNote() {
   return new Promise(resolve => {
     if (isExtensionInvalidated || !isExtensionContextValid()) {
       isExtensionInvalidated = true;
-      disconnectObserver();
+      teardownListeners();
       resolve(false);
       return;
     }
-
     const domain = window.location.origin;
 
+    // about:blank、data: 等内联框架的 origin 是 "null"，没有可归属的站点
+    if (!/^https?:\/\//.test(domain)) {
+      resolve(false);
+      return;
+    }
     try {
-      chrome.storage.local.get(['disabledGlobal', 'disabledSites'], (result) => {
+      chrome.storage.local.get(['disabledGlobal', 'disabledSites'], result => {
         if (chrome.runtime.lastError) {
           if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
             isExtensionInvalidated = true;
-            disconnectObserver();
+            teardownListeners();
           }
           resolve(false);
           return;
@@ -66,67 +70,107 @@ function shouldShowNote() {
           resolve(false);
           return;
         }
-
         resolve(true);
       });
     } catch (error) {
       if (error.message?.includes('Extension context invalidated')) {
         isExtensionInvalidated = true;
-        disconnectObserver();
+        teardownListeners();
       }
       resolve(false);
     }
   });
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+// ===== 账号输入框监听 =====
+// 不再逐个 input 绑定事件，改为在 document 上以捕获阶段做事件委托。
+// 这样 SPA 延迟渲染、节点重建、局部替换都不会丢失监听，
+// 也无需再向页面 DOM 写入任何标记属性。
+
+// 取出事件的实际目标元素。
+// composedPath()[0] 可穿透 Shadow DOM（event.target 会被重定向成宿主元素）。
+function resolveEventTarget(event) {
+  if (typeof event.composedPath === 'function') {
+    const path = event.composedPath();
+    if (path && path.length > 0) return path[0];
+  }
+  return event.target;
+}
+
+// 廉价的候选元素过滤，先排除掉绝大多数无关节点
+function isCandidateInput(el) {
+  return !!el && el.nodeType === 1 && el.tagName === 'INPUT' && typeof el.value === 'string';
+}
+
+// 聚焦账号框：已有内容时读取并展示备注
+function onDelegatedFocusIn(event) {
+  const field = resolveEventTarget(event);
+  if (!isCandidateInput(field) || !isUsernameField(field)) return;
+  handleAccountFieldFocus(field);
+}
+
+// 在账号框输入：按字段防抖后读取并展示备注
+function onDelegatedInput(event) {
+  const field = resolveEventTarget(event);
+  if (!isCandidateInput(field) || !isUsernameField(field)) return;
+  getFieldInputHandler(field)();
+}
+
+// 注册页面级监听（幂等）
+function initAccountFields() {
+  if (listenersRegistered) return;
   if (isExtensionInvalidated || !isExtensionContextValid()) {
     isExtensionInvalidated = true;
     return;
   }
+  if (!document.body) {
+    document.addEventListener('DOMContentLoaded', initAccountFields, {
+      once: true
+    });
+    return;
+  }
+
+  // 捕获阶段只做旁听：不调用 preventDefault / stopPropagation，
+  // 宿主页面自身的事件流与默认行为完全不受影响。
+  document.addEventListener('focusin', onDelegatedFocusIn, true);
+  document.addEventListener('input', onDelegatedInput, true);
+  // change 一并委托：浏览器自动填充后即便没有逐字输入也会触发，
+  // 这样「已自动填好但未聚焦」的账号框也能被覆盖
+  document.addEventListener('change', onDelegatedInput, true);
+  listenersRegistered = true;
+}
+
+// iframe 场景：跳过尺寸过小或不可见的框架（广告、埋点、像素追踪等），
+// 避免在每个小 iframe 里都白白注入一份监听
+function isNegligibleFrame() {
+  if (window.top === window.self) return false;
+  return window.innerWidth < 200 || window.innerHeight < 200;
+}
+
+// 启动：content script 在 document_idle 注入，DOM 通常已就绪，直接初始化；
+// 若仍在解析中则等 DOMContentLoaded，保证首屏一定会被扫到。
+async function bootstrap() {
+  if (isExtensionInvalidated || !isExtensionContextValid()) {
+    isExtensionInvalidated = true;
+    return;
+  }
+  if (isNegligibleFrame()) return;
   if (await shouldShowNote()) {
     initAccountFields();
   }
-});
-
-// 初始化 MutationObserver
-function initObserver() {
-  if (isExtensionInvalidated || !isExtensionContextValid()) {
-    isExtensionInvalidated = true;
-    return;
-  }
-
-  observer = new MutationObserver(async () => {
-    try {
-      if (isExtensionInvalidated || !isExtensionContextValid()) {
-        isExtensionInvalidated = true;
-        disconnectObserver();
-        return;
-      }
-      if (await shouldShowNote()) {
-        initAccountFields();
-      }
-    } catch (error) {
-      if (error.message?.includes('Extension context invalidated')) {
-        isExtensionInvalidated = true;
-        disconnectObserver();
-      }
-    }
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootstrap, {
+    once: true
   });
-
-  observer.observe(document.body, { childList: true, subtree: true });
-}
-
-// 启动观察器
-if (document.body) {
-  initObserver();
 } else {
-  document.addEventListener('DOMContentLoaded', initObserver);
+  bootstrap();
 }
 
-// 在页面卸载时断开观察者连接
-window.addEventListener('unload', () => {
-  disconnectObserver();
+// 页面进入往返缓存时卸载监听，恢复时重新挂载
+window.addEventListener('pagehide', teardownListeners);
+window.addEventListener('pageshow', event => {
+  if (event.persisted) bootstrap();
 });
 
 // 显示禁用选项菜单
@@ -136,11 +180,9 @@ function showDisableOptions(suggestion, field, closeBtn) {
   if (existingMenu) {
     existingMenu.remove();
   }
-
   const domain = window.location.origin;
   const disableMenu = document.createElement('div');
   disableMenu.className = 'disable-options-menu';
-
   disableMenu.innerHTML = `
     <div class="disable-option" data-action="session">
       ${getMessage('disableSession') || '在本次会话中禁用'}
@@ -158,7 +200,6 @@ function showDisableOptions(suggestion, field, closeBtn) {
 
   // 定位菜单到关闭按钮附近
   const closeBtnRect = closeBtn.getBoundingClientRect();
-
   disableMenu.style.position = 'fixed';
   disableMenu.style.top = `${closeBtnRect.bottom + 5}px`;
   disableMenu.style.left = `${closeBtnRect.left}px`;
@@ -167,63 +208,59 @@ function showDisableOptions(suggestion, field, closeBtn) {
   const menuRect = disableMenu.getBoundingClientRect();
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-
   if (menuRect.right > viewportWidth) {
     disableMenu.style.left = `${viewportWidth - menuRect.width - 10}px`;
   }
-
   if (menuRect.bottom > viewportHeight) {
     disableMenu.style.top = `${closeBtnRect.top - menuRect.height - 5}px`;
   }
 
   // 添加悬停事件 - 鼠标在菜单上时保持显示
   let menuHideTimeout = null;
-
   disableMenu.addEventListener('mouseenter', () => {
     if (menuHideTimeout) {
       clearTimeout(menuHideTimeout);
       menuHideTimeout = null;
     }
   });
-
   disableMenu.addEventListener('mouseleave', () => {
     menuHideTimeout = setTimeout(() => {
       disableMenu.remove();
     }, 100);
   });
-  
+
   // 添加选项点击事件
   const options = disableMenu.querySelectorAll('.disable-option');
   options.forEach(option => {
     option.addEventListener('click', () => {
       const action = option.dataset.action;
-      
       switch (action) {
         case 'session':
           // 仅在当前会话中禁用
           sessionStorage.setItem(`sessionDisabled_${domain}`, 'true');
           showToast(getMessage('sessionDisabled') || '已在本次会话中禁用备注功能');
           break;
-          
         case 'site':
           // 在当前网站禁用
           try {
-            chrome.storage.local.get(['disabledSites'], (result) => {
+            chrome.storage.local.get(['disabledSites'], result => {
               if (chrome.runtime.lastError) {
                 if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
                   isExtensionInvalidated = true;
-                  disconnectObserver();
+                  teardownListeners();
                 }
                 return;
               }
               const disabledSites = result.disabledSites || [];
               if (!disabledSites.includes(domain)) {
                 disabledSites.push(domain);
-                chrome.storage.local.set({ disabledSites }, () => {
+                chrome.storage.local.set({
+                  disabledSites
+                }, () => {
                   if (chrome.runtime.lastError) {
                     if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
                       isExtensionInvalidated = true;
-                      disconnectObserver();
+                      teardownListeners();
                     }
                     return;
                   }
@@ -234,19 +271,20 @@ function showDisableOptions(suggestion, field, closeBtn) {
           } catch (error) {
             if (error.message?.includes('Extension context invalidated')) {
               isExtensionInvalidated = true;
-              disconnectObserver();
+              teardownListeners();
             }
           }
           break;
-
         case 'global':
           // 全局禁用
           try {
-            chrome.storage.local.set({ disabledGlobal: true }, () => {
+            chrome.storage.local.set({
+              disabledGlobal: true
+            }, () => {
               if (chrome.runtime.lastError) {
                 if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
                   isExtensionInvalidated = true;
-                  disconnectObserver();
+                  teardownListeners();
                 }
                 return;
               }
@@ -255,15 +293,15 @@ function showDisableOptions(suggestion, field, closeBtn) {
           } catch (error) {
             if (error.message?.includes('Extension context invalidated')) {
               isExtensionInvalidated = true;
-              disconnectObserver();
+              teardownListeners();
             }
           }
           break;
       }
-      
+
       // 移除备注弹窗和禁用选项菜单
       disableMenu.remove();
-      suggestion.remove();
+      destroySuggestion(suggestion);
     });
   });
 }
@@ -271,7 +309,7 @@ function showDisableOptions(suggestion, field, closeBtn) {
 // 添加防抖函数
 function debounce(func, wait) {
   let timeout;
-  return function(...args) {
+  return function (...args) {
     const context = this;
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(context, args), wait);
@@ -281,180 +319,82 @@ function debounce(func, wait) {
 // 记录上一次的字段值，用于比较是否真正变化
 const lastFieldValues = new WeakMap();
 
-function initAccountFields() {
-  // 检查扩展上下文是否有效
-  if (isExtensionInvalidated || !isExtensionContextValid()) {
-    isExtensionInvalidated = true;
-    return;
+// 每个输入框各自持有一个防抖后的 input 处理器
+const fieldInputHandlers = new WeakMap();
+function getFieldInputHandler(field) {
+  let handler = fieldInputHandlers.get(field);
+  if (!handler) {
+    handler = debounce(() => handleAccountFieldInput(field), 300);
+    fieldInputHandlers.set(field, handler);
   }
-
-  // 查找所有可能的账号输入框
-  const accountFields = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"]');
-
-  accountFields.forEach(field => {
-    // 检查是否为账号输入框
-    if (!isUsernameField(field)) return;
-
-    // 避免重复初始化
-    if (field.dataset.hasNote) return;
-    field.dataset.hasNote = 'true';
-
-    // 监听账号输入框的focus事件
-    field.addEventListener('focus', async () => {
-      // 检查扩展上下文
-      if (isExtensionInvalidated || !isExtensionContextValid()) {
-        isExtensionInvalidated = true;
-        return;
-      }
-      // 确保 chrome.storage API 可用且输入框有内容，并且网站未被禁用
-      if (field.value.trim() && await shouldShowNote()) {
-        // 记录当前值
-        lastFieldValues.set(field, field.value.trim());
-
-        try {
-          chrome.storage.local.get([getFieldKey(field)], (result) => {
-            if (chrome.runtime.lastError) {
-              if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
-                isExtensionInvalidated = true;
-                disconnectObserver();
-              }
-              return;
-            }
-            const noteData = result[getFieldKey(field)];
-            // 无论是否有备注，都使用同一个展示方式
-            showAccountNote(field, noteData);
-          });
-        } catch (error) {
-          if (error.message?.includes('Extension context invalidated')) {
-            isExtensionInvalidated = true;
-            disconnectObserver();
-          }
-        }
-      }
-    });
-
-    // 使用防抖处理input事件，300ms延迟
-    const debouncedInputHandler = debounce(async () => {
-      // 检查扩展上下文
-      if (isExtensionInvalidated || !isExtensionContextValid()) {
-        isExtensionInvalidated = true;
-        return;
-      }
-
-      const currentValue = field.value.trim();
-      const lastValue = lastFieldValues.get(field) || '';
-
-      // 只有当输入框有内容且值真正变化时才处理
-      if (currentValue && await shouldShowNote()) {
-        // 检查值是否真正变化
-        if (currentValue !== lastValue) {
-          // 更新记录的值
-          lastFieldValues.set(field, currentValue);
-
-          // 获取新的备注数据
-          try {
-            chrome.storage.local.get([getFieldKey(field)], (result) => {
-              if (chrome.runtime.lastError) {
-                if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
-                  isExtensionInvalidated = true;
-                  disconnectObserver();
-                }
-                return;
-              }
-              const noteData = result[getFieldKey(field)];
-              // 更新备注弹窗
-              showAccountNote(field, noteData);
-            });
-          } catch (error) {
-            if (error.message?.includes('Extension context invalidated')) {
-              isExtensionInvalidated = true;
-              disconnectObserver();
-            }
-          }
-        }
-      } else if (!currentValue) {
-        // 如果输入框内容为空，移除已存在的备注框
-        const existingSuggestion = document.querySelector('.account-note-suggestion');
-        if (existingSuggestion) {
-          existingSuggestion.remove();
-        }
-        // 清除记录的值
-        lastFieldValues.delete(field);
-      }
-    }, 300);
-
-    // 添加input事件监听
-    field.addEventListener('input', debouncedInputHandler);
-  });
+  return handler;
 }
 
-// 修改其他使用 chrome.storage 的函数
-function loadExistingNote(field) {
+// 读取备注数据并展示（统一的 storage 出口）
+function loadNoteForField(field) {
   if (isExtensionInvalidated || !isExtensionContextValid()) {
     isExtensionInvalidated = true;
     return;
   }
-
   try {
-    chrome.storage.local.get([getFieldKey(field)], (result) => {
+    chrome.storage.local.get([getFieldKey(field)], result => {
       if (chrome.runtime.lastError) {
         if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
           isExtensionInvalidated = true;
-          disconnectObserver();
+          teardownListeners();
         }
         return;
       }
-      const noteData = result[getFieldKey(field)];
-      if (noteData) {
-        field.dataset.hasStoredNote = 'true';
-      }
+      // 无论是否有备注，都使用同一个展示方式
+      showAccountNote(field, result[getFieldKey(field)]);
     });
   } catch (error) {
     if (error.message?.includes('Extension context invalidated')) {
       isExtensionInvalidated = true;
-      disconnectObserver();
+      teardownListeners();
     }
   }
 }
 
-// 更新弹窗位置
-function updatePopupPosition(popup, field) {
-  const fieldRect = field.getBoundingClientRect();
-  const viewportWidth = window.innerWidth;
-  
-  // 根据可用空间决定弹窗显示位置
-  if (fieldRect.right + 250 > viewportWidth) {
-    // 如果右边空间不足，显示在左边
-    popup.style.left = '-260px';
-  } else {
-    // 默认显示在右边
-    popup.style.left = '30px';
+// 聚焦账号框：仅当输入框已有内容时才展示备注
+async function handleAccountFieldFocus(field) {
+  if (isExtensionInvalidated || !isExtensionContextValid()) {
+    isExtensionInvalidated = true;
+    return;
   }
+
+  // 空值时不做任何事，避免无谓的 storage 读取
+  if (!field.value.trim()) return;
+  if (!(await shouldShowNote())) return;
+  lastFieldValues.set(field, field.value.trim());
+  loadNoteForField(field);
 }
 
-// 创建备注弹出框
-function createNotePopup(field) {
-  const popup = document.createElement('div');
-  popup.className = 'account-note-popup';
-  
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.placeholder = '输入备注信息';
-  
-  const saveBtn = document.createElement('button');
-  saveBtn.textContent = '保存';
-  saveBtn.onclick = () => saveNote(input.value, popup, field);
-  
-  const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = '取消';
-  cancelBtn.onclick = () => popup.style.display = 'none';
-  
-  popup.appendChild(input);
-  popup.appendChild(saveBtn);
-  popup.appendChild(cancelBtn);
-  
-  return popup;
+// 账号框输入：值真正变化时刷新弹窗，清空时移除弹窗
+async function handleAccountFieldInput(field) {
+  if (isExtensionInvalidated || !isExtensionContextValid()) {
+    isExtensionInvalidated = true;
+    return;
+  }
+  const currentValue = field.value.trim();
+
+  // 输入框被清空：只移除本字段的备注框
+  if (!currentValue) {
+    destroySuggestion(getSuggestionFor(field));
+    lastFieldValues.delete(field);
+    return;
+  }
+
+  // 值没有真正变化时不做处理
+  if (currentValue === (lastFieldValues.get(field) || '')) return;
+  if (!(await shouldShowNote())) return;
+  lastFieldValues.set(field, currentValue);
+  loadNoteForField(field);
 }
+
+// 修改其他使用 chrome.storage 的函数
+
+// 更新弹窗位置
 
 // 添加获取消息的辅助函数
 function getMessage(key, substitutions = null) {
@@ -474,7 +414,7 @@ function getDefaultMessage(key) {
   // 检测当前浏览器语言，默认为英文
   const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
   const isChinese = browserLang.startsWith('zh');
-  
+
   // 根据语言提供不同的默认消息
   const defaultMessages = isChinese ? {
     'addNote': '添加备注',
@@ -504,171 +444,125 @@ function getDefaultMessage(key) {
   return defaultMessages[key] || key;
 }
 
-// 修改 saveNote 函数中的错误处理
-function saveNote(note, popup, field) {
-  try {
-    // 检查扩展上下文
-    if (isExtensionInvalidated || !isExtensionContextValid()) {
-      isExtensionInvalidated = true;
-      showToast(getMessage('errorStorageAPI'), 'error');
-      return;
-    }
-
-    if (typeof chrome === 'undefined' || !chrome.storage) {
-      throw new Error(getMessage('errorStorageAPI'));
-    }
-
-    const domain = window.location.origin;
-    const username = field.value.trim();
-
-    if (!note.trim()) {
-      throw new Error(getMessage('errorEmptyNote'));
-    }
-
-    if (!username) {
-      throw new Error(getMessage('errorEmptyUsername'));
-    }
-
-    const key = getFieldKey(field);
-
-    // 先读取现有数据，然后在回调中构建 noteData
-    chrome.storage.local.get([key], (result) => {
-      if (chrome.runtime.lastError) {
-        if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
-          isExtensionInvalidated = true;
-          disconnectObserver();
-        }
-        showToast(getMessage('errorReadData', [chrome.runtime.lastError.message]), 'error');
-        return;
-      }
-
-      const noteData = {
-        key: key,
-        note: note.trim(),
-        createTime: new Date().toISOString(),
-        updateTime: new Date().toISOString(),
-        domain: domain,
-        username: username,
-        tags: result[key]?.tags || [],
-        isFavorite: result[key]?.isFavorite || false,
-        favoriteTime: result[key]?.favoriteTime || null
-      };
-
-      if (result[key]) {
-        noteData.createTime = result[key].createTime;
-      }
-
-      chrome.storage.local.set({ [key]: noteData }, () => {
-        if (chrome.runtime.lastError) {
-          if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
-            isExtensionInvalidated = true;
-            disconnectObserver();
-          }
-          showToast(getMessage('errorSaveData', [chrome.runtime.lastError.message]), 'error');
-          return;
-        }
-        popup.style.display = 'none';
-        showToast(getMessage('successNoteSaved'));
-      });
-    });
-  } catch (error) {
-    if (error.message?.includes('Extension context invalidated')) {
-      isExtensionInvalidated = true;
-      disconnectObserver();
-    }
-    showToast(error.message, 'error');
-    console.error('SaveNote Error:', error);
-  }
-}
 
 // 生成输入框的唯一标识
 function getFieldKey(field) {
   const domain = window.location.origin;
-  const username = field.value.trim();  // 添加 trim 以保持一致性
-  console.log('[getFieldKey] 生成 key:', { domain, username, key: `${domain}_${username}` });
+  const username = field.value.trim(); // 添加 trim 以保持一致性
+  console.log('[getFieldKey] 生成 key:', {
+    domain,
+    username,
+    key: `${domain}_${username}`
+  });
   return `${domain}_${username}`;
 }
 
+// 账号输入框可能使用的 type。省略 type 的 input，DOM 上读出来就是 'text'，
+// 因此「不写 type」的写法天然被覆盖。
+const USERNAME_INPUT_TYPES = ['text', 'email', 'tel'];
 
-// 判断是否为用户名输入框
-function isUsernameField(input) {
-  if (!input || !input.type) return false;
-  
-  const usernameTypes = ['text', 'email', 'tel'];
-  const usernameIdentifiers = ['user', 'email', 'login', 'name', 'account', 'identifier'];
-  
-  // 检查输入框类型
-  if (!usernameTypes.includes(input.type.toLowerCase())) return false;
-  
-  // 检查输入框的id、name、placeholder、aria-label等属性
-  const attributes = [
-    input.id,
-    input.name,
-    input.placeholder,
-    input.getAttribute('aria-label'),
-    input.getAttribute('autocomplete')
-  ].map(attr => (attr || '').toLowerCase());
-  
-  // 检查class名称
-  const classNames = (input.className || '').toLowerCase().split(' ');
-  attributes.push(...classNames);
-  
-  return attributes.some(attr => 
-    usernameIdentifiers.some(identifier => attr.includes(identifier))
-  );
-}
+// 正向关键词：命中任意一个即认为是账号类输入框（含中文）
+const USERNAME_KEYWORDS = ['user', 'uname', 'login', 'signin', 'account', 'acct', 'email', 'mail', 'identifier', 'uid', 'member', 'mobile', 'phone', 'card', 'name', '账号', '帐号', '账户', '帐户', '用户名', '用户', '登录', '登陆', '邮箱', '邮件', '手机', '电话', '号码', '身份证', '证件', '学号', '工号', '会员'];
 
-function showNotePopup(popup, field) {
-  // 更新弹窗位置
-  updatePopupPosition(popup, field);
-  popup.style.display = 'block';
-  
-  // 获取已存在的备注
-  chrome.storage.local.get([getFieldKey(field)], (result) => {
-    const note = result[getFieldKey(field)];
-    if (note) {
-      popup.querySelector('input').value = note;
-    } else {
-      popup.querySelector('input').value = ''; // 清空输入框
+// 反向关键词：命中任意一个即排除，避免在密码 / 验证码 / 搜索框上误弹
+const NON_USERNAME_KEYWORDS = ['password', 'passwd', 'pwd', 'captcha', 'verification', 'verify', 'sms', 'otp', 'search', 'keyword', 'query', '密码', '验证码', '校验码', '短信', '搜索', '关键词'];
+
+// 收集与输入框相关的文本线索：自身属性 + 显式关联的 label 文本。
+// 刻意不去抓「父容器整段文本」——那会把同一表单里的密码框一并误判成账号框。
+function getFieldTextHints(field) {
+  const hints = [field.id, field.name, field.placeholder, field.getAttribute('aria-label'), field.getAttribute('autocomplete'), field.getAttribute('data-testid'), field.getAttribute('data-field'), field.getAttribute('title'), typeof field.className === 'string' ? field.className : ''];
+
+  // <label for="..."> 或包裹式 <label>
+  try {
+    if (field.labels) {
+      Array.from(field.labels).forEach(label => hints.push(label.textContent));
     }
-  });
-  
-  // 聚焦输入框
-  popup.querySelector('input').focus();
+  } catch (error) {
+    // 忽略无法访问 labels 的场景
+  }
+
+  // aria-labelledby 指向元素的文本
+  const labelledBy = field.getAttribute('aria-labelledby');
+  if (labelledBy) {
+    labelledBy.split(/\s+/).forEach(id => {
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (el) hints.push(el.textContent);
+    });
+  }
+  return hints.filter(hint => typeof hint === 'string' && hint.trim()).map(hint => hint.toLowerCase());
 }
 
+// 判断是否为用户名/账号输入框
+function isUsernameField(input) {
+  if (!input || !input.tagName || input.tagName !== 'INPUT') return false;
+  const type = (input.type || 'text').toLowerCase();
+  if (!USERNAME_INPUT_TYPES.includes(type)) return false;
+  const joined = getFieldTextHints(input).join(' ');
+
+  // 反向关键词优先：密码、验证码、搜索等一律不认
+  if (NON_USERNAME_KEYWORDS.some(keyword => joined.includes(keyword))) return false;
+
+  // 强信号：email 类型，或 autocomplete 明确标注为账号字段
+  const autocomplete = (input.getAttribute('autocomplete') || '').toLowerCase();
+  if (type === 'email') return true;
+  if (autocomplete.indexOf('username') !== -1 || autocomplete === 'email') return true;
+  return USERNAME_KEYWORDS.some(keyword => joined.includes(keyword));
+}
 // 缓存弹窗位置，避免频繁重新计算导致跳动
 const popupPositionCache = new WeakMap();
 
+// 按字段维护弹窗：同页多个账号框各管各的，不会互相顶掉
+const suggestionByField = new WeakMap();
+function getSuggestionFor(field) {
+  const el = suggestionByField.get(field);
+  return el && el.isConnected ? el : null;
+}
+
+// 销毁一个弹窗并解绑它的全部监听
+function destroySuggestion(suggestion) {
+  if (!suggestion) return;
+  const oldToggleBtn = suggestion.querySelector('.toggle-text-btn');
+  if (oldToggleBtn) {
+    oldToggleBtn.removeEventListener('click', oldToggleBtn.clickHandler);
+  }
+  const oldNoteInput = suggestion.querySelector('.account-note-text');
+  if (oldNoteInput) {
+    oldNoteInput.removeEventListener('click', oldNoteInput.clickHandler);
+    oldNoteInput.removeEventListener('keydown', oldNoteInput.keydownHandler);
+    oldNoteInput.removeEventListener('blur', oldNoteInput.blurHandler);
+  }
+  if (suggestion.outsideClickHandler) {
+    document.removeEventListener('click', suggestion.outsideClickHandler);
+  }
+  suggestion.remove();
+}
+
+// 同一时刻只保留一个备注弹窗，收掉其他字段的
+function closeOtherSuggestions(field) {
+  document.querySelectorAll('.account-note-suggestion').forEach(el => {
+    if (suggestionByField.get(field) === el) return;
+    destroySuggestion(el);
+  });
+}
 function showAccountNote(field, noteData) {
-  // 检查是否已存在弹窗
-  const existingSuggestion = document.querySelector('.account-note-suggestion');
-  
-  // 如果已存在弹窗且内容相同，则不重新创建
+  const existingSuggestion = getSuggestionFor(field);
+
+  // 本字段的弹窗已存在且内容没变：直接复用，不重建，避免闪烁
   if (existingSuggestion) {
     const existingNoteInput = existingSuggestion.querySelector('.account-note-text');
     const existingNote = existingNoteInput ? existingNoteInput.dataset.fullText : '';
     const newNote = noteData ? noteData.note : '';
-    
-    // 如果备注内容相同，则不需要重新创建弹窗
     if (existingNote === newNote) {
+      existingSuggestion.style.display = 'block';
+      existingSuggestion.classList.add('show');
       return;
     }
-    
-    // 移除所有事件监听器
-    const oldToggleBtn = existingSuggestion.querySelector('.toggle-text-btn');
-    if (oldToggleBtn) {
-      oldToggleBtn.removeEventListener('click', oldToggleBtn.clickHandler);
-    }
-    const oldNoteInput = existingSuggestion.querySelector('.account-note-text');
-    if (oldNoteInput) {
-      oldNoteInput.removeEventListener('click', oldNoteInput.clickHandler);
-      oldNoteInput.removeEventListener('keydown', oldNoteInput.keydownHandler);
-      oldNoteInput.removeEventListener('blur', oldNoteInput.blurHandler);
-    }
-    document.removeEventListener('click', existingSuggestion.outsideClickHandler);
-    existingSuggestion.remove();
+    destroySuggestion(existingSuggestion);
   }
+
+  // 切换到另一个账号框前，先收掉别的弹窗
+  closeOtherSuggestions(field);
 
   // 添加 HTML 转义函数
   function escapeHtml(text) {
@@ -678,7 +572,6 @@ function showAccountNote(field, noteData) {
     div.remove(); // 清理临时DOM元素
     return escaped;
   }
-
   const suggestion = document.createElement('div');
   suggestion.className = 'account-note-suggestion';
 
@@ -689,10 +582,9 @@ function showAccountNote(field, noteData) {
   } else {
     suggestion.setAttribute('data-theme', 'light');
   }
-  
   const hasNote = noteData && noteData.note;
   const note = hasNote ? noteData.note : '';
-  
+
   // 创建一个临时元素来测量文本宽度
   const measureEl = document.createElement('textarea');
   measureEl.className = 'account-note-text';
@@ -703,15 +595,14 @@ function showAccountNote(field, noteData) {
   measureEl.style.whiteSpace = 'nowrap';
   measureEl.value = note;
   document.body.appendChild(measureEl);
-  
+
   // 检查是否需要展开按钮
   const isLongText = measureEl.scrollWidth > measureEl.clientWidth;
   document.body.removeChild(measureEl);
-  
+
   // 根据是否需要展开来设置显示文本
   const fullText = note;
   const shortText = isLongText ? `${note.slice(0, 50)}...` : note;
-
   suggestion.innerHTML = `
       <div class="note-input-wrapper">
         <textarea
@@ -736,10 +627,10 @@ function showAccountNote(field, noteData) {
         <button class="close-note-btn" title="${getMessage('close')}">${getMessage('close')}</button>
       </div>
   `;
-  
+
   // 定位弹窗 - 使用缓存的位置信息或重新计算
   let position = popupPositionCache.get(field);
-  
+
   // 如果没有缓存的位置信息，或者窗口大小发生变化，则重新计算
   if (!position || position.viewportWidth !== window.innerWidth || position.viewportHeight !== window.innerHeight) {
     const fieldRect = field.getBoundingClientRect();
@@ -761,9 +652,14 @@ function showAccountNote(field, noteData) {
       top = Math.round(viewportHeight - 160);
       if (top < 0) top = 10; // 确保不会超出顶部
     }
-    
+
     // 缓存计算的位置
-    position = { top, left, viewportWidth, viewportHeight };
+    position = {
+      top,
+      left,
+      viewportWidth,
+      viewportHeight
+    };
     popupPositionCache.set(field, position);
   }
 
@@ -771,8 +667,8 @@ function showAccountNote(field, noteData) {
   suggestion.style.position = 'fixed';
   suggestion.style.top = `${position.top}px`;
   suggestion.style.left = `${position.left}px`;
-
   document.body.appendChild(suggestion);
+  suggestionByField.set(field, suggestion);
 
   // 获取元素
   const noteInput = suggestion.querySelector('.account-note-text');
@@ -781,13 +677,12 @@ function showAccountNote(field, noteData) {
 
   // 设置初始高度
   noteInput.style.height = '45px';
-  
+
   // 处理展开/收起功能
   if (toggleBtn) {
-    toggleBtn.clickHandler = (e) => {
+    toggleBtn.clickHandler = e => {
       e.stopPropagation();
       const isExpanded = noteInput.dataset.isExpanded === 'true';
-      
       if (isExpanded) {
         noteInput.value = noteInput.dataset.shortText;
         toggleBtn.textContent = getMessage('expand');
@@ -808,12 +703,10 @@ function showAccountNote(field, noteData) {
   // 点击文本框时启用编辑
   noteInput.clickHandler = () => {
     const username = field.value.trim();
-    
     if (!username) {
       showToast(getMessage('errorEmptyUsername'));
       return;
     }
-    
     noteInput.readOnly = false;
     noteInput.focus();
     if (!hasNote) {
@@ -823,28 +716,26 @@ function showAccountNote(field, noteData) {
   noteInput.addEventListener('click', noteInput.clickHandler);
 
   // 处理编辑完成
-  noteInput.keydownHandler = (e) => {
+  noteInput.keydownHandler = e => {
     if (e.key === 'Enter') {
       e.preventDefault();
       const newNote = noteInput.value.trim();
       if (newNote) {
         noteInput.readOnly = true;
         noteInput.blur();
-
         const domain = window.location.origin;
         const username = field.value.trim();
         const key = getFieldKey(field);
 
         // 先读取现有数据，然后在回调中构建 noteData
-        chrome.storage.local.get([key], (result) => {
+        chrome.storage.local.get([key], result => {
           if (chrome.runtime.lastError) {
             if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
               isExtensionInvalidated = true;
-              disconnectObserver();
+              teardownListeners();
             }
             return;
           }
-
           const noteData = {
             key: key,
             note: newNote,
@@ -856,28 +747,24 @@ function showAccountNote(field, noteData) {
             isFavorite: result[key]?.isFavorite || false,
             favoriteTime: result[key]?.favoriteTime || null
           };
-
           if (result[key]) {
             noteData.createTime = result[key].createTime;
           }
-
           chrome.storage.local.set({
             [key]: noteData
           }, () => {
             if (chrome.runtime.lastError) {
               if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
                 isExtensionInvalidated = true;
-                disconnectObserver();
+                teardownListeners();
               }
               return;
             }
             const isLongText = newNote.length > 100;
             const displayText = isLongText ? `${newNote.slice(0, 100)}...` : newNote;
-
             noteInput.value = displayText;
             noteInput.dataset.fullText = newNote;
             noteInput.dataset.shortText = displayText;
-
             let toggleBtn = suggestion.querySelector('.toggle-text-btn');
             if (isLongText && !toggleBtn) {
               toggleBtn = document.createElement('button');
@@ -885,11 +772,9 @@ function showAccountNote(field, noteData) {
               toggleBtn.dataset.expanded = 'false';
               toggleBtn.textContent = getMessage('expand');
               suggestion.appendChild(toggleBtn);
-
-              toggleBtn.clickHandler = (e) => {
+              toggleBtn.clickHandler = e => {
                 e.stopPropagation();
                 const isExpanded = toggleBtn.dataset.expanded === 'true';
-
                 if (isExpanded) {
                   noteInput.value = noteInput.dataset.shortText;
                   toggleBtn.textContent = getMessage('expand');
@@ -905,7 +790,6 @@ function showAccountNote(field, noteData) {
               toggleBtn.removeEventListener('click', toggleBtn.clickHandler);
               toggleBtn.remove();
             }
-
             showToast(getMessage('successNoteSaved'));
           });
         });
@@ -929,7 +813,6 @@ function showAccountNote(field, noteData) {
 
   // 添加关闭按钮悬停事件
   let menuHideTimeout = null;
-
   closeBtn.addEventListener('mouseenter', () => {
     // 清除隐藏的定时器
     if (menuHideTimeout) {
@@ -938,8 +821,7 @@ function showAccountNote(field, noteData) {
     }
     showDisableOptions(suggestion, field, closeBtn);
   });
-
-  closeBtn.addEventListener('mouseleave', (e) => {
+  closeBtn.addEventListener('mouseleave', e => {
     // 延迟隐藏，给用户时间移动到菜单
     menuHideTimeout = setTimeout(() => {
       const disableMenu = document.querySelector('.disable-options-menu');
@@ -954,9 +836,8 @@ function showAccountNote(field, noteData) {
   const tagInputContainer = suggestion.querySelector('.note-tag-input-container');
   const tagInput = suggestion.querySelector('.note-tag-input');
   const tagsContainer = suggestion.querySelector('.note-tags-container');
-
   if (addTagBtn && tagInputContainer && tagInput) {
-    addTagBtn.addEventListener('click', (e) => {
+    addTagBtn.addEventListener('click', e => {
       e.stopPropagation();
       const isVisible = tagInputContainer.style.display !== 'none';
       tagInputContainer.style.display = isVisible ? 'none' : 'flex';
@@ -966,12 +847,11 @@ function showAccountNote(field, noteData) {
     });
 
     // 处理标签输入
-    const handleTagInput = async (e) => {
+    const handleTagInput = async e => {
       if (e.key === 'Enter' || e.key === ',' || e.type === 'blur') {
         e.preventDefault();
         const tag = tagInput.value.trim().replace(/,/g, '');
         if (!tag) return;
-
         const key = getFieldKey(field);
         try {
           const result = await chrome.storage.local.get([key]);
@@ -984,14 +864,14 @@ function showAccountNote(field, noteData) {
             tagInput.value = '';
             return;
           }
-
           const updatedTags = [...(currentData.tags || []), tag];
           const updatedData = {
             ...currentData,
             tags: updatedTags
           };
-
-          await chrome.storage.local.set({ [key]: updatedData });
+          await chrome.storage.local.set({
+            [key]: updatedData
+          });
 
           // 添加标签到UI
           const tagElement = document.createElement('span');
@@ -1001,11 +881,10 @@ function showAccountNote(field, noteData) {
           tagsContainer.appendChild(tagElement);
 
           // 添加删除事件
-          tagElement.querySelector('.tag-remove').addEventListener('click', (e) => {
+          tagElement.querySelector('.tag-remove').addEventListener('click', e => {
             e.stopPropagation();
             removeTag(key, tag, tagElement);
           });
-
           tagInput.value = '';
           tagInputContainer.style.display = 'none'; // 隐藏输入框
           showToast(getMessage('tagAdded') || '标签已添加');
@@ -1014,14 +893,13 @@ function showAccountNote(field, noteData) {
         }
       }
     };
-
     tagInput.addEventListener('keydown', handleTagInput);
     tagInput.addEventListener('blur', handleTagInput);
   }
 
   // 为已有标签添加删除事件
   tagsContainer.querySelectorAll('.tag-remove').forEach(removeBtn => {
-    removeBtn.addEventListener('click', (e) => {
+    removeBtn.addEventListener('click', e => {
       e.stopPropagation();
       const tagElement = e.target.closest('.note-tag');
       const tag = tagElement.dataset.tag;
@@ -1036,14 +914,14 @@ function showAccountNote(field, noteData) {
       const result = await chrome.storage.local.get([key]);
       const currentData = result[key];
       if (!currentData || !currentData.tags) return;
-
       const updatedTags = currentData.tags.filter(t => t !== tag);
       const updatedData = {
         ...currentData,
         tags: updatedTags
       };
-
-      await chrome.storage.local.set({ [key]: updatedData });
+      await chrome.storage.local.set({
+        [key]: updatedData
+      });
       tagElement.remove();
       showToast(getMessage('tagRemoved') || '标签已移除');
     } catch (error) {
@@ -1052,21 +930,11 @@ function showAccountNote(field, noteData) {
   }
 
   // 修改点击事件监听的处理方式
-  suggestion.outsideClickHandler = (e) => {
+  suggestion.outsideClickHandler = e => {
     if (!suggestion.contains(e.target) && e.target !== field) {
       suggestion.classList.remove('show');
-      // 移除所有事件监听器
-      if (toggleBtn) {
-        toggleBtn.removeEventListener('click', toggleBtn.clickHandler);
-      }
-      noteInput.removeEventListener('click', noteInput.clickHandler);
-      noteInput.removeEventListener('keydown', noteInput.keydownHandler);
-      noteInput.removeEventListener('blur', noteInput.blurHandler);
-      document.removeEventListener('click', suggestion.outsideClickHandler);
-      
-      setTimeout(() => {
-        suggestion.remove();
-      }, 200);
+      // 收起动画结束后再销毁
+      setTimeout(() => destroySuggestion(suggestion), 200);
     }
   };
 
@@ -1076,15 +944,14 @@ function showAccountNote(field, noteData) {
   }, 0);
 
   // 阻止弹窗内的点击事件冒泡
-  suggestion.addEventListener('click', (e) => {
+  suggestion.addEventListener('click', e => {
     e.stopPropagation();
   });
 
-  // 确保弹窗可见
+  // 确保弹窗可见（层级由 CSS 统一管理，见 styles.css 的 z-index 阶梯）
   suggestion.style.display = 'block';
   suggestion.style.opacity = '1';
   suggestion.style.visibility = 'visible';
-  suggestion.style.zIndex = '9999';
 
   // 添加动画效果
   setTimeout(() => {
@@ -1093,123 +960,6 @@ function showAccountNote(field, noteData) {
 }
 
 // 显示编辑备注的弹窗
-function showEditNotePopup(field, currentNote = '') {
-  // 检查扩展上下文
-  if (isExtensionInvalidated || !isExtensionContextValid()) {
-    isExtensionInvalidated = true;
-    return;
-  }
-
-  const popup = document.createElement('div');
-  popup.className = 'edit-note-popup';
-
-  // 获取图标 URL，添加错误处理
-  let iconUrl = '';
-  try {
-    iconUrl = chrome.runtime.getURL('icons/icon48.png');
-  } catch (error) {
-    if (error.message?.includes('Extension context invalidated')) {
-      isExtensionInvalidated = true;
-      disconnectObserver();
-      return;
-    }
-  }
-
-  popup.innerHTML = `
-    <div class="edit-note-header">
-      <img src="${iconUrl}" class="suggestion-icon" />
-      <span>编辑备注</span>
-    </div>
-    <div class="edit-note-content">
-      <textarea class="note-input" placeholder="输入备注信息">${currentNote}</textarea>
-      <div class="edit-note-buttons">
-        <button class="cancel-btn">取消</button>
-        <button class="save-btn">保存</button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(popup);
-
-  // 定位弹窗，使用与showAccountNote相同的逻辑
-  const fieldRect = field.getBoundingClientRect();
-  const viewportHeight = window.innerHeight;
-  const viewportWidth = window.innerWidth;
-
-  // 计算最佳位置
-  let top = fieldRect.top;
-  let left = fieldRect.right + 10;
-
-  // 检查是否超出视口右侧
-  if (left + 320 > viewportWidth) {
-    left = fieldRect.left - 330; // 放在输入框左侧
-    if (left < 0) left = 10; // 如果左侧也放不下，则放在左侧边缘
-  }
-
-  // 检查是否超出视口底部
-  if (top + 180 > viewportHeight) {
-    top = viewportHeight - 190;
-    if (top < 0) top = 10; // 确保不会超出顶部
-  }
-
-  // 设置弹窗位置
-  popup.style.position = 'fixed';
-  popup.style.top = `${top}px`;
-  popup.style.left = `${left}px`;
-  popup.style.zIndex = '9999';
-  popup.style.display = 'block';
-
-  // 添加按钮事件
-  const input = popup.querySelector('.note-input');
-  const saveBtn = popup.querySelector('.save-btn');
-  const cancelBtn = popup.querySelector('.cancel-btn');
-
-  // 自动调整文本区域高度
-  input.addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = (this.scrollHeight) + 'px';
-    // 限制最大高度
-    if (this.scrollHeight > 150) {
-      this.style.height = '150px';
-      this.style.overflowY = 'auto';
-    }
-  });
-  
-  // 初始化高度
-  setTimeout(() => {
-    input.style.height = 'auto';
-    input.style.height = (input.scrollHeight) + 'px';
-    if (input.scrollHeight > 150) {
-      input.style.height = '150px';
-      input.style.overflowY = 'auto';
-    }
-  }, 0);
-
-  // 保存功能
-  const handleSave = () => {
-    const newNote = input.value.trim();
-    if (newNote) {  // 只有当输入不为空时才保存
-      saveNote(newNote, popup, field);
-    }
-  };
-
-  // 添加回车保存功能
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      e.preventDefault();
-      handleSave();
-    } else if (e.key === 'Escape') {
-      popup.remove();
-    }
-  });
-
-  saveBtn.onclick = handleSave;
-  cancelBtn.onclick = () => popup.remove();
-
-  // 自动聚焦输入框
-  input.focus();
-  }
-
 
 // 在 content.js 中添加消息监听
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -1218,7 +968,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     isExtensionInvalidated = true;
     return;
   }
-
   if (request.action === 'showAddNotePopup') {
     // 找到第一个密码框并显示添加备注弹窗
     const passwordField = document.querySelector('input[type="password"]');
@@ -1227,14 +976,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
   }
 });
-
 function showToast(message, type = 'info') {
   // 移除可能已存在的toast
   const existingToast = document.querySelector('.account-note-toast');
   if (existingToast) {
     existingToast.remove();
   }
-
   const toast = document.createElement('div');
   toast.className = `account-note-toast ${type}`;
 
@@ -1245,7 +992,6 @@ function showToast(message, type = 'info') {
   } else if (type === 'success') {
     icon = '<span class="toast-icon">✓</span> ';
   }
-
   toast.innerHTML = `${icon}${message}`;
   document.body.appendChild(toast);
 
@@ -1262,47 +1008,27 @@ function showToast(message, type = 'info') {
     }, 300);
   }, 2200);
 }
-
-function validateNoteData(noteData) {
-  const errors = [];
-  
-  if (!noteData.note || !noteData.note.trim()) {
-    errors.push('备注内容不能为空');
-  }
-  
-  if (!noteData.username || !noteData.username.trim()) {
-    errors.push('用户名不能为空');
-  }
-  
-  if (!noteData.domain) {
-    errors.push('网站域名无效');
-  }
-  
-  if (errors.length > 0) {
-    throw new Error(errors.join('\n'));
-  }
-  
-  return true;
-} 
-
-window.addEventListener('error', (event) => {
-  if (event.error?.message?.includes('Extension context invalidated')) {
+// 只接管扩展自身抛出的错误。
+// 宿主页面自身的报错一律不处理：不弹 toast、不打印日志、不阻止默认行为，
+// 以免干扰网站自己的错误上报与用户提示。
+function isExtensionOwnError(filename, error) {
+  if (typeof filename === 'string' && filename.indexOf('chrome-extension://') === 0) return true;
+  return !!error && !!error.message && error.message.includes('Extension context invalidated');
+}
+window.addEventListener('error', event => {
+  if (!isExtensionOwnError(event.filename, event.error)) return;
+  if (event.error && event.error.message && event.error.message.includes('Extension context invalidated')) {
     isExtensionInvalidated = true;
-    disconnectObserver();
+    teardownListeners();
+    // 阻止控制台把「扩展上下文失效」刷成页面错误
     event.preventDefault();
-    return;
   }
-  console.error('Global Error:', event.error);
-  showToast('操作出错，请重试', 'error');
 });
-
-window.addEventListener('unhandledrejection', (event) => {
-  if (event.reason?.message?.includes('Extension context invalidated')) {
+window.addEventListener('unhandledrejection', event => {
+  const reason = event.reason;
+  if (reason && reason.message && reason.message.includes('Extension context invalidated')) {
     isExtensionInvalidated = true;
-    disconnectObserver();
+    teardownListeners();
     event.preventDefault();
-    return;
   }
-  console.error('Unhandled Promise Rejection:', event.reason);
-  showToast('操作出错，请重试', 'error');
 });
