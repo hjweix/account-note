@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 初始化国际化文本
   document.getElementById('extTitle').textContent = getMessage('extName');
-  document.getElementById('currentSiteNotes').textContent = getMessage('notes');
   document.getElementById('openManagement').title = getMessage('manage') || '管理所有备注';
   document.getElementById('pickFieldText').textContent = getMessage('pickFieldBtn') || '本页识别不到？手动指定输入框';
   document.getElementById('clearAnchorText').textContent = getMessage('clearAnchorsForSite') || '清除';
@@ -17,6 +16,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (error) {
     domain = '';
   }
+
+  // 小节标签：「当前站点 · github.com」，显示 host 比完整 origin 更易读
+  let host = domain;
+  try {
+    host = new URL(tab.url).host || domain;
+  } catch (error) {
+    host = domain;
+  }
+  document.getElementById('currentSiteNotes').textContent = host
+    ? `${getMessage('currentSiteLabel') || '当前站点'} · ${host}`
+    : getMessage('notes');
 
   // 浏览器内置页面（chrome://、扩展页等）注入不了 content script，隐藏锚定入口
   if (!/^https?:\/\//.test(domain)) {
@@ -214,7 +224,7 @@ async function loadSiteNotes(domain) {
   });
 }
 
-// 修改 displayNotes 函数
+// 修改 displayNotes 函数：行式布局（头像 + 用户名/备注/标签 + 星标），点击行进入编辑
 function displayNotes(notes) {
   const notesList = document.getElementById('notesList');
 
@@ -223,11 +233,53 @@ function displayNotes(notes) {
     noteElement.className = 'note-item';
     noteElement.dataset.key = note.key;
 
-    // 收藏按钮
+    // 头像：用户名首字母
+    const avatar = document.createElement('div');
+    avatar.className = 'note-avatar';
+    avatar.textContent = (note.username.trim()[0] || '?').toUpperCase();
+
+    // 主列：用户名 + （备注 / 标签行）
+    const main = document.createElement('div');
+    main.className = 'note-main';
+
+    const username = document.createElement('div');
+    username.className = 'note-username';
+    username.textContent = note.username;
+    username.title = note.username;
+
+    // 备注内容部分
+    const noteContent = document.createElement('div');
+    noteContent.className = 'note-meta';
+
+    // 备注文本
+    const noteText = document.createElement('span');
+    noteText.className = 'account-note-text';
+    noteText.textContent = note.note;
+    noteText.title = note.note;
+
+    // 标签容器
+    const tagsContainer = document.createElement('div');
+    tagsContainer.className = 'note-tags';
+    if (note.tags && note.tags.length > 0) {
+      note.tags.forEach(tag => {
+        const tagBadge = document.createElement('span');
+        tagBadge.className = 'tag-badge';
+        tagBadge.textContent = tag;
+        tagsContainer.appendChild(tagBadge);
+      });
+    }
+
+    noteContent.appendChild(noteText);
+    noteContent.appendChild(tagsContainer);
+
+    main.appendChild(username);
+    main.appendChild(noteContent);
+
+    // 收藏按钮（常驻右侧）
     const favoriteBtn = document.createElement('button');
     favoriteBtn.className = `favorite-btn ${note.isFavorite ? 'is-favorite' : ''}`;
     favoriteBtn.innerHTML = `
-      <svg viewBox="0 0 24 24" width="14" height="14">
+      <svg viewBox="0 0 24 24" width="15" height="15">
         <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
       </svg>
     `;
@@ -258,124 +310,78 @@ function displayNotes(notes) {
       }
     });
 
-    // 用户名部分
-    const username = document.createElement('div');
-    username.className = 'note-username';
-    username.textContent = note.username;
-
-    // 备注内容部分
-    const noteContent = document.createElement('div');
-    noteContent.className = 'note-content';
-
-    // 备注文本容器
-    const noteText = document.createElement('div');
-    noteText.className = 'account-note-text';
-    noteText.textContent = note.note;
-    noteText.title = note.note;
-
-    // 标签容器
-    const tagsContainer = document.createElement('div');
-    tagsContainer.className = 'note-tags';
-    if (note.tags && note.tags.length > 0) {
-      note.tags.forEach(tag => {
-        const tagBadge = document.createElement('span');
-        tagBadge.className = 'tag-badge';
-        tagBadge.textContent = tag;
-        tagsContainer.appendChild(tagBadge);
-      });
-    }
-
-    // 编辑按钮
-    const editBtn = document.createElement('button');
-    editBtn.className = 'edit-btn';
-    editBtn.innerHTML = `
-      <svg viewBox="0 0 24 24" width="14" height="14">
-        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
-      </svg>
-    `;
-    editBtn.title = getMessage('editNote');
-    
-    noteContent.appendChild(noteText);
-    noteContent.appendChild(editBtn);
-    
-    // 添加编辑功能
+    // 点击行直接进入编辑（与页面弹窗「点击正文编辑」同一交互语言）
     const handleEditClick = function(e) {
-      e.stopPropagation();
-      if (!noteText.isEditing) {
-        noteText.isEditing = true;
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'note-edit-input';
-        input.value = note.note;
-        
-        // 处理保存
-        const saveEdit = () => {
-          const newNote = input.value.trim();
-          if (newNote && newNote !== note.note) {
-            chrome.storage.local.get(note.key, (result) => {
-              const noteData = result[note.key];
-              noteData.note = newNote;
-              noteData.updateTime = new Date().toISOString();
-              
-              chrome.storage.local.set({
-                [note.key]: noteData
-              }, () => {
-                noteText.textContent = newNote;
-                noteText.title = newNote;
-                showToast(getMessage('successNoteUpdated'));
-              });
+      if (noteText.isEditing) return;
+      noteText.isEditing = true;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'note-edit-input';
+      input.value = note.note;
+
+      // 处理保存
+      const saveEdit = () => {
+        const newNote = input.value.trim();
+        if (newNote && newNote !== note.note) {
+          chrome.storage.local.get(note.key, (result) => {
+            const noteData = result[note.key];
+            noteData.note = newNote;
+            noteData.updateTime = new Date().toISOString();
+
+            chrome.storage.local.set({
+              [note.key]: noteData
+            }, () => {
+              noteText.textContent = newNote;
+              noteText.title = newNote;
+              showToast(getMessage('successNoteUpdated'));
             });
-          }
-          noteText.isEditing = false;
-          noteText.style.display = 'block';
-          editBtn.style.display = 'block';
-          input.remove();
-        };
-        
-        // 处理取消
-        const cancelEdit = () => {
-          noteText.isEditing = false;
-          noteText.style.display = 'block';
-          editBtn.style.display = 'block';
-          input.remove();
-        };
-        
-        // 添加键盘事件
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
+          });
+        }
+        noteText.isEditing = false;
+        noteText.style.display = '';
+        input.remove();
+      };
+
+      // 处理取消
+      const cancelEdit = () => {
+        noteText.isEditing = false;
+        noteText.style.display = '';
+        input.remove();
+      };
+
+      // 添加键盘事件
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          cancelEdit();
+        }
+      });
+
+      // 处理失去焦点
+      input.addEventListener('blur', () => {
+        setTimeout(() => {
+          if (noteText.isEditing) {
             saveEdit();
-          } else if (e.key === 'Escape') {
-            cancelEdit();
           }
-        });
-        
-        // 处理失去焦点
-        input.addEventListener('blur', () => {
-          setTimeout(() => {
-            if (noteText.isEditing) {
-              saveEdit();
-            }
-          }, 200);
-        });
-        
-        // 隐藏原文本和编辑按钮，插入输入框
-        noteText.style.display = 'none';
-        editBtn.style.display = 'none';
-        noteContent.insertBefore(input, noteText);
-        input.focus();
-        input.setSelectionRange(input.value.length, input.value.length);
-      }
+        }, 200);
+      });
+
+      // 点击输入框本身不触发行点击
+      input.addEventListener('click', (e) => e.stopPropagation());
+
+      // 隐藏原文本，插入输入框
+      noteText.style.display = 'none';
+      noteContent.insertBefore(input, noteText);
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
     };
-    editBtn.addEventListener('click', handleEditClick);
+    noteElement.addEventListener('click', handleEditClick);
 
-    noteContent.appendChild(noteText);
-    noteContent.appendChild(editBtn);
-
+    noteElement.appendChild(avatar);
+    noteElement.appendChild(main);
     noteElement.appendChild(favoriteBtn);
-    noteElement.appendChild(username);
-    noteElement.appendChild(noteContent);
-    noteElement.appendChild(tagsContainer);
     notesList.appendChild(noteElement);
   });
 }
@@ -405,16 +411,4 @@ function showEmptyState(notesList) {
 // 添加获取消息的辅助函数
 function getMessage(key, substitutions = null) {
   return chrome.i18n.getMessage(key, substitutions);
-}
-
-// 初始化国际化文本
-function initI18nTexts() {
-  // 设置扩展标题
-  document.getElementById('extTitle').textContent = getMessage('extName');
-  
-  // 设置当前网站备注标题
-  document.getElementById('currentSiteNotes').textContent = getMessage('notes');
-  
-  // 设置管理按钮提示文本
-  document.getElementById('openManagement').title = getMessage('manage') || '管理所有备注';
 }

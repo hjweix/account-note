@@ -119,6 +119,10 @@
     "message": "确定要删除这条备注吗？",
     "description": "删除备注时的确认提示"
   },
+  "currentSiteLabel": {
+    "message": "当前站点",
+    "description": "Popup 中当前站点小节标签"
+  },
   "confirmDeleteMultiple": {
     "message": "确定要删除选中的 $1 条备注吗？",
     "description": "批量删除备注时的确认提示"

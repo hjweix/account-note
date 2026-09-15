@@ -1,5 +1,20 @@
 # 项目进度日志
 
+## 2026-09-16（UI 原生化重设计 M2：Popup 工具栏）
+
+### 完成的功能
+1. popup.css 全量重写，与 M1 弹窗共用同一套 design token（实心表面 / 8px 圆角 / system-ui / 中性灰 + 单一蓝 / 150ms 无弹跳动效）
+   - 头部去渐变、点阵纹理、backdrop blur 与多层阴影，改为纯色 + 1px 分隔线
+   - 备注列表由玻璃卡片改为行式：头像（用户名首字母）+ 用户名 + 备注单行省略 + 标签 chip 内联 + 星标常驻右侧，hover 灰底
+   - 行内编辑铅笔删除：点击行直接编辑（与弹窗「点击正文编辑」同一交互语言）
+   - 锚定面板降为灰色窄条；拾取入口改为描边蓝字主操作；Toast 实心 + 150ms 淡入
+2. popup.html：删除 Google Fonts 外链（Inter / Plus Jakarta Sans）与 preconnect，改走 system-ui——减少两个网络请求
+3. popup.js：displayNotes 重写为行式 DOM；小节标签改为「当前站点 · <host>」（新增 locale key `currentSiteLabel` 中英各 1 条）；清理死代码（initI18nTexts、重复 appendChild、edit-btn）
+
+### 验证
+- 桩注入真机 16/16 断言：外链字体清除、小节标签、行式结构、实心表面、点击行编辑、Enter 落库回显、星标切换落库、暗色主题
+- check:css / check:i18n 门禁通过；明暗双主题截图核验
+
 ## 2026-09-16（UI 原生化重设计 M1：备注弹窗）
 
 ### 完成的功能
