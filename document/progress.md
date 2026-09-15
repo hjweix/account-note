@@ -140,6 +140,322 @@
 1. `styles.css` 中仍存在少量与 `content.js` 重复的旧规则段（如文末 Toggle/Empty Note 区与中段规则部分重叠），可继续做一次 CSS 去重
 2. `content.js` 中 `getMessage` 的 i18n key 与 `_locales` 未逐一核对，存在默认值兜底路径
 
+### 2026-09-15 · 第二轮：识别引擎升级为「登录表单锚定 + 多信号评分」
+
+#### 背景
+第一轮的事件委托解决了"监听不到"的问题，但识别判据本身仍是**字段级关键词匹配**（命中关键词表才算账号框）。
+该判据的天花板明显：无线索的裸输入框必然漏报；关键词是硬门槛，属性撞词即误杀。
+经与需求方确认后重构为评分制。
+
+#### 完成的功能
+1. 新增评分引擎（`src/content.js`）
+   - `scoreAsAccountField(input)` 返回 `{ score, reasons }`，`isAccountField()` 为对外接口（替换原 `isUsernameField()`）
+   - 打分表：
+     - **一票否决**：不可见（`display:none` / 零尺寸 / `visibility:hidden` / `opacity:0`）、`tabindex="-1"`、`aria-hidden="true"`、`readOnly`
+     - **−50**：反向关键词命中（密码 / 验证码 / 搜索…），改为重扣分而非否决，允许结构信号纠正误伤
+     - **+40**：`autocomplete` 含 `username` 或为 `email`
+     - **+35**：所在表单含可见密码框，且本框 DOM 序位于密码框之前（登录表单结构）
+     - **+30**：`type="email"`
+     - **+15**：正向关键词命中（原关键词表降级为加分项）
+     - **+10**：同结构内离密码框最近的候选框
+     - **+5**：有 `placeholder` 或关联 `<label>`
+     - 阈值 `ACCOUNT_FIELD_THRESHOLD = 20`
+2. 表单结构分析
+   - `collectFormContext(scope)`：收集可见密码框、密码框之前最近的候选框
+   - `getFormContext(input)`：作用域优先取 `input.form`，SPA（无 `<form>`）场景退化为文档级
+   - 缓存：`WeakMap<form, context>` + 2s TTL；文档级用时间戳短缓存，避免超大页面每次事件全量查询
+3. 蜜罐/装饰框防御
+   - `isDecoyInput()`：`tabindex="-1"` / `aria-hidden` / `readOnly` 一票否决
+   - `isVisibleInput()` 用 `getClientRects()` 判断可见性（不用 `offsetParent`——它对 `position:fixed` 元素恒为 `null`，会误杀）
+
+#### 遇到的问题
+1. **纯结构法在 choerodon-ui 上会选错框**：dcps 密码框前有反 autofill 蜜罐框（无 id/name + `tabindex="-1"`），DOM 序上比 `username` 离密码框更近，"取密码框前最近的文本框"会选中蜜罐
+2. 蜜罐判定的边界：若用"无 id/name 即否决"会误杀真实裸账号框（本方案明确要救回的场景）
+3. Playwright 启动的 Chromium 不继承 shell 的 `HTTP_PROXY`，真实站点验证超时
+
+#### 解决方案
+1. 改为**评分制**：蜜罐否决（`tabindex="-1"`）+ 关键词加分 + 结构信号共同兜底。蜜罐拿不到任何加分（0 分），真实账号框即便无关键词也能靠 `+35` 结构分过阈值
+2. `isDecoyInput()` 只认客观特征（不可聚焦 / 只读 / 显式隐藏），不因"无标识"否决；无标识可交互框与真实裸框客观不可区分，定为**已知边界**（宁可多弹不漏弹，真蜜罐一律不可交互）
+3. 真实站点验证改走 ego-browser：把评分核心代码注入扩展隔离世界，对真实 DOM 逐个 input 打分（纯计算，不挂监听、不弹窗、不污染页面）
+
+#### 实测验证
+**A. 真实站点评分（ego 浏览器，扩展隔离世界内执行评分函数）**
+
+| 站点 / 字段 | 得分 | 判定 | 关键得分项 |
+|---|---|---|---|
+| GitHub `#login_field`（`autocomplete="username"`） | **105** | 弹 | +40 自动填充标注 / +35 结构 / +10 最近 / +15 关键词 / +5 label |
+| GitHub 3 个隐藏 `required_field_*` | 一票否决 | 不弹 | 不可见 |
+| dcps `input[name=username]` | **65** | 弹 | +35 结构 / +10 最近 / +15 关键词 / +5 placeholder |
+| dcps 反 autofill 蜜罐框（`tabindex="-1"`） | **一票否决** | 不弹 | 蜜罐/装饰框特征 |
+
+**B. 全场景 E2E（Playwright Chromium 加载 dist/，11 类场景 21 个断言）**
+
+| 场景 | 断言 | 结果 |
+|---|---|---|
+| s1 GitHub 型（autocomplete + label） | 账号弹 / 密码不弹 | 通过 |
+| s2 dcps 型（密码框前有不可交互蜜罐） | 账号弹 / 蜜罐不弹 / 密码不弹 | 通过 |
+| s3 裸账号框（无 id/name/placeholder，仅结构信号） | 弹 | 通过 |
+| s4 无 `<form>` 的 SPA 登录（文档级结构） | 账号弹 / 密码不弹 | 通过 |
+| s5 搜索框（无密码框） | 不弹 | 通过 |
+| s6 邮箱 OTP 登录（无密码框） | 弹 | 通过 |
+| s7 手机号登录（`type=tel`，无密码框） | 弹（+15+5=20 达标，边界） | 通过 |
+| s8 搜索框 + 登录表单同页 | 搜索不弹（−50 抵消结构分） / 账号弹 | 通过 |
+| s9 验证码框（位于密码框之前） | 不弹 | 通过 |
+| s10 注册表单（用户名 + 邮箱 + 密码 + 确认密码） | 用户名弹 / 邮箱弹 / 两个密码框不弹 | 通过 |
+| s11 无标识但完全可交互的框 | 弹（已知边界，与真实裸框不可区分） | 通过 |
+
+**合计 21/21 通过。**
+
+#### 已知边界
+1. 完全可交互、无任何标识的框，与真实裸账号框客观不可区分（s11），当前策略是接受弹窗
+2. 无关键词、无结构信号（页面无密码框且无任何线索）的孤立输入框仍无法识别——需靠后续「手动锚定记忆」兜底
+
+#### 验证脚本
+- `/tmp/score-verify.js`：11 类场景 E2E（Playwright + 本地 http 服务）
+- `/tmp/live-check.js`：真实站点验证（受代理限制未跑通，改用 ego-browser 隔离世界探针）
+
+### 2026-09-15 · 第三轮：历史清单收尾（CSS 去重 / i18n / 挂载点 / 补充回归）
+
+#### 完成的功能
+1. **CSS 内部去重 + 作用域泄漏自动化检查**
+   - 新增 `scripts/check-css-scope.js`：解析 `dist/content.css`，逐个选择器判定是否被扩展容器限定；输出违规清单与去重报告，异常时退出码 1
+   - 判定规则：链路中含扩展容器类（`.account-note-btn` / `.account-note-toast` / `.account-note-suggestion` / `.disable-options-menu`），或主体复合选择器至少有一个类带 `account-note-` 前缀（同一元素上的多类是「与」关系，故有一个自有前缀即不会命中宿主页面）
+   - 删除两处**死声明块**：中段 `.account-note-text`（紧凑版 36px/13px/8px）与 `.account-note-suggestion .toggle-text-btn`（4px 10px/11px/6px）——其全部属性均被文件后段的宽松版覆盖或重复，属历史沉积
+   - 新增 npm 脚本：`npm run check:css`、`npm run check:css:dupes`
+2. **i18n key 核对与补齐**
+   - 新增 `scripts/check-i18n.js`：扫描 `src/*.js` 的 `getMessage('key')`，与两个 locale 双向核对，缺失即退出码 1
+   - 补 `_locales/{en,zh_CN}/messages.json` 共 33 个条目（en +15，zh_CN +18），现两个 locale 各 130 条，JS 引用的 110 个 key 全部齐备
+   - 中文文案直接采用代码内的兜底默认值，保证补齐前后的实际显示一致
+3. **覆盖层挂载点改为 `<html>`**
+   - 新增 `getOverlayRoot()`，注入宿主页面的 4 处挂载点（备注弹窗 / 禁用菜单 / Toast / 文本测量临时元素）统一改用它
+   - 原因：`position:fixed` 的包含块会被祖先元素的 `transform` / `filter` / `perspective` / `will-change` 劫持，不少 SPA 会给 `<body>` 加这类属性
+4. **补充三类场景回归**
+   - 纯静态 SSR 页面（零 JS）、iframe 内登录框（评分制版本）、同页多账号框（含密码框不新建弹窗）、小 iframe 尺寸保护
+
+#### 遇到的问题
+1. 去重脚本自身有两处判定缺陷：`:where(...)` 内部的逗号被当作选择器分隔符（导致变量定义块被拆成 4 段、误报重复）；`account-note-text.empty-note` 被判为「裸类名」（实际 AND 语义下已锚定自有元素）；去重报告用归一化文本导致主题变体被误算重复
+2. **i18n 存在一个此前未发现的真问题**：`getMessage()` 的降级链是 `chrome.i18n.getMessage(key) || getDefaultMessage(key)`，而 `getDefaultMessage()` 只认识一张 9 条的内置表，对未收录的 key **返回 key 本身**（真值）→ 调用方的 `|| '兜底文案'` 永远不生效 → 界面上会直接显示 `tagRenamed` 这类原始 key。共 18 个 key 处于此状态（管理页标签重命名/删除、全局禁用提示等）
+3. 27 项 locale 条目在 JS 中无直接引用（对应未实现的批量标签、按标签筛选、通用设置等功能），属历史遗留
+4. CSS 重复分析一度把 `:root` 与 `@media (prefers-color-scheme: dark)` 内的同名选择器判为重复——实际是合法的主题覆盖
+5. 补充回归脚本里 `frame.keyboard` 不存在（键盘对象属于 page 而非 frame）
+
+#### 解决方案
+1. 去重脚本改用「顶层逗号分割」（按括号深度）+ 「主体至少一个类带自有前缀」+ 「去重键包含 at-rule 上下文」，三处修正后误报归零
+2. i18n 按「补齐 locale」根治：JS 引用的 key 在两个 locale 中全部齐备后，降级链不再有机会返回原始 key；并建立 `npm run check:i18n` 门禁防止再次脱节
+3. 历史遗留 key 记录在案、暂不清理（对应功能可能仍需恢复）
+4. 去重报告口径修正为按上下文（`ctx||selector`）统计
+5. iframe 场景改为在 frame 内直接派发 `input` 事件触发委托监听
+
+#### 实测验证
+| 验证项 | 结果 |
+|---|---|
+| 作用域检查 | 89 个选择器 / 0 违规；`npm run check:css` 通过 |
+| 去重报告 | 上下文口径修正后 0 重复 |
+| **视觉回归**（删除死块前后像素对比） | 4 个状态 md5 **逐一完全一致**；敏感度探针（注入 `min-height:120px`）md5 与基线**不同**，证明测试对尺寸变化敏感、比对结论有效 |
+| i18n 检查 | 两个 locale 各 130 条；JS 引用的 110 个 key 全部存在；`npm run check:i18n` 通过 |
+| 覆盖层挂载点·机制验证 | 滚动 500px 后：挂 `<html>` 的 fixed 探针 top=50（视口固定），挂 `<body>` 的探针 top=−450（被 transform 劫持带走）→ 证实改造有效 |
+| 覆盖层挂载点·功能验证 | `body{transform}` 页面上弹窗挂载父节点 = `<HTML>`，纵向与输入框偏差 **0px** |
+| 补充回归 7 断言 | 全过：静态 SSR 账号框弹/密码框不弹、iframe 内弹出（父节点 `<HTML>`）、小 iframe 不弹、多账号框 A/B 均弹、密码框不新建弹窗（距账号框 B 0px / 距密码框 96px） |
+| 评分引擎回归 21 断言 | 全过（挂载点改造后无回归） |
+
+#### 待清理（记录，暂不删除）
+- `_locales/*/messages.json` 中 20 个无引用的 key：`extDesc, errorStorageAPI, errorEmptyNote, errorReadData, errorSaveData, generalSettings, generalSettingsPlaceholder, exportNotes, importNotes, keyboardTip, disableOptions, filterByTag, filterByFavorite, batchAddTag, batchRemoveTag, batchAddToFavorites, batchRemoveFromFavorites, editTag, changeTagColor, newTagName`
+
+#### 验证脚本
+- `scripts/check-css-scope.js`（门禁，`npm run check:css`）
+- `scripts/check-i18n.js`（门禁，`npm run check:i18n`）
+- `/tmp/visual-regression.js`（弹窗四状态截图 + 敏感度探针）
+- `/tmp/overlay-root-verify.js`（挂载点机制 + 功能验证）
+- `/tmp/regression-extra.js`（SSR / iframe / 多账号框补充回归）
+- `/tmp/css-dupe-analyze.js`（重复规则分析，区分等价与冲突）
+
+### 2026-09-15 · 第四轮：数据兼容性评估（二期「手动锚定记忆」升级安全）
+
+**背景**：二期需新增 storage key（`fieldAnchors`）以持久化手动锚定特征。需求方顾虑「新增 key 会影响既有用户数据、无法平滑升级」，要求先行确认。本轮为纯评估，**未改动任何源码**。
+
+#### 结论
+新增 key 属**加字段而非改字段**，升级安全、无数据丢失，顾虑不成立。已由静态审计 + 真机实测两条证据链证实。
+
+#### 证据一 · 静态审计
+- `chrome.storage.local.get(null)` 全表读取共 **11 处**，逐处核验过滤口径，全部按备注特征谓词（`domain && note && username`）过滤。唯一未在本地过滤的 `setupSearch()`（management.js:444）在**下游 `displayNotes()`（:285）** 补过滤，同样安全。
+- **无 `chrome.storage.onChanged` 监听** → 不存在「任意 storage 变更被当作备注变更」的通路。
+- **无整表回写**：所有 `set()` 均为定点写入或由备注集合构建的 `updates` 映射，无 `set(整个 get 结果)` 写法。
+- **既有先例**：`theme` / `disabledGlobal` / `disabledSites` 三个非备注 key 已与备注长期共存，本次只是遵循同一已证模式。
+- 唯一全量删除是用户手动触发的「清除所有数据」（`storage.local.clear()`），与本次改动无关。
+
+#### 证据二 · 真机实测（真实扩展 + 真实 chrome.storage，14/14 通过）
+构造老用户混合 storage（8 个 key：老格式备注无 `tags`/`isFavorite`、更老格式缺 `key`/`createTime`、已合规备注、3 个既有非备注 key、新增 `fieldAnchors`、未知未来 key），加载 `dist/` 打开管理页触发**真实 `migrateAllNotes()` + 渲染**后核验：
+
+- 存储 key 集合前后完全一致（无新增/丢失）✅
+- 老格式备注补齐 `tags`/`isFavorite`/`favoriteTime`，**原字段一字未改**（备注文本、`createTime`/`updateTime` 逐字段保真）✅
+- 更老格式备注补 `key` + `createTime` ✅
+- 已合规备注**逐字段零改写**（`tags`/收藏/时间戳全部原样）✅
+- `theme` / `disabledGlobal` / `disabledSites` 未被改动 ✅
+- `fieldAnchors` 深度一致（未被迁移逻辑触碰）✅
+- 未知未来 key 原样保留 ✅
+- 备注列表只渲染 3 张卡片 → 锚定 key 未被当作备注 ✅
+- 禁用网站列表未被污染 ✅
+- 导出含全部 3 条备注 ✅
+- 导入备份后 `fieldAnchors` / `theme` / 禁用列表均仍在（导入为合并写入，不 `clear`）✅
+- 导入后备注 = 原有 3 条 + 备份新增 1 条，无覆盖丢失 ✅
+
+迁移逻辑本身为纯增量：`migrateNoteData()` 先 `{...note}` 再仅补缺失字段，不删除不重命名。
+
+#### ⚠️ 实测暴露的两处备份缺口（已列入待办，须随二期一并修复）
+1. **导出不含锚定数据**：`exportNotes()` 用同一套备注谓词过滤，`fieldAnchors` 被排除在备份之外 → 用户「导出 → 清除 → 导入」后备注回来、锚定记录**静默消失**且无提示。
+2. **「清除所有数据」会连锚定一起清除**：`storage.local.clear()` 语义如此，行为可预期，但确认文案需说明。
+
+#### 遇到的问题
+- **Playwright 无法导航到 `chrome-extension://`**：`page.goto` 与 CDP `Page.navigate` 均返回 `net::ERR_ABORTED`（Playwright 对非 http scheme 的导航限制）。且 headless / `--headless=new` 两种模式下扩展页面无法访问。
+- **BSD grep 不支持 `\|` 交替**：macOS 自带 grep 下多条排查命令返回空结果，一度误判「代码里没有该符号」。实为语法问题（`\|` 是 GNU 扩展），改用 `grep -E` 后全部命中。
+- **断言自身缺陷（第三次同类）**：首轮 3 项失败（已合规备注、`fieldAnchors`、未知 key）实为 `JSON.stringify` 比较了**键顺序**——`chrome.storage` 回读后对象键顺序变化导致假失败，值其实逐字段相同。
+
+#### 解决方案
+- 扩展页访问：改用**浏览器级 CDP `Target.createTarget`** 新建 target，并用 `context.on('page')` 捕获该页面对象；且必须 `headless: false`（headed 模式）才可访问扩展页。
+- grep：统一改用 `grep -E`（BSD grep 的 POSIX 扩展正则）。
+- 断言：改为**键序无关的规范化深比较**（递归排序对象键后序列化），修正后 14/14 全过。
+
+#### 验证脚本
+- `/tmp/data-safety-verify.js`（数据兼容性 14 断言；含导出下载捕获与导入文件注入）
+- `/tmp/ext-id-probe.js` / `ext-page-probe2.js`（扩展 ID 推导 + 扩展页打开方式）
+
+#### 经验沉淀
+- **unpacked 扩展 ID 可从路径推导**：`SHA256(扩展绝对路径)` 取前 16 字节，每个 hex 位 `c` 映射为 `'a'+c`，即得 32 位 `[a-p]` ID（实测与扩展隔离世界 origin 完全一致）。无需 service worker 即可拿到 ID。
+- **「加字段是否安全」这类判断，答案全在读取路径的过滤口径里**——必须逐处核验 `get(null)`，而不是看写入端。
+
+### 2026-09-15 · 第五轮：备份链路补全（消除静默丢数据的两个缺口）
+
+**背景**：第四轮数据兼容性评估实测暴露两处缺口——① 导出不含非备注 key（将来的锚定数据会静默丢失）；② 「清除所有数据」确认文案未说明清除范围。老板指示先处理这两处。
+
+#### 完成的功能
+
+**1. 导出结构升级为带版本信封（`exportNotes()`）**
+
+从「备注数组」升级为：
+
+```json
+{
+  "format": "account-note-backup",
+  "version": 2,
+  "exportTime": "2026-09-15T07:13:25.441Z",
+  "appVersion": "1.1.0",
+  "notes": [ /* 备注记录 */ ],
+  "others": { /* 主题、禁用列表、锚定记录等全部非备注 key */ }
+}
+```
+
+**关键设计（防止同类问题复发）**：`others` 按**通用规则**切分——凡不满足备注特征谓词的 key 全部收纳，而非逐个列举。今后新增任何 storage key 都会自动进入备份，**不需要再改导出代码**。这正是上一版漏掉锚定数据的根因（当时是按「备注数组」硬编码输出的）。
+
+新增公共层（导出/导入共用）：
+- `isNoteRecord(value)` — 备注特征判定，统一全表读取的过滤口径
+- `splitStorageData(allData)` — 把整个 storage 切成 `{ notes, others }`。顺带修复一个潜在丢数据点：**早期无 `key` 字段的备注原会被导出时静默丢弃**，现按存储键补齐 `key` 后纳入
+- `parseBackupPayload(raw)` — 兼容解析：裸数组（v1，仅备注）与信封对象（v2）
+- `sanitizeOthers(others)` — 净化 `others`，拦掉混进来的「备注形」数据，防止构造文件绕过备注校验通道
+- `refreshViewsAfterImport()` — 导入/清空后统一刷新受影响的视图
+
+**2. 导入端兼容新旧格式并恢复设置类数据（`importNotes()`）**
+
+保留原有备注冲突处理三分支语义，并明确设置类数据的还原边界：
+
+| 分支 | 备注 | 设置类数据（others） |
+|---|---|---|
+| 无冲突 | 全部导入 | 一并还原 |
+| 有冲突 + 用户选「覆盖」 | 全部覆盖 | 一并还原 |
+| 有冲突 + 用户选「跳过重复」 | 只补新增 | **不动**（用户已表达"不覆盖"意图） |
+
+其他改进：
+- **旧的裸数组备份仍可用**（向后兼容），只是不含设置类数据
+- 备份版本高于当前时提示 `backupFromNewerVersion`，并按可识别部分尽力恢复
+- 放开「0 条备注」的硬报错：仅含设置的备份（如新用户导出）也能正常导入
+- 修复导入后标签列表/筛选器不刷新的旧缺陷（导入带标签的备注后，标签筛选器原本是陈旧的）
+
+**3. 清空数据的文案与刷新范围**
+- `confirmClearAllData` 文案明确列出影响范围：备注、标签、主题设置、禁用网站列表（以及输入框锚定记录）
+- 清空后改为调用 `refreshViewsAfterImport()`：原本只刷新备注列表与禁用列表，**主题与全局禁用开关的 UI 会停留在旧状态**（与存储不一致），现已一并刷新
+
+#### 遇到的问题
+- **BSD grep 的 `\|` 陷阱第三次踩中**：`grep -n "a\|b"` 在 macOS 自带 grep 下静默返回空，导致误判「替换未生效 / 文件里没这个符号」。同一轮内连续误判两次。已固化：一律 `grep -E`。
+- **整块替换的空白字符匹配风险**：Edit 工具需要精确匹配（含行尾空格），而这两个函数体量大。改用 Node 脚本做正则替换（`/async function exportNotes\(\) \{[\s\S]*?\n\}\n\n\/\/ 导入备注数据/`），并注意 `String.replace` 的替换串中 `` $` ``/`$&`/`$1` 有特殊含义 —— 用占位符中转反引号后统一还原，避免模板字符串被破坏。
+- **回归脚本自身过期**：上一轮的数据安全脚本按「导出 = 裸数组」写的断言，在导出结构升级后会崩（对象无 `.some()`）。已把该脚本改为格式自适应，使其继续作为有效回归资产。
+
+#### 解决方案与验证
+
+真机端到端验证（真实 Chromium 加载 `dist/`，`/tmp/backup-chain-verify.js`，**21 断言全过**）：
+
+| 场景 | 断言 | 结果 |
+|---|---|---|
+| 1 · 导出结构 | 信封字段完整；`notes` 3 条逐字段一致；`others` 收纳全部 5 个非备注 key（含 `fieldAnchors`）；`others` 中无备注形数据 | ✅ |
+| 2 · 清空→导入 | 清除后 storage 为空、主题回默认；导入后备注/锚定/主题/禁用列表/**未知未来 key** 全部恢复，且主题已应用到 `<html>`、禁用列表与全局开关 UI 已刷新 | ✅ |
+| 3 · 旧格式兼容 | 裸数组备份可导入 2 条备注；不伪造出 `theme`/锚定 | ✅ |
+| 4 · 冲突分支 | 选「跳过重复」→ 原备注未被覆盖且设置未被改写（主题仍 `light`、锚定未写入）；改选「覆盖」→ 备注与设置一并还原 | ✅ |
+| 5 · 异常输入 | 损坏 JSON 不崩溃不写入；`others` 中的备注形数据被成功拦截 | ✅ |
+
+回归：第四轮数据安全脚本重跑 **14/14 通过**，其中原先报「fieldAnchors 未包含」的项现为「✅ 已包含在备份中」。
+
+门禁：`npm run check:css` / `npm run check:i18n` 均通过；`npm run build` 成功。
+
+#### 验证脚本
+- `/tmp/backup-chain-verify.js`（备份链路 21 断言，含导出下载捕获、导入文件注入、对话框策略切换、异常输入注入）
+- `/tmp/data-safety-verify.js`（数据安全 14 断言，已升级为格式自适应）
+
+#### 改动文件
+- `src/management.js`（+223/−61）：备份信封公共层 + `exportNotes()` / `importNotes()` 重写 + 清空数据文案与刷新范围
+- `_locales/en/messages.json` / `_locales/zh_CN/messages.json`：新增 `backupFromNewerVersion`，更新 `confirmClearAllData`
+
+## 2026-09-15 · 第六轮：手动锚定记忆（二期主体）
+
+### 功能
+
+识别引擎的兜底层落地：评分引擎解决不了「既无关键词线索、又无登录表单结构信号」的孤立输入框（如多步登录第一步、密码框延迟渲染的站点），现在用户可以手动指定一次，此后该框直接命中。识别系统从「一次性猜测」升级为「可被纠正的猜测」。
+
+**1. 存储层（content.js）**
+- 新增 key `fieldAnchors`，按 `origin` 分组：`{ [origin]: [{ id, name, placeholder, type, nth, createTime }] }`
+- 内存快照 `anchorList` 供事件路径零成本查询；`chrome.storage.onChanged` 监听使跨标签页锚定即时同步
+- 匹配按标识强度降级：`id` 全等 → `name` 全等 → `placeholder` 全等 → 可见候选序号（仅限锚定时就完全无标识的裸框）
+- **锚定优先于评分**：`isAccountField()` 先查锚定，命中即返回；但保留「可见」前提，页面把框藏起来时不再打扰
+
+**2. 拾取模式（content.js）**
+- 入口在扩展弹窗（始终可达）；页面侧高亮所有可见候选输入框（带序号角标），点击即锚定
+- 顶部横幅提示 + 退出按钮；Esc 可退出；200ms 重算位置（滚动/缩放/SPA 布局动画都覆盖）
+- 高亮框同时承担拦截点击的职责（`pointer-events: auto` + `stopPropagation`），拾取过程不会把焦点落进宿主输入框
+- z-index 阶梯扩展：10004 拾取高亮 < 10005 拾取横幅
+- 仅主框架响应（popup 侧 `frameId: 0`），避免多 iframe 页面同时弹横幅——**已知限制**：登录框在跨域 iframe 内时暂不支持手动锚定
+
+**3. 弹窗入口（popup.js / popup.html）**
+- 「本页识别不到？手动指定输入框」按钮，始终可见
+- 投递指令成功才关闭弹窗；content script 不可用（页面早于扩展加载打开）时提示「请刷新页面后重试」——正是上次 GitHub 排查的教训
+- 显示本页已锚定数量 + 一键清除；`chrome://` 等无法注入的页面自动隐藏入口
+
+**4. 管理页（management.js / management.html / management.css）**
+- 设置页新增「输入框锚定」卡片：按站点分组列出锚定指纹（`#id` / `name="x"` / `placeholder="x"` / `第 N 个输入框`）与创建时间
+- 支持单条移除（绑错了能救回来）；某站点全部移除后整组消失并清理顶层键，不留空对象
+
+**5. i18n**：新增 17 个 key（en/zh_CN 各 148 条），`npm run check:i18n` 门禁通过
+
+### 错误与解决方案
+
+| 问题 | 根因 | 解决 |
+|---|---|---|
+| CSS 门禁报 2 条违规（`.account-note-picker-banner-text strong/span`） | 选择器末尾是裸标签 | 改为显式类名 `.account-note-picker-title/-desc`，顺带消除对标签名的依赖 |
+| 验证脚本点击高亮后未写入锚定 | 桩只支持回调式 storage API，而 `saveAnchor` 用 Promise 式 | 桩补齐双形态（真实 Chrome 两者都支持） |
+| 验证脚本截图发现弹窗位置偏左 | 定位逻辑「右侧放不下就翻左侧」的既定行为（900px 视口 + 输入框贴右缘触发） | 非缺陷；顺带发现定位用硬编码 260/270 魔数与实际弹窗宽度不完全匹配，记入待办 |
+| 管理页 M8 失败：全部移除后顶层 `fieldAnchors` 键残留空对象 | 移除逻辑只删 origin 子键 | 空对象时改用 `storage.local.remove` 整键清理（management 与 popup 两处） |
+
+### 实测结论
+
+六套回归 **84 断言全绿**：
+
+| 套件 | 断言 | 覆盖 |
+|---|---|---|
+| anchor-picker（内容脚本侧） | 17 | 识别盲区确认、拾取启动/位置重合/点击写入/幂等/可撤销、SPA 重渲染后序号匹配仍命中、Esc 退出、候选范围排除密码框与隐藏框、无候选页提示 |
+| anchor-popup（弹窗侧） | 9 | 入口文案、锚定数量提示、投递 `frameId:0` 并关闭、清除只删本页、最后站点清除后整键移除、content script 不可用提示、`chrome://` 隐藏入口 |
+| anchor-management（管理页，真实扩展+真实 storage） | 9 | 分组渲染、指纹描述、移除同步、不影响其它设置与备注、空状态 |
+| score-verify | 21 | 评分引擎原有 11 类场景无回归 |
+| regression-extra | 7 | SSR/iframe/多账号框无回归 |
+| backup-chain | 21 | 导出/导入/清空对 `fieldAnchors` 的完整往返无回归 |
+
+截图核验：拾取横幅 + 高亮框视觉正常；锚定后输入即弹备注弹窗。
+
 ## 2025-03-15
 
 ### 完成的功能

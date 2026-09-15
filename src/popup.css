@@ -493,3 +493,77 @@ h1 {
 .note-item .tag-badge:hover {
   background: rgba(99, 102, 241, 0.2);
 }
+
+/* ========================================
+   手动锚定
+   ======================================== */
+
+/* 手动锚定入口：始终可见，是识别失败时的唯一纠正通道 */
+.pick-field-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: calc(100% - 40px);
+  margin: 0 20px 16px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  border: 1px dashed var(--glass-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-standard);
+}
+
+.pick-field-btn:hover {
+  border-color: var(--primary-500);
+  border-style: solid;
+  background: var(--hover-bg);
+  color: var(--primary-600);
+}
+
+.pick-field-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* 已锚定提示条 */
+.anchor-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 20px 12px;
+  padding: 8px 12px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.anchor-count-text {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary-600);
+}
+
+.anchor-clear-btn {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-standard);
+}
+
+.anchor-clear-btn:hover {
+  background: var(--active-bg);
+  color: var(--primary-600);
+}

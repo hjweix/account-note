@@ -6,19 +6,98 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('extTitle').textContent = getMessage('extName');
   document.getElementById('currentSiteNotes').textContent = getMessage('notes');
   document.getElementById('openManagement').title = getMessage('manage') || '管理所有备注';
+  document.getElementById('pickFieldText').textContent = getMessage('pickFieldBtn') || '本页识别不到？手动指定输入框';
+  document.getElementById('clearAnchorText').textContent = getMessage('clearAnchorsForSite') || '清除';
 
   // 获取当前标签页信息
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const domain = new URL(tab.url).origin;
+  let domain = '';
+  try {
+    domain = new URL(tab.url).origin;
+  } catch (error) {
+    domain = '';
+  }
+
+  // 浏览器内置页面（chrome://、扩展页等）注入不了 content script，隐藏锚定入口
+  if (!/^https?:\/\//.test(domain)) {
+    document.getElementById('pickFieldBtn').hidden = true;
+    document.getElementById('anchorPanel').hidden = true;
+  }
 
   // 加载当前网站的备注
   loadSiteNotes(domain);
+
+  // 加载当前网站的锚定记录
+  loadAnchorInfo(domain);
 
   // 添加管理按钮点击事件
   document.getElementById('openManagement').addEventListener('click', () => {
     chrome.tabs.create({ url: 'management.html' });
   });
+
+  // 初始化手动锚定
+  setupFieldPicker(tab, domain);
 });
+
+// ===== 手动锚定 =====
+
+// 读取当前站点的锚定记录并更新提示条
+function loadAnchorInfo(domain) {
+  if (!domain) return;
+  chrome.storage.local.get(['fieldAnchors'], (result) => {
+    const all = result.fieldAnchors;
+    const list = all && typeof all === 'object' && Array.isArray(all[domain]) ? all[domain] : [];
+    document.getElementById('anchorPanel').hidden = list.length === 0;
+    document.getElementById('anchorCountText').textContent =
+      getMessage('anchoredCount', [String(list.length)]) || `本页已锚定 ${list.length} 个输入框`;
+  });
+}
+
+// 拾取入口：向主框架投递指令，由 content script 在页面内完成高亮与绑定
+function setupFieldPicker(tab, domain) {
+  const pickBtn = document.getElementById('pickFieldBtn');
+
+  pickBtn.addEventListener('click', async () => {
+    pickBtn.disabled = true;
+    let ok = false;
+    try {
+      const response = await chrome.tabs.sendMessage(tab.id, { action: 'startFieldPicker' }, { frameId: 0 });
+      ok = !!(response && response.ok);
+    } catch (error) {
+      // 页面在扩展（重）加载之前就已打开时，content script 不会回溯注入
+      ok = false;
+    }
+    pickBtn.disabled = false;
+
+    if (ok) {
+      window.close();
+    } else {
+      showToast(getMessage('pickerConnectFailed') || '无法连接当前页面，请刷新页面后重试');
+    }
+  });
+
+  document.getElementById('clearAnchorBtn').addEventListener('click', () => {
+    if (!domain) return;
+    chrome.storage.local.get(['fieldAnchors'], (result) => {
+      const all = result.fieldAnchors;
+      if (!all || typeof all !== 'object' || !all[domain]) return;
+      const next = { ...all };
+      delete next[domain];
+
+      const done = () => {
+        loadAnchorInfo(domain);
+        showToast(getMessage('anchorsCleared') || '已清除本页锚定记录');
+      };
+
+      // 最后一个站点被清掉后连同顶层键一起移除，不留下空对象
+      if (Object.keys(next).length === 0) {
+        chrome.storage.local.remove('fieldAnchors', done);
+      } else {
+        chrome.storage.local.set({ fieldAnchors: next }, done);
+      }
+    });
+  });
+}
 
 // 初始化主题
 async function initTheme() {

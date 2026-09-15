@@ -5,7 +5,10 @@
   "main": "webpack.config.js",
   "scripts": {
     "build": "webpack --config webpack.config.js",
-    "watch": "webpack --watch --config webpack.config.js"
+    "watch": "webpack --watch --config webpack.config.js",
+    "check:css": "node scripts/check-css-scope.js",
+    "check:css:dupes": "node scripts/check-css-scope.js --dupes",
+    "check:i18n": "node scripts/check-i18n.js"
   },
   "keywords": [],
   "author": "",

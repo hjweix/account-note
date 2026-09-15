@@ -5,8 +5,9 @@
 
 /* CSS Variables
    z-index 阶梯（全局唯一事实来源，JS 不得内联覆盖）：
-   10000 悬浮按钮 < 10001 备注弹窗 < 10002 禁用菜单 < 10003 Toast */
-:where(.account-note-btn, .account-note-toast, .account-note-suggestion, .disable-options-menu) {
+   10000 悬浮按钮 < 10001 备注弹窗 < 10002 禁用菜单 < 10003 Toast
+   < 10004 拾取高亮 < 10005 拾取横幅 */
+:where(.account-note-btn, .account-note-toast, .account-note-suggestion, .disable-options-menu, .account-note-picker-highlight, .account-note-picker-banner) {
   --primary-500: #6366f1;
   --primary-600: #4f46e5;
   --primary-700: #4338ca;
@@ -34,7 +35,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :where(.account-note-btn, .account-note-toast, .account-note-suggestion, .disable-options-menu) {
+  :where(.account-note-btn, .account-note-toast, .account-note-suggestion, .disable-options-menu, .account-note-picker-highlight, .account-note-picker-banner) {
     --primary-500: #818cf8;
     --primary-600: #6366f1;
     --primary-700: #4f46e5;
@@ -244,20 +245,10 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.account-note-text {
-  width: 100%;
-  min-height: 36px;
-  max-height: 80px;
-  padding: 8px 10px;
-  padding-right: 28px;
-  border-radius: 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  resize: none;
-  outline: none;
-  font-family: inherit;
-  transition: all 0.2s var(--ease-standard);
-}
+/* 注意：.account-note-text 的尺寸与配色统一在文件后段「Account Note Text Display」
+   处定义一次（min-height 45px / font-size 14px / border-radius 12px 等）。
+   历史上此处曾有一套紧凑尺寸（36px / 13px / 8px），其全部属性都已被后段覆盖
+   或重复，属死声明，已移除。 */
 
 .account-note-suggestion[data-theme="light"] .account-note-text:focus {
   border-color: #6366f1;
@@ -462,13 +453,9 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.account-note-suggestion .toggle-text-btn {
-  padding: 4px 10px;
-  font-size: 11px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+/* 注意：.toggle-text-btn 的尺寸（padding / font-size / border-radius / cursor /
+   transition）统一在文件后段「Toggle Text Button」处定义一次，此处不再重复声明——
+   历史上这里曾有一套紧凑尺寸（4px 10px / 11px / 6px），已被后段覆盖成为死声明。 */
 
 .account-note-suggestion[data-theme="light"] .toggle-text-btn:hover {
   background: rgba(99, 102, 241, 0.08);
@@ -663,4 +650,121 @@
 
 .account-note-text::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.5);
+}
+
+/* ========================================
+   手动锚定：拾取模式
+   ======================================== */
+
+/* 候选输入框高亮框。定位信息由 JS 写入内联样式（每帧重算），
+   这里只负责视觉。pointer-events 必须是 auto —— 它同时承担拦截点击的职责，
+   这样用户点击时不会真的把焦点落进宿主页面的输入框。 */
+.account-note-picker-highlight {
+  position: fixed;
+  z-index: 10004;
+  box-sizing: border-box;
+  border: 2px solid var(--primary-500);
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.14);
+  cursor: crosshair;
+  pointer-events: auto;
+  transition: background 0.15s var(--ease-standard), box-shadow 0.15s var(--ease-standard);
+}
+
+.account-note-picker-highlight:hover {
+  background: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+.account-note-picker-highlight[data-theme="dark"] {
+  background: rgba(129, 140, 248, 0.2);
+}
+
+.account-note-picker-highlight[data-theme="dark"]:hover {
+  background: rgba(129, 140, 248, 0.36);
+  box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.24);
+}
+
+/* 序号角标：多候选框时便于对照 */
+.account-note-picker-badge {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--primary-600);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* 顶部提示横幅 */
+.account-note-picker-banner {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10005;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: calc(100vw - 32px);
+  padding: 12px 14px 12px 18px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-secondary);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  pointer-events: auto;
+}
+
+.account-note-picker-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.account-note-picker-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.account-note-picker-desc {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.account-note-picker-exit {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-standard);
+}
+
+.account-note-picker-exit:hover {
+  background: var(--hover-bg);
+  border-color: var(--primary-500);
+  color: var(--primary-600);
 }

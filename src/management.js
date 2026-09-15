@@ -522,6 +522,10 @@ function setupSettingsSidebar() {
   document.getElementById('aboutTitle').textContent = getMessage('about') || '关于';
   document.getElementById('tagManagementTitle').textContent = getMessage('tagManagement') || '标签管理';
 
+  // 输入框锚定卡片国际化
+  document.getElementById('fieldAnchorsTitle').textContent = getMessage('fieldAnchorsTitle') || '输入框锚定';
+  document.getElementById('fieldAnchorsDesc').textContent = getMessage('fieldAnchorsDesc') || '手动指定过的输入框会始终显示备注弹窗。识别不准时，可在扩展弹窗里重新指定。';
+
   // 添加网站表单国际化
   const newSiteInput = document.getElementById('newSiteInput');
   newSiteInput.placeholder = getMessage('newSiteInputPlaceholder') || '输入网站域名，如 example.com';
@@ -554,6 +558,9 @@ function setupSettingsSidebar() {
   
   // 添加数据管理功能
   setupDataManagement();
+
+  // 输入框锚定记录列表
+  loadFieldAnchors();
   
   // 添加关于功能
   setupAbout();
@@ -686,6 +693,122 @@ function enableSite(site) {
     chrome.storage.local.set({ disabledSites }, () => {
       loadDisabledSites(); // 重新加载禁用网站列表
     });
+  });
+}
+
+// ===== 输入框锚定记录 =====
+// 用户在页面上手动指定过的输入框（识别引擎的兜底层）。content.js 侧按 origin 分组写入，
+// 这里只做只读展示与移除——绑错了要能救回来。
+const ANCHOR_STORAGE_KEY = 'fieldAnchors';
+
+// 把锚定指纹转成人类可读的一行描述（纯文本，由 textContent 写入，无需转义）
+function describeAnchor(anchor) {
+  if (!anchor || typeof anchor !== 'object') return '—';
+  if (anchor.id) return `#${anchor.id}`;
+  if (anchor.name) return `name="${anchor.name}"`;
+  if (anchor.placeholder) return `placeholder="${anchor.placeholder}"`;
+  if (typeof anchor.nth === 'number') {
+    return getMessage('anchorIndexLabel', [String(anchor.nth + 1)]) || `第 ${anchor.nth + 1} 个输入框`;
+  }
+  return '—';
+}
+
+// 单条锚定记录
+function buildAnchorItem(origin, anchor, index) {
+  const item = document.createElement('div');
+  item.className = 'field-anchor-item';
+
+  const main = document.createElement('div');
+  main.className = 'field-anchor-main';
+
+  const signature = document.createElement('span');
+  signature.className = 'field-anchor-signature';
+  signature.textContent = describeAnchor(anchor);
+  main.appendChild(signature);
+
+  const meta = document.createElement('span');
+  meta.className = 'field-anchor-meta';
+  meta.textContent = anchor && anchor.createTime ? formatTime(anchor.createTime) : '';
+  main.appendChild(meta);
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'field-anchor-remove';
+  removeBtn.textContent = getMessage('removeAnchor') || '移除';
+  removeBtn.addEventListener('click', () => removeFieldAnchor(origin, index));
+
+  item.appendChild(main);
+  item.appendChild(removeBtn);
+  return item;
+}
+
+// 加载全部锚定记录，按站点分组展示
+function loadFieldAnchors() {
+  const list = document.getElementById('fieldAnchorsList');
+  if (!list) return;
+
+  chrome.storage.local.get([ANCHOR_STORAGE_KEY], (result) => {
+    const all = result[ANCHOR_STORAGE_KEY];
+    const origins = all && typeof all === 'object'
+      ? Object.keys(all).filter(origin => Array.isArray(all[origin]) && all[origin].length > 0)
+      : [];
+
+    if (origins.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <p>${getMessage('noFieldAnchors') || '暂无锚定记录'}</p>
+        </div>
+      `;
+      return;
+    }
+
+    list.innerHTML = '';
+    origins.sort().forEach(origin => {
+      const group = document.createElement('div');
+      group.className = 'field-anchor-group';
+
+      const header = document.createElement('div');
+      header.className = 'field-anchor-origin';
+      header.textContent = origin;
+      group.appendChild(header);
+
+      all[origin].forEach((anchor, index) => {
+        group.appendChild(buildAnchorItem(origin, anchor, index));
+      });
+
+      list.appendChild(group);
+    });
+  });
+}
+
+// 移除一条锚定记录，移除后该输入框回落到评分引擎的判断
+function removeFieldAnchor(origin, index) {
+  chrome.storage.local.get([ANCHOR_STORAGE_KEY], (result) => {
+    const all = result[ANCHOR_STORAGE_KEY];
+    if (!all || typeof all !== 'object' || !Array.isArray(all[origin])) return;
+
+    const next = { ...all };
+    const list = next[origin].slice();
+    if (index < 0 || index >= list.length) return;
+    list.splice(index, 1);
+
+    if (list.length === 0) {
+      delete next[origin];
+    } else {
+      next[origin] = list;
+    }
+
+    const done = () => {
+      loadFieldAnchors();
+      showToast(getMessage('anchorRemoved') || '已移除锚定记录');
+    };
+
+    // 最后一条记录被移除后连同顶层键一起清掉，避免存储里留下空对象
+    if (Object.keys(next).length === 0) {
+      chrome.storage.local.remove(ANCHOR_STORAGE_KEY, done);
+    } else {
+      chrome.storage.local.set({ [ANCHOR_STORAGE_KEY]: next }, done);
+    }
   });
 }
 
@@ -1211,21 +1334,135 @@ function showUpdateSuccess() {
   showToast(getMessage('successNoteUpdated'));
 }
 
+// ==================== 备份信封（导出 / 导入共用的数据切分与校验） ====================
+// 备份格式版本：
+//   1（隐式）—— 历史遗留的「裸数组」备份，只含备注；导入端只读兼容，不再产出
+//   2（当前）—— 带信封的对象：{ format, version, exportTime, appVersion, notes, others }
+// 设计要点：others 收纳「非备注」的全部 key（主题、全局禁用、禁用网站列表，
+// 以及将来新增的锚定记录等）。按通用规则切分而非逐个列举 —— 今后新增任何 storage key
+// 都会自动进入备份，不需要再改导出代码（这正是上一版漏掉锚定数据的根因）。
+// 若将来出现「不应进入备份」的临时/缓存类 key，在 splitStorageData 里加一份排除名单即可。
+const BACKUP_FORMAT = 'account-note-backup';
+const BACKUP_VERSION = 2;
+
+// 是否为一条备注记录。全表读取的过滤口径统一以此为准。
+function isNoteRecord(value) {
+  return !!(
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    value.domain &&
+    value.note &&
+    value.username
+  );
+}
+
+// 把整个 storage 切成「备注」与「其余 key」两堆
+function splitStorageData(allData) {
+  const notes = [];
+  const others = {};
+
+  Object.entries(allData || {}).forEach(([key, value]) => {
+    if (isNoteRecord(value)) {
+      // 补齐缺失的 key 字段（早期数据可能没有），避免这类备注在备份里被静默丢弃
+      notes.push(value.key ? value : Object.assign({}, value, { key }));
+    } else {
+      others[key] = value;
+    }
+  });
+
+  return { notes, others };
+}
+
+// 解析备份文件内容，兼容新旧两种格式
+// 返回 { notes, others, legacy, version }；无法识别时返回 null
+function parseBackupPayload(raw) {
+  // 旧格式：裸数组，只有备注，不含设置类数据
+  if (Array.isArray(raw)) {
+    return { notes: raw, others: {}, legacy: true, version: 1 };
+  }
+
+  // 新格式：带信封对象
+  if (raw && typeof raw === 'object' && Array.isArray(raw.notes)) {
+    const others =
+      raw.others && typeof raw.others === 'object' && !Array.isArray(raw.others)
+        ? raw.others
+        : {};
+    return {
+      notes: raw.notes,
+      others,
+      legacy: false,
+      version: Number(raw.version) || BACKUP_VERSION
+    };
+  }
+
+  return null;
+}
+
+// 净化 others：只接受普通 key-value，并拦掉混进来的「备注形」数据，
+// 防止有人构造文件绕过备注校验通道写入未校验内容
+function sanitizeOthers(others) {
+  const safe = {};
+
+  Object.entries(others || {}).forEach(([key, value]) => {
+    if (typeof key !== 'string' || !key) return;
+    if (isNoteRecord(value)) return;
+    safe[key] = value;
+  });
+
+  return safe;
+}
+
+// 导入后把受影响的视图全部刷新（备注 / 标签 / 筛选器 / 禁用列表 / 全局开关 / 主题）
+async function refreshViewsAfterImport() {
+  await loadAllNotes();
+
+  // 导入的备注可能带来新标签，标签列表与筛选器需要同步
+  if (typeof loadTagsList === 'function') loadTagsList();
+  if (typeof setupFilters === 'function') setupFilters();
+
+  if (typeof loadDisabledSites === 'function') loadDisabledSites();
+
+  // 导入的备份可能带来锚定记录（others 会一并还原）
+  if (typeof loadFieldAnchors === 'function') loadFieldAnchors();
+
+  // 全局禁用开关
+  const globalToggle = document.getElementById('globalDisableToggle');
+  if (globalToggle) {
+    const { disabledGlobal } = await chrome.storage.local.get(['disabledGlobal']);
+    globalToggle.checked = disabledGlobal === true;
+  }
+
+  // 主题
+  const { theme } = await chrome.storage.local.get(['theme']);
+  currentTheme = theme || 'auto';
+  applyTheme(currentTheme);
+  updateThemeSelector(currentTheme);
+}
+
 // 导出备注数据
 async function exportNotes() {
   try {
-    // 从本地存储获取所有备注数据
+    // 从本地存储获取全部数据，按「备注 / 非备注」二分
     chrome.storage.local.get(null, (result) => {
-      const notes = Object.values(result).filter(note => 
-        note && note.domain && note.note && note.username && note.key
-      );
+      const { notes, others } = splitStorageData(result);
+
+      // 带版本信封：notes 是备注数组，others 收纳主题、禁用列表、锚定记录等非备注 key
+      const payload = {
+        format: BACKUP_FORMAT,
+        version: BACKUP_VERSION,
+        exportTime: new Date().toISOString(),
+        appVersion: chrome.runtime.getManifest().version,
+        notes,
+        others
+      };
 
       // 创建带时间戳的文件名
       const timestamp = new Date().toISOString().split('T')[0];
       const filename = `accountNote_backup_${timestamp}.json`;
 
       // 创建Blob对象
-      const blob = new Blob([JSON.stringify(notes, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
 
       // 创建下载链接并触发下载
@@ -1254,93 +1491,95 @@ async function exportNotes() {
 async function importNotes(file) {
   try {
     const reader = new FileReader();
-    
+
     reader.onload = async (event) => {
       try {
-        // 解析JSON数据
-        const importedNotes = JSON.parse(event.target.result);
-        
-        // 验证数据格式
-        if (!Array.isArray(importedNotes)) {
+        // 解析备份文件（兼容旧版裸数组与新版信封格式）
+        const raw = JSON.parse(event.target.result);
+        const parsed = parseBackupPayload(raw);
+
+        if (!parsed) {
           throw new Error(getMessage('invalidDataFormat'));
         }
-        
-        // 验证每条数据的结构
-        const validNotes = importedNotes.filter(note => 
-          note && 
+
+        // 备份来自更新版本时提示用户，仍按当前能识别的部分尽力恢复
+        if (!parsed.legacy && parsed.version > BACKUP_VERSION) {
+          showToast(getMessage('backupFromNewerVersion') || '备份文件来自更新的版本，部分数据可能无法恢复');
+        }
+
+        // 校验备注结构
+        const validNotes = parsed.notes.filter(note =>
+          note &&
           typeof note === 'object' &&
           note.domain &&
           note.note &&
           note.username &&
           note.key
         );
-        
-        if (validNotes.length === 0) {
+
+        // 设置类数据（主题、禁用列表，以及将来的锚定记录等）
+        const safeOthers = sanitizeOthers(parsed.others);
+
+        if (validNotes.length === 0 && Object.keys(safeOthers).length === 0) {
           throw new Error(getMessage('noValidNotes'));
         }
-        
-        // 获取现有数据
+
+        if (parsed.legacy) {
+          console.log('[Import] 检测到旧格式备份（裸数组），仅含备注数据，不含设置类数据');
+        }
+
+        // 获取现有数据，用于冲突检测
         const existingData = await new Promise(resolve => {
           chrome.storage.local.get(null, resolve);
         });
-        
-        // 检查是否有冲突数据
+
+        // 备注键 -> 备注 的映射
+        const toMap = (list) =>
+          list.reduce((acc, note) => {
+            acc[note.key] = note;
+            return acc;
+          }, {});
+
         const conflicts = validNotes.filter(note => existingData[note.key]);
-        
-        // 如果有冲突数据，询问用户如何处理
+
         if (conflicts.length > 0) {
           if (!confirm(getMessage('conflictPrompt', [conflicts.length.toString()]))) {
-            // 用户选择跳过重复数据
+            // 用户选择跳过重复：只补新增备注，不动任何既有设置
             const newNotes = validNotes.filter(note => !existingData[note.key]);
             if (newNotes.length === 0) {
               showToast(getMessage('noNewNotes'));
               return;
             }
-            // 只导入新数据
-            const importData = newNotes.reduce((acc, note) => {
-              acc[note.key] = note;
-              return acc;
-            }, {});
-            
-            await chrome.storage.local.set(importData);
+
+            await chrome.storage.local.set(toMap(newNotes));
             showToast(getMessage('importSuccess', [newNotes.length.toString()]));
           } else {
-            // 用户选择覆盖所有数据
-            const importData = validNotes.reduce((acc, note) => {
-              acc[note.key] = note;
-              return acc;
-            }, {});
-            
-            await chrome.storage.local.set(importData);
+            // 用户选择覆盖：备注与设置类数据一并还原
+            await chrome.storage.local.set(Object.assign({}, toMap(validNotes), safeOthers));
             showToast(getMessage('importSuccess', [validNotes.length.toString()]));
           }
         } else {
-          // 没有冲突，直接导入所有数据
-          const importData = validNotes.reduce((acc, note) => {
-            acc[note.key] = note;
-            return acc;
-          }, {});
-          
-          await chrome.storage.local.set(importData);
+          // 没有冲突，完整还原
+          await chrome.storage.local.set(Object.assign({}, toMap(validNotes), safeOthers));
           showToast(getMessage('importSuccess', [validNotes.length.toString()]));
         }
-        
-        // 重新加载显示
-        await loadAllNotes();
-        
+
+        // 重新加载所有受影响的视图（备注 / 标签 / 筛选器 / 禁用列表 / 全局开关 / 主题）
+        await refreshViewsAfterImport();
+
       } catch (error) {
         console.error('导入数据处理失败:', error);
         showToast(error.message || getMessage('importFailed'));
       }
     };
-    
+
     reader.onerror = () => {
       showToast(getMessage('importFailed'));
     };
-    
+
     // 开始读取文件
     reader.readAsText(file);
-    
+
   } catch (error) {
     console.error('导入备注失败:', error);
     showToast(getMessage('importFailed'));
@@ -1385,11 +1624,11 @@ function setupDataManagement() {
 
   // 清除所有数据按钮点击事件
   clearAllDataBtn.addEventListener('click', () => {
-    if (confirm(getMessage('confirmClearAllData') || '确定要清除所有数据吗？这将无法恢复。')) {
+    if (confirm(getMessage('confirmClearAllData') || '确定要清除所有数据吗？备注、标签、主题设置、禁用网站列表（以及输入框锚定记录）都将被删除，此操作无法恢复。')) {
       chrome.storage.local.clear(() => {
         showToast(getMessage('dataCleared') || '所有数据已清除');
-        loadAllNotes(); // 重新加载（空）备注列表
-        loadDisabledSites(); // 重新加载（空）禁用网站列表
+        // 备注、标签、筛选器、禁用列表、全局开关、主题一并刷新（清空后应回到默认态）
+        refreshViewsAfterImport();
       });
     }
   });

@@ -28,6 +28,25 @@
           <!-- 备注列表将通过 JS 动态插入 -->
         </div>
       </div>
+
+      <!-- 当前站点已锚定的输入框数量 + 一键清除 -->
+      <div class="anchor-panel" id="anchorPanel" hidden>
+        <span class="anchor-count-text" id="anchorCountText"></span>
+        <button type="button" class="anchor-clear-btn" id="clearAnchorBtn">
+          <span id="clearAnchorText"></span>
+        </button>
+      </div>
+
+      <!-- 手动锚定入口：识别不到时的兜底通道 -->
+      <button type="button" class="pick-field-btn" id="pickFieldBtn">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path>
+          </g>
+        </svg>
+        <span id="pickFieldText"></span>
+      </button>
     </main>
   </div>
   <script src="popup.js"></script>

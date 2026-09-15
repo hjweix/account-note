@@ -324,8 +324,8 @@
     "description": "Clear button text"
   },
   "confirmClearAllData": {
-    "message": "Are you sure you want to clear all data? This cannot be undone.",
-    "description": "Clear all data confirmation prompt"
+    "message": "Are you sure you want to clear all data? All notes, tags, theme settings, the disabled-site list and any input-field anchors will be deleted. This cannot be undone.",
+    "description": "Final confirmation before clearing all extension data (notes plus every setting)"
   },
   "dataCleared": {
     "message": "All data has been cleared",
@@ -458,5 +458,137 @@
   "operationFailed": {
     "message": "Operation failed, please try again",
     "description": "Generic operation failed error message"
+  },
+  "globalDisabled": {
+    "message": "Note popups disabled on all sites",
+    "description": "Global disable success message"
+  },
+  "globalDisableEnabled": {
+    "message": "Note popups disabled globally",
+    "description": "Global disable enabled toast"
+  },
+  "globalDisableDisabled": {
+    "message": "Note popups enabled",
+    "description": "Global disable switched off toast"
+  },
+  "currentFilter": {
+    "message": "current filter",
+    "description": "Fallback wording when no search term but a filter is active"
+  },
+  "newTagInputPlaceholder": {
+    "message": "Enter a tag name, e.g. Work",
+    "description": "Placeholder of the new tag input"
+  },
+  "tagAlreadyExists": {
+    "message": "Tag already exists",
+    "description": "Duplicate tag warning"
+  },
+  "noTags": {
+    "message": "No tags yet",
+    "description": "Empty tag list"
+  },
+  "createTagHint": {
+    "message": "Add tags while editing a note",
+    "description": "Hint when no tags exist"
+  },
+  "notesCount": {
+    "message": "notes",
+    "description": "Suffix after the number of notes in a tag"
+  },
+  "tagRenamed": {
+    "message": "Tag renamed, $1 notes affected",
+    "description": "Tag renamed toast with affected count"
+  },
+  "tagRenamedNoNotes": {
+    "message": "Tag renamed",
+    "description": "Tag renamed toast without affected notes"
+  },
+  "tagRenameFailed": {
+    "message": "Failed to rename tag",
+    "description": "Tag rename failure toast"
+  },
+  "tagDeleted": {
+    "message": "Tag deleted, $1 notes affected",
+    "description": "Tag deleted toast with affected count"
+  },
+  "tagDeletedNoNotes": {
+    "message": "Tag deleted",
+    "description": "Tag deleted toast without affected notes"
+  },
+  "tagDeleteFailed": {
+    "message": "Failed to delete tag",
+    "description": "Tag delete failure toast"
+  },
+  "backupFromNewerVersion": {
+    "message": "This backup was created by a newer version of the extension; some data may not be restored",
+    "description": "Warning when the backup envelope version is newer than supported"
+  },
+  "pickFieldBtn": {
+    "message": "Not detected? Pick the field manually",
+    "description": "Entry button in the popup that starts the field picker"
+  },
+  "pickerBannerTitle": {
+    "message": "Click the input field to anchor",
+    "description": "Picker mode banner title"
+  },
+  "pickerBannerDesc": {
+    "message": "The field will always show the note popup afterwards. Press Esc to exit.",
+    "description": "Picker mode banner description"
+  },
+  "pickerExit": {
+    "message": "Exit",
+    "description": "Picker mode exit button"
+  },
+  "pickerSaved": {
+    "message": "Field anchored. Type an account to see the note.",
+    "description": "Toast after a successful manual anchor"
+  },
+  "pickerAlreadyAnchored": {
+    "message": "This field is already anchored",
+    "description": "Toast when the picked field was anchored before"
+  },
+  "pickerNoCandidates": {
+    "message": "No anchorable input field on this page",
+    "description": "Toast when picker mode finds no candidate"
+  },
+  "pickerConnectFailed": {
+    "message": "Cannot reach this page. Please refresh it and try again.",
+    "description": "Toast when the content script is not available on the tab"
+  },
+  "anchoredCount": {
+    "message": "$1 field(s) anchored on this site",
+    "description": "Popup: number of anchored fields for the current site"
+  },
+  "clearAnchorsForSite": {
+    "message": "Clear",
+    "description": "Popup: clear all anchors of the current site"
+  },
+  "anchorsCleared": {
+    "message": "Anchors cleared for this site",
+    "description": "Toast after clearing anchors of the current site"
+  },
+  "fieldAnchorsTitle": {
+    "message": "Field Anchors",
+    "description": "Settings card title for manually anchored input fields"
+  },
+  "fieldAnchorsDesc": {
+    "message": "Fields you picked manually always show the note popup. Re-pick from the extension popup if detection is off.",
+    "description": "Settings card description for field anchors"
+  },
+  "noFieldAnchors": {
+    "message": "No anchors yet",
+    "description": "Empty state of the field anchor list"
+  },
+  "removeAnchor": {
+    "message": "Remove",
+    "description": "Remove a single field anchor"
+  },
+  "anchorRemoved": {
+    "message": "Anchor removed",
+    "description": "Toast after removing a field anchor"
+  },
+  "anchorIndexLabel": {
+    "message": "input field #$1",
+    "description": "Fallback description for a bare anchor with no attributes"
   }
 }

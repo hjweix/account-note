@@ -9,6 +9,7 @@ dist/
 build/
 
 # Editor directories and files
+.workbuddy/
 .idea/
 .vscode/
 *.suo

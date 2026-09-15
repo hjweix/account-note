@@ -324,8 +324,8 @@
     "description": "清除按钮文本"
   },
   "confirmClearAllData": {
-    "message": "确定要清除所有数据吗？这将无法恢复。",
-    "description": "清除所有数据确认提示"
+    "message": "确定要清除所有数据吗？备注、标签、主题设置、禁用网站列表（以及输入框锚定记录）都将被删除，此操作无法恢复。",
+    "description": "Final confirmation before clearing all extension data (notes plus every setting)"
   },
   "dataCleared": {
     "message": "所有数据已清除",
@@ -446,5 +446,149 @@
   "operationFailed": {
     "message": "操作失败，请重试",
     "description": "通用操作失败错误提示"
+  },
+  "globalDisabled": {
+    "message": "已在所有网站上禁用备注功能",
+    "description": "Global disable success message"
+  },
+  "globalDisableDesc": {
+    "message": "启用此选项将在所有网站上禁用备注弹窗",
+    "description": "Global disable description"
+  },
+  "globalDisableEnabled": {
+    "message": "已全局禁用备注功能",
+    "description": "Global disable enabled toast"
+  },
+  "globalDisableDisabled": {
+    "message": "已启用备注功能",
+    "description": "Global disable switched off toast"
+  },
+  "currentFilter": {
+    "message": "当前筛选条件",
+    "description": "Fallback wording when no search term but a filter is active"
+  },
+  "newTagInputPlaceholder": {
+    "message": "输入标签名称，如 工作",
+    "description": "Placeholder of the new tag input"
+  },
+  "tagAlreadyExists": {
+    "message": "标签已存在",
+    "description": "Duplicate tag warning"
+  },
+  "noTags": {
+    "message": "暂无标签",
+    "description": "Empty tag list"
+  },
+  "createTagHint": {
+    "message": "在编辑备注时添加标签",
+    "description": "Hint when no tags exist"
+  },
+  "notesCount": {
+    "message": "个备注",
+    "description": "Suffix after the number of notes in a tag"
+  },
+  "tagRenamed": {
+    "message": "标签已重命名，影响 $1 个备注",
+    "description": "Tag renamed toast with affected count"
+  },
+  "tagRenamedNoNotes": {
+    "message": "标签已重命名",
+    "description": "Tag renamed toast without affected notes"
+  },
+  "tagRenameFailed": {
+    "message": "标签重命名失败",
+    "description": "Tag rename failure toast"
+  },
+  "tagDeleted": {
+    "message": "标签已删除，影响 $1 个备注",
+    "description": "Tag deleted toast with affected count"
+  },
+  "tagDeletedNoNotes": {
+    "message": "标签已删除",
+    "description": "Tag deleted toast without affected notes"
+  },
+  "tagDeleteFailed": {
+    "message": "标签删除失败",
+    "description": "Tag delete failure toast"
+  },
+  "viewChangelog": {
+    "message": "查看更新日志",
+    "description": "View changelog link text"
+  },
+  "reportIssue": {
+    "message": "反馈问题",
+    "description": "Report issue link text"
+  },
+  "backupFromNewerVersion": {
+    "message": "备份文件来自更新版本的扩展，部分数据可能无法恢复",
+    "description": "Warning when the backup envelope version is newer than supported"
+  },
+  "pickFieldBtn": {
+    "message": "本页识别不到？手动指定输入框",
+    "description": "Entry button in the popup that starts the field picker"
+  },
+  "pickerBannerTitle": {
+    "message": "点击要锚定的输入框",
+    "description": "Picker mode banner title"
+  },
+  "pickerBannerDesc": {
+    "message": "锚定后该输入框会始终显示备注弹窗，按 Esc 退出",
+    "description": "Picker mode banner description"
+  },
+  "pickerExit": {
+    "message": "退出",
+    "description": "Picker mode exit button"
+  },
+  "pickerSaved": {
+    "message": "已锚定该输入框，输入账号即可看到备注",
+    "description": "Toast after a successful manual anchor"
+  },
+  "pickerAlreadyAnchored": {
+    "message": "该输入框已锚定",
+    "description": "Toast when the picked field was anchored before"
+  },
+  "pickerNoCandidates": {
+    "message": "当前页面没有可锚定的输入框",
+    "description": "Toast when picker mode finds no candidate"
+  },
+  "pickerConnectFailed": {
+    "message": "无法连接当前页面，请刷新页面后重试",
+    "description": "Toast when the content script is not available on the tab"
+  },
+  "anchoredCount": {
+    "message": "本页已锚定 $1 个输入框",
+    "description": "Popup: number of anchored fields for the current site"
+  },
+  "clearAnchorsForSite": {
+    "message": "清除",
+    "description": "Popup: clear all anchors of the current site"
+  },
+  "anchorsCleared": {
+    "message": "已清除本页锚定记录",
+    "description": "Toast after clearing anchors of the current site"
+  },
+  "fieldAnchorsTitle": {
+    "message": "输入框锚定",
+    "description": "Settings card title for manually anchored input fields"
+  },
+  "fieldAnchorsDesc": {
+    "message": "手动指定过的输入框会始终显示备注弹窗。识别不准时，可在扩展弹窗里重新指定。",
+    "description": "Settings card description for field anchors"
+  },
+  "noFieldAnchors": {
+    "message": "暂无锚定记录",
+    "description": "Empty state of the field anchor list"
+  },
+  "removeAnchor": {
+    "message": "移除",
+    "description": "Remove a single field anchor"
+  },
+  "anchorRemoved": {
+    "message": "已移除锚定记录",
+    "description": "Toast after removing a field anchor"
+  },
+  "anchorIndexLabel": {
+    "message": "第 $1 个输入框",
+    "description": "Fallback description for a bare anchor with no attributes"
   }
 }

@@ -1020,6 +1020,81 @@ input:checked + .slider::before {
   color: white;
 }
 
+/* Field Anchors */
+.field-anchors-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.field-anchor-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field-anchor-origin {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  word-break: break-all;
+}
+
+.field-anchor-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  transition: all 0.2s;
+}
+
+.field-anchor-item:hover {
+  border-color: var(--primary-500);
+}
+
+.field-anchor-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.field-anchor-signature {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  word-break: break-all;
+}
+
+.field-anchor-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.field-anchor-remove {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.field-anchor-remove:hover {
+  background: var(--danger-color, #ef4444);
+  color: #ffffff;
+}
+
 /* Data Management */
 .data-management-actions {
   display: flex;

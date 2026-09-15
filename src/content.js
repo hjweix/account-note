@@ -3,6 +3,10 @@
 let isExtensionInvalidated = false;
 // 页面级监听是否已注册（幂等标记，替代原先的 MutationObserver 状态）
 let listenersRegistered = false;
+// 当前站点是否启用了备注功能（拾取模式的前置校验，避免在禁用站点上锚定）
+let noteEnabled = false;
+// 锚定记录的存储变更监听是否已注册
+let storageListenerRegistered = false;
 
 // 检查扩展上下文是否有效
 function isExtensionContextValid() {
@@ -15,6 +19,15 @@ function isExtensionContextValid() {
 
 // 卸载注入到页面上的所有监听，扩展上下文失效后不再打扰宿主页面
 function teardownListeners() {
+  if (storageListenerRegistered && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+    try {
+      chrome.storage.onChanged.removeListener(onAnchorStorageChanged);
+    } catch (error) {
+      // 上下文已失效，忽略
+    }
+    storageListenerRegistered = false;
+  }
+  exitFieldPicker();
   if (!listenersRegistered) return;
   document.removeEventListener('focusin', onDelegatedFocusIn, true);
   document.removeEventListener('input', onDelegatedInput, true);
@@ -105,14 +118,14 @@ function isCandidateInput(el) {
 // 聚焦账号框：已有内容时读取并展示备注
 function onDelegatedFocusIn(event) {
   const field = resolveEventTarget(event);
-  if (!isCandidateInput(field) || !isUsernameField(field)) return;
+  if (!isCandidateInput(field) || !isAccountField(field)) return;
   handleAccountFieldFocus(field);
 }
 
 // 在账号框输入：按字段防抖后读取并展示备注
 function onDelegatedInput(event) {
   const field = resolveEventTarget(event);
-  if (!isCandidateInput(field) || !isUsernameField(field)) return;
+  if (!isCandidateInput(field) || !isAccountField(field)) return;
   getFieldInputHandler(field)();
 }
 
@@ -155,7 +168,11 @@ async function bootstrap() {
     return;
   }
   if (isNegligibleFrame()) return;
-  if (await shouldShowNote()) {
+  noteEnabled = await shouldShowNote();
+  if (noteEnabled) {
+    // 锚定记录先于事件监听就位，保证首个事件就能命中手动指定过的输入框
+    await refreshAnchors();
+    watchAnchorStorage();
     initAccountFields();
   }
 }
@@ -172,6 +189,15 @@ window.addEventListener('pagehide', teardownListeners);
 window.addEventListener('pageshow', event => {
   if (event.persisted) bootstrap();
 });
+
+// 覆盖层挂载根：优先挂到 <html> 而非 <body>。
+// 原因：position:fixed 的包含块会被祖先元素的 transform / filter / perspective /
+// will-change 劫持——不少 SPA 会给 <body> 加这类属性（入场动画、布局技巧），
+// 此时挂在 body 上的弹窗会以 body 为参照系而产生偏移。挂到 documentElement
+// 可规避绝大多数此类场景（<html> 被加 transform 的情况极罕见）。
+function getOverlayRoot() {
+  return document.documentElement || document.body;
+}
 
 // 显示禁用选项菜单
 function showDisableOptions(suggestion, field, closeBtn) {
@@ -195,8 +221,8 @@ function showDisableOptions(suggestion, field, closeBtn) {
     </div>
   `;
 
-  // 将菜单添加到body而不是suggestion内部，以避免定位问题
-  document.body.appendChild(disableMenu);
+  // 将菜单添加到覆盖层根而不是 body，以避免 body 带 transform 时的定位偏移
+  getOverlayRoot().appendChild(disableMenu);
 
   // 定位菜单到关闭按钮附近
   const closeBtnRect = closeBtn.getBoundingClientRect();
@@ -461,10 +487,13 @@ function getFieldKey(field) {
 // 因此「不写 type」的写法天然被覆盖。
 const USERNAME_INPUT_TYPES = ['text', 'email', 'tel'];
 
-// 正向关键词：命中任意一个即认为是账号类输入框（含中文）
+// 正向关键词：命中任意一个即加分（含中文）。不再作为硬门槛——
+// 无线索的裸账号框改由「登录表单结构」信号救回。
 const USERNAME_KEYWORDS = ['user', 'uname', 'login', 'signin', 'account', 'acct', 'email', 'mail', 'identifier', 'uid', 'member', 'mobile', 'phone', 'card', 'name', '账号', '帐号', '账户', '帐户', '用户名', '用户', '登录', '登陆', '邮箱', '邮件', '手机', '电话', '号码', '身份证', '证件', '学号', '工号', '会员'];
 
-// 反向关键词：命中任意一个即排除，避免在密码 / 验证码 / 搜索框上误弹
+// 反向关键词：命中即重扣分（避免在密码 / 验证码 / 搜索框上误弹）。
+// 用扣分而非直接否决，是为了让「属性里恰好含 search 字样」的账号框
+// 仍有机会被登录表单结构信号纠正回来。
 const NON_USERNAME_KEYWORDS = ['password', 'passwd', 'pwd', 'captcha', 'verification', 'verify', 'sms', 'otp', 'search', 'keyword', 'query', '密码', '验证码', '校验码', '短信', '搜索', '关键词'];
 
 // 收集与输入框相关的文本线索：自身属性 + 显式关联的 label 文本。
@@ -493,21 +522,458 @@ function getFieldTextHints(field) {
   return hints.filter(hint => typeof hint === 'string' && hint.trim()).map(hint => hint.toLowerCase());
 }
 
-// 判断是否为用户名/账号输入框
-function isUsernameField(input) {
-  if (!input || !input.tagName || input.tagName !== 'INPUT') return false;
+// ===== 账号框识别：登录表单锚定 + 多信号评分 =====
+// 设计依据（密码管理器同款思路）：不要孤立地看「这个框像不像账号框」，
+// 而要结合「它是否位于一个登录表单中、相对密码框的位置」来判断。
+// 任何单一信号都不可靠——实测证据见 document/progress.md：
+//   · GitHub：autocomplete="username" 足以单独命中
+//   · dcps（choerodon-ui）：密码框前有反 autofill 蜜罐框（无 id/name + tabindex=-1），
+//     纯「取密码框前最近文本框」会选错，必须靠蜜罐否决 + 关键词加分共同兜底
+
+// 判定阈值：达到即认为是账号框
+const ACCOUNT_FIELD_THRESHOLD = 20;
+
+// 表单结构缓存时长。SPA 重渲染可能后置插入密码框，
+// 因此对有 form 的场景做短 TTL 缓存，兼顾性能与新鲜度。
+const FORM_CONTEXT_TTL = 2000;
+const formContextCache = new WeakMap();
+
+// 元素是否真实可见（用于排除隐藏框与蜜罐框）。
+// 不用 offsetParent 判断：它对 position:fixed 元素恒为 null，会误杀。
+function isVisibleInput(el) {
+  if (el.hidden || el.disabled) return false;
+  if (typeof el.getClientRects === 'function' && el.getClientRects().length === 0) return false;
+  try {
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+    if (parseFloat(style.opacity) === 0) return false;
+  } catch (error) {
+    // 计算样式不可用时按可见处理，避免误杀
+  }
+  return true;
+}
+
+// 蜜罐/装饰框识别：前端框架为对抗自动填充会插入不可聚焦的诱饵输入框。
+// 这类框必须一票否决，否则会抢走「离密码框最近」的结构信号。
+// 只认客观特征，不因「无 id/name」就否决——真正的裸账号框要靠结构信号救回。
+function isDecoyInput(el) {
+  if (el.getAttribute('tabindex') === '-1') return true;
+  if (el.getAttribute('aria-hidden') === 'true') return true;
+  // 只读框用户无法输入账号，不适合作为备注锚点
+  if (el.readOnly) return true;
+  return false;
+}
+
+// 判断 a 是否在 DOM 顺序上位于 b 之前
+function isBeforeInDom(a, b) {
+  if (!a || !b || a === b) return false;
+  return !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+}
+
+// 收集表单上下文：作用域内是否存在可见密码框，以及密码框之前最靠近它的候选框。
+// 作用域优先取 input 所属的 <form>；SPA 常不用 form 元素，此时退化为文档级。
+function collectFormContext(scope) {
+  const passwordInputs = Array.from(scope.querySelectorAll('input[type="password"]')).filter(isVisibleInput);
+  const firstPassword = passwordInputs[0] || null;
+
+  // 密码框之前最近的「有身份标识」的候选文本框，作为结构信号的锚点
+  let closestCandidate = null;
+  if (firstPassword) {
+    const allInputs = Array.from(scope.querySelectorAll('input'));
+    const boundary = allInputs.indexOf(firstPassword);
+    for (let i = boundary - 1; i >= 0; i -= 1) {
+      const candidate = allInputs[i];
+      const candidateType = (candidate.type || 'text').toLowerCase();
+      if (!USERNAME_INPUT_TYPES.includes(candidateType)) continue;
+      if (!isVisibleInput(candidate) || isDecoyInput(candidate)) continue;
+      closestCandidate = candidate;
+      break;
+    }
+  }
+
+  return {
+    hasPassword: passwordInputs.length > 0,
+    firstPassword,
+    closestCandidate,
+    cachedAt: Date.now()
+  };
+}
+
+// 取（并缓存）输入框所处的表单上下文
+// 文档级上下文（页面无 <form> 时）用时间戳短缓存，避免超大页面每次事件都全量查询
+let documentContextCache = null;
+function getFormContext(input) {
+  if (input.form) {
+    const cached = formContextCache.get(input.form);
+    if (cached && Date.now() - cached.cachedAt < FORM_CONTEXT_TTL) return cached;
+    const context = collectFormContext(input.form);
+    formContextCache.set(input.form, context);
+    return context;
+  }
+
+  if (documentContextCache && Date.now() - documentContextCache.cachedAt < FORM_CONTEXT_TTL) {
+    return documentContextCache;
+  }
+  documentContextCache = collectFormContext(document);
+  return documentContextCache;
+}
+
+// 打分：返回 { score, reasons }。一票否决直接返回 -Infinity。
+// 分值表（与方案文档一致）：
+//   一票否决  不可见 / tabindex=-1 / aria-hidden
+//   −50      反向关键词（密码、验证码、搜索…）
+//   +40      autocomplete 标注为 username / email（标准强信号）
+//   +35      所在表单含可见密码框，且本框位于密码框之前（登录表单结构）
+//   +30      type="email"
+//   +15      正向关键词命中（id/name/placeholder/label/aria… 任一）
+//   +10      同一结构内离密码框最近的候选
+//   +5       有 placeholder 或关联 label（可交互性强）
+function scoreAsAccountField(input) {
+  const veto = reason => ({ score: -Infinity, reasons: [`否决：${reason}`] });
+
+  if (!input || input.tagName !== 'INPUT') return veto('非 input 元素');
   const type = (input.type || 'text').toLowerCase();
-  if (!USERNAME_INPUT_TYPES.includes(type)) return false;
-  const joined = getFieldTextHints(input).join(' ');
+  if (!USERNAME_INPUT_TYPES.includes(type)) return veto(`type=${type} 不在候选范围内`);
+  if (!isVisibleInput(input)) return veto('不可见');
+  if (isDecoyInput(input)) return veto('蜜罐/装饰框特征');
+  if (input.getAttribute('aria-hidden') === 'true') return veto('aria-hidden');
 
-  // 反向关键词优先：密码、验证码、搜索等一律不认
-  if (NON_USERNAME_KEYWORDS.some(keyword => joined.includes(keyword))) return false;
+  const reasons = [];
+  let score = 0;
 
-  // 强信号：email 类型，或 autocomplete 明确标注为账号字段
+  const hints = getFieldTextHints(input);
+  const joined = hints.join(' ');
   const autocomplete = (input.getAttribute('autocomplete') || '').toLowerCase();
-  if (type === 'email') return true;
-  if (autocomplete.indexOf('username') !== -1 || autocomplete === 'email') return true;
-  return USERNAME_KEYWORDS.some(keyword => joined.includes(keyword));
+
+  // 反向关键词：重扣分而非直接否决，保证「误伤可被结构信号纠正」
+  // （例如 class 名里恰好含 search 字样的账号框）
+  const negativeHits = NON_USERNAME_KEYWORDS.filter(keyword => joined.includes(keyword));
+  if (negativeHits.length > 0) {
+    score -= 50;
+    reasons.push(`-50 反向关键词（${negativeHits.join(', ')}）`);
+  }
+
+  if (autocomplete.indexOf('username') !== -1 || autocomplete === 'email') {
+    score += 40;
+    reasons.push(`+40 autocomplete=${autocomplete}`);
+  }
+  if (type === 'email') {
+    score += 30;
+    reasons.push('+30 type=email');
+  }
+
+  const context = getFormContext(input);
+  if (context.hasPassword && isBeforeInDom(input, context.firstPassword)) {
+    score += 35;
+    reasons.push('+35 位于登录表单密码框之前');
+  }
+  if (context.closestCandidate === input) {
+    score += 10;
+    reasons.push('+10 离密码框最近的候选框');
+  }
+
+  const positiveHits = USERNAME_KEYWORDS.filter(keyword => joined.includes(keyword));
+  if (positiveHits.length > 0) {
+    score += 15;
+    reasons.push(`+15 正向关键词（${positiveHits.slice(0, 3).join(', ')}）`);
+  }
+
+  const hasLabel = (() => {
+    try {
+      return !!(input.placeholder || (input.labels && input.labels.length));
+    } catch (error) {
+      return !!input.placeholder;
+    }
+  })();
+  if (hasLabel) {
+    score += 5;
+    reasons.push('+5 有 placeholder / label');
+  }
+
+  return { score, reasons };
+}
+
+// ===== 手动锚定记忆 =====
+// 评分引擎本质是「猜」：总存在既无关键词线索、又无登录表单结构信号的孤立输入框。
+// 锚定记忆让用户手动指定一次，此后该框直接命中——把识别系统从
+// 「一次性猜测」升级为「可被纠正的猜测」。
+//
+// 存储结构（key: fieldAnchors，按 origin 分组）：
+//   { "https://example.com": [ { id, name, placeholder, type, nth, createTime } ] }
+// 匹配按标识强度降级：id > name > placeholder > 可见候选序号（仅限完全无标识的裸框）
+const ANCHOR_STORAGE_KEY = 'fieldAnchors';
+
+// 当前 origin 的锚定记录（同步快照，供事件处理路径零成本查询）
+let anchorList = [];
+
+// 拉取当前站点的锚定记录到内存快照
+function refreshAnchors() {
+  const origin = window.location.origin;
+  if (!isExtensionContextValid()) return Promise.resolve();
+  if (!/^https?:\/\//.test(origin)) return Promise.resolve();
+  return new Promise(resolve => {
+    try {
+      chrome.storage.local.get([ANCHOR_STORAGE_KEY], result => {
+        if (chrome.runtime.lastError) {
+          resolve();
+          return;
+        }
+        const all = result ? result[ANCHOR_STORAGE_KEY] : null;
+        const list = all && typeof all === 'object' ? all[origin] : null;
+        anchorList = Array.isArray(list) ? list.slice() : [];
+        resolve();
+      });
+    } catch (error) {
+      resolve();
+    }
+  });
+}
+
+// 存储变更：其他标签页锚定/取消锚定后，本页立即同步
+function onAnchorStorageChanged(changes, areaName) {
+  if (areaName !== 'local' || !changes || !changes[ANCHOR_STORAGE_KEY]) return;
+  refreshAnchors();
+}
+
+function watchAnchorStorage() {
+  if (storageListenerRegistered) return;
+  if (!isExtensionContextValid() || !chrome.storage || !chrome.storage.onChanged) return;
+  try {
+    chrome.storage.onChanged.addListener(onAnchorStorageChanged);
+    storageListenerRegistered = true;
+  } catch (error) {
+    // 忽略注册失败，退化为本页内锚定即时生效
+  }
+}
+
+// 作用域内的可见候选框（与评分引擎的候选范围保持一致）
+function collectVisibleCandidates(scope) {
+  return Array.from(scope.querySelectorAll('input')).filter(el => {
+    const type = (el.type || 'text').toLowerCase();
+    return USERNAME_INPUT_TYPES.includes(type) && isVisibleInput(el);
+  });
+}
+
+// 候选框在可见序列中的序号——仅用于「无任何标识的裸框」的降级匹配
+function getCandidateIndex(input) {
+  return collectVisibleCandidates(input.form || document).indexOf(input);
+}
+
+// 锚定匹配：命中返回锚定记录，未命中返回 null。
+// 锚定是用户的硬指令，但仍保留「可见」这一基础前提——页面把框藏起来时不再打扰。
+function matchAnchor(input) {
+  if (!anchorList || anchorList.length === 0) return null;
+  if (!isVisibleInput(input)) return null;
+  const type = (input.type || 'text').toLowerCase();
+  if (!USERNAME_INPUT_TYPES.includes(type)) return null;
+
+  let fallback = null;
+  for (const anchor of anchorList) {
+    if (!anchor || typeof anchor !== 'object') continue;
+    if (anchor.id && input.id && anchor.id === input.id) return anchor;
+    if (anchor.name && input.name && anchor.name === input.name) return anchor;
+    if (anchor.placeholder && input.placeholder && anchor.placeholder === input.placeholder) return anchor;
+    // 弱兜底：锚定时该框本身就无任何标识，只能靠序号
+    if (!anchor.id && !anchor.name && !anchor.placeholder && typeof anchor.nth === 'number' && !fallback) {
+      fallback = anchor;
+    }
+  }
+
+  if (fallback && getCandidateIndex(input) === fallback.nth) return fallback;
+  return null;
+}
+
+// 为输入框生成锚定指纹
+function buildAnchorDescriptor(field) {
+  const candidates = collectVisibleCandidates(field.form || document);
+  return {
+    id: field.id || '',
+    name: field.name || '',
+    placeholder: field.placeholder || '',
+    type: (field.type || 'text').toLowerCase(),
+    nth: candidates.indexOf(field),
+    createTime: new Date().toISOString()
+  };
+}
+
+// 写入一条锚定记录（同指纹幂等），并同步内存快照
+async function saveAnchor(descriptor) {
+  const origin = window.location.origin;
+  const result = await chrome.storage.local.get([ANCHOR_STORAGE_KEY]);
+  const raw = result ? result[ANCHOR_STORAGE_KEY] : null;
+  const all = raw && typeof raw === 'object' ? { ...raw } : {};
+  const list = Array.isArray(all[origin]) ? all[origin].slice() : [];
+  const duplicated = list.some(anchor =>
+    anchor &&
+    anchor.id === descriptor.id &&
+    anchor.name === descriptor.name &&
+    anchor.placeholder === descriptor.placeholder &&
+    anchor.type === descriptor.type
+  );
+  if (!duplicated) list.push(descriptor);
+  all[origin] = list;
+  await chrome.storage.local.set({ [ANCHOR_STORAGE_KEY]: all });
+  anchorList = list;
+  return { duplicated, count: list.length };
+}
+
+// ===== 拾取模式 =====
+// 入口在扩展工具栏弹窗（始终可达）；页面侧负责高亮候选框并处理点击。
+const PICKER_REPOSITION_INTERVAL = 200;
+let pickerState = null;
+
+// 进入拾取模式。返回是否成功进入（供 popup 决定是否关闭自己）。
+function startFieldPicker() {
+  if (pickerState) return true;
+  if (isExtensionInvalidated || !isExtensionContextValid()) {
+    showToast(getMessage('pickerConnectFailed') || '无法连接当前页面，请刷新页面后重试', 'error');
+    return false;
+  }
+  if (!noteEnabled) {
+    showToast(getMessage('globalDisabled') || '已在所有网站上禁用备注功能', 'error');
+    return false;
+  }
+
+  const candidates = collectVisibleCandidates(document);
+  if (candidates.length === 0) {
+    showToast(getMessage('pickerNoCandidates') || '当前页面没有可锚定的输入框', 'error');
+    return false;
+  }
+
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const themeAttr = prefersDark ? 'dark' : 'light';
+
+  const container = document.createElement('div');
+  container.className = 'account-note-picker';
+
+  const banner = document.createElement('div');
+  banner.className = 'account-note-picker-banner';
+  banner.setAttribute('data-theme', themeAttr);
+
+  const bannerText = document.createElement('div');
+  bannerText.className = 'account-note-picker-banner-text';
+  const bannerTitle = document.createElement('span');
+  bannerTitle.className = 'account-note-picker-title';
+  bannerTitle.textContent = getMessage('pickerBannerTitle') || '点击要锚定的输入框';
+  const bannerDesc = document.createElement('span');
+  bannerDesc.className = 'account-note-picker-desc';
+  bannerDesc.textContent = getMessage('pickerBannerDesc') || '锚定后该输入框会始终显示备注弹窗，按 Esc 退出';
+  bannerText.appendChild(bannerTitle);
+  bannerText.appendChild(bannerDesc);
+
+  const exitBtn = document.createElement('button');
+  exitBtn.type = 'button';
+  exitBtn.className = 'account-note-picker-exit';
+  exitBtn.textContent = getMessage('pickerExit') || '退出';
+  exitBtn.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    exitFieldPicker();
+  });
+
+  banner.appendChild(bannerText);
+  banner.appendChild(exitBtn);
+  container.appendChild(banner);
+
+  const highlights = candidates.map((field, index) => {
+    const box = document.createElement('div');
+    box.className = 'account-note-picker-highlight';
+    box.setAttribute('data-theme', themeAttr);
+    const badge = document.createElement('span');
+    badge.className = 'account-note-picker-badge';
+    badge.textContent = String(index + 1);
+    box.appendChild(badge);
+    box.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      handlePick(field);
+    });
+    container.appendChild(box);
+    return box;
+  });
+
+  getOverlayRoot().appendChild(container);
+
+  // 视口变化时重算位置：滚动、缩放、SPA 布局动画都覆盖到
+  const reposition = () => {
+    if (!pickerState) return;
+    highlights.forEach((box, index) => {
+      const field = candidates[index];
+      if (!field || !field.isConnected) {
+        box.style.display = 'none';
+        return;
+      }
+      const rect = field.getBoundingClientRect();
+      const offscreen =
+        rect.width === 0 ||
+        rect.height === 0 ||
+        rect.bottom < 0 ||
+        rect.top > window.innerHeight ||
+        rect.right < 0 ||
+        rect.left > window.innerWidth;
+      if (offscreen) {
+        box.style.display = 'none';
+        return;
+      }
+      box.style.display = 'block';
+      box.style.left = `${rect.left}px`;
+      box.style.top = `${rect.top}px`;
+      box.style.width = `${rect.width}px`;
+      box.style.height = `${rect.height}px`;
+    });
+  };
+
+  const keyHandler = event => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    exitFieldPicker();
+  };
+
+  document.addEventListener('keydown', keyHandler, true);
+  window.addEventListener('scroll', reposition, true);
+  window.addEventListener('resize', reposition);
+  const repositionTimer = window.setInterval(reposition, PICKER_REPOSITION_INTERVAL);
+
+  pickerState = { container, candidates, highlights, reposition, repositionTimer, keyHandler };
+  reposition();
+  return true;
+}
+
+// 退出拾取模式，彻底清理注入到宿主页面的元素与监听
+function exitFieldPicker() {
+  if (!pickerState) return;
+  const { container, reposition, repositionTimer, keyHandler } = pickerState;
+  window.clearInterval(repositionTimer);
+  document.removeEventListener('keydown', keyHandler, true);
+  window.removeEventListener('scroll', reposition, true);
+  window.removeEventListener('resize', reposition);
+  if (container && container.parentNode) container.remove();
+  pickerState = null;
+}
+
+// 点击候选框：写入锚定并退出
+async function handlePick(field) {
+  const descriptor = buildAnchorDescriptor(field);
+  exitFieldPicker();
+  try {
+    const { duplicated } = await saveAnchor(descriptor);
+    showToast(
+      duplicated
+        ? getMessage('pickerAlreadyAnchored') || '该输入框已锚定'
+        : getMessage('pickerSaved') || '已锚定该输入框，输入账号即可看到备注',
+      'success'
+    );
+  } catch (error) {
+    showToast(getMessage('errorSaveData') || '保存数据失败', 'error');
+  }
+}
+
+// 对外接口：该输入框是否为需要展示备注的账号框。
+// 锚定优先于评分——用户明确指定过的框不看分数。
+function isAccountField(input) {
+  if (matchAnchor(input)) return true;
+  return scoreAsAccountField(input).score >= ACCOUNT_FIELD_THRESHOLD;
 }
 // 缓存弹窗位置，避免频繁重新计算导致跳动
 const popupPositionCache = new WeakMap();
@@ -594,11 +1060,11 @@ function showAccountNote(field, noteData) {
   measureEl.style.height = '45px';
   measureEl.style.whiteSpace = 'nowrap';
   measureEl.value = note;
-  document.body.appendChild(measureEl);
+  getOverlayRoot().appendChild(measureEl);
 
   // 检查是否需要展开按钮
   const isLongText = measureEl.scrollWidth > measureEl.clientWidth;
-  document.body.removeChild(measureEl);
+  getOverlayRoot().removeChild(measureEl);
 
   // 根据是否需要展开来设置显示文本
   const fullText = note;
@@ -667,7 +1133,7 @@ function showAccountNote(field, noteData) {
   suggestion.style.position = 'fixed';
   suggestion.style.top = `${position.top}px`;
   suggestion.style.left = `${position.left}px`;
-  document.body.appendChild(suggestion);
+  getOverlayRoot().appendChild(suggestion);
   suggestionByField.set(field, suggestion);
 
   // 获取元素
@@ -974,6 +1440,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (passwordField) {
       showAccountNote(passwordField, null);
     }
+    return;
+  }
+  if (request.action === 'startFieldPicker') {
+    // 返回是否成功进入拾取模式，popup 据此决定是关闭自己还是提示刷新
+    sendResponse({ ok: startFieldPicker() });
   }
 });
 function showToast(message, type = 'info') {
@@ -993,7 +1464,7 @@ function showToast(message, type = 'info') {
     icon = '<span class="toast-icon">✓</span> ';
   }
   toast.innerHTML = `${icon}${message}`;
-  document.body.appendChild(toast);
+  getOverlayRoot().appendChild(toast);
 
   // 添加进入动画
   toast.style.animation = 'fadeInOut 2.5s ease-in-out';
