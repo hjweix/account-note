@@ -47,6 +47,13 @@
         </svg>
         <span id="pickFieldText"></span>
       </button>
+
+      <!-- 拾取受阻时的可操作提示：说清原因 + 一键恢复。
+           禁用类问题刷新页面解决不了，必须给出真正的出路 -->
+      <div class="picker-hint" id="pickerHint" hidden>
+        <span class="picker-hint-text" id="pickerHintText"></span>
+        <button type="button" class="picker-hint-btn" id="pickerHintBtn" hidden></button>
+      </div>
     </main>
   </div>
   <script src="popup.js"></script>

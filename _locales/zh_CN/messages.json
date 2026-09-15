@@ -555,6 +555,26 @@
     "message": "无法连接当前页面，请刷新页面后重试",
     "description": "Toast when the content script is not available on the tab"
   },
+  "pickerSiteDisabledHint": {
+    "message": "本站点的备注功能已停用，无法锚定输入框。",
+    "description": "Popup hint when notes are disabled for the current site"
+  },
+  "pickerGlobalDisabledHint": {
+    "message": "备注功能已在所有网站上停用，无法锚定输入框。",
+    "description": "Popup hint when notes are disabled globally"
+  },
+  "enableSiteBtn": {
+    "message": "启用备注功能",
+    "description": "Popup button to turn notes back on"
+  },
+  "siteEnabled": {
+    "message": "已启用本站点的备注功能",
+    "description": "Toast after notes are enabled again"
+  },
+  "siteDisabledNote": {
+    "message": "本站点已禁用备注功能",
+    "description": "Page toast when picking on a site where notes are disabled"
+  },
   "anchoredCount": {
     "message": "本页已锚定 $1 个输入框",
     "description": "Popup: number of anchored fields for the current site"

@@ -5,6 +5,10 @@ let isExtensionInvalidated = false;
 let listenersRegistered = false;
 // 当前站点是否启用了备注功能（拾取模式的前置校验，避免在禁用站点上锚定）
 let noteEnabled = false;
+// 未启用的具体原因。扩展弹窗据此给出「可操作」的提示，
+// 而不是把所有失败都笼统归成「无法连接当前页面」。
+// 'enabled' | 'context-invalid' | 'non-http' | 'global-disabled' | 'site-disabled' | 'session-disabled' | 'unknown'
+let noteDisabledReason = 'unknown';
 // 锚定记录的存储变更监听是否已注册
 let storageListenerRegistered = false;
 
@@ -37,11 +41,14 @@ function teardownListeners() {
 
 // CSS样式已通过Webpack打包到content.css中，不需要动态加载
 
-// 检查是否应该显示备注
+// 检查是否应该显示备注。
+// 除返回布尔值外，同时把「为什么没启用」记到 noteDisabledReason，
+// 供扩展弹窗区分提示——禁用类问题刷新页面无法解决，必须给出对应出路。
 function shouldShowNote() {
   return new Promise(resolve => {
     if (isExtensionInvalidated || !isExtensionContextValid()) {
       isExtensionInvalidated = true;
+      noteDisabledReason = 'context-invalid';
       teardownListeners();
       resolve(false);
       return;
@@ -50,6 +57,7 @@ function shouldShowNote() {
 
     // about:blank、data: 等内联框架的 origin 是 "null"，没有可归属的站点
     if (!/^https?:\/\//.test(domain)) {
+      noteDisabledReason = 'non-http';
       resolve(false);
       return;
     }
@@ -60,12 +68,14 @@ function shouldShowNote() {
             isExtensionInvalidated = true;
             teardownListeners();
           }
+          noteDisabledReason = 'context-invalid';
           resolve(false);
           return;
         }
 
         // 检查全局禁用设置
         if (result.disabledGlobal) {
+          noteDisabledReason = 'global-disabled';
           resolve(false);
           return;
         }
@@ -73,6 +83,7 @@ function shouldShowNote() {
         // 检查当前网站是否在禁用列表中
         const disabledSites = result.disabledSites || [];
         if (disabledSites.includes(domain)) {
+          noteDisabledReason = 'site-disabled';
           resolve(false);
           return;
         }
@@ -80,9 +91,11 @@ function shouldShowNote() {
         // 检查会话禁用设置
         const sessionKey = `sessionDisabled_${domain}`;
         if (sessionStorage.getItem(sessionKey)) {
+          noteDisabledReason = 'session-disabled';
           resolve(false);
           return;
         }
+        noteDisabledReason = 'enabled';
         resolve(true);
       });
     } catch (error) {
@@ -90,9 +103,56 @@ function shouldShowNote() {
         isExtensionInvalidated = true;
         teardownListeners();
       }
+      noteDisabledReason = 'context-invalid';
       resolve(false);
     }
   });
+}
+
+// 一键恢复当前站点的备注功能：清掉三类禁用（全局 / 站点 / 本会话）后重新初始化。
+// 供扩展弹窗在「手动指定输入框」被禁用拦住时提供出路——
+// 只提示「已禁用」而不给恢复入口，等于把问题转嫁给用户。
+async function enableCurrentSite() {
+  if (isExtensionInvalidated || !isExtensionContextValid()) {
+    noteDisabledReason = 'context-invalid';
+    return { ok: false, reason: noteDisabledReason };
+  }
+  const origin = window.location.origin;
+  if (!/^https?:\/\//.test(origin)) {
+    noteDisabledReason = 'non-http';
+    return { ok: false, reason: noteDisabledReason };
+  }
+
+  // 会话禁用只存在于当前标签页，只有页面侧清得掉
+  try {
+    sessionStorage.removeItem(`sessionDisabled_${origin}`);
+  } catch (error) {
+    // 存储不可用时忽略，后续判定会反映真实状态
+  }
+
+  try {
+    const result = await chrome.storage.local.get(['disabledGlobal', 'disabledSites']);
+    const patch = {};
+    if (result.disabledGlobal) patch.disabledGlobal = false;
+    const sites = Array.isArray(result.disabledSites) ? result.disabledSites : [];
+    if (sites.includes(origin)) {
+      patch.disabledSites = sites.filter(item => item !== origin);
+    }
+    if (Object.keys(patch).length > 0) {
+      await chrome.storage.local.set(patch);
+    }
+  } catch (error) {
+    noteDisabledReason = 'context-invalid';
+    return { ok: false, reason: noteDisabledReason };
+  }
+
+  noteEnabled = await shouldShowNote();
+  if (noteEnabled) {
+    await refreshAnchors();
+    watchAnchorStorage();
+    initAccountFields();
+  }
+  return { ok: noteEnabled, reason: noteDisabledReason };
 }
 
 // ===== 账号输入框监听 =====
@@ -823,21 +883,31 @@ const PICKER_REPOSITION_INTERVAL = 200;
 let pickerState = null;
 
 // 进入拾取模式。返回是否成功进入（供 popup 决定是否关闭自己）。
+// 进入拾取模式。返回结构化结果 { ok, reason }——
+// 调用方（扩展弹窗）要据此区分「连接不上」与「页面侧拒绝」，才能给出不同出路。
 function startFieldPicker() {
-  if (pickerState) return true;
+  if (pickerState) return { ok: true, reason: 'already-active' };
   if (isExtensionInvalidated || !isExtensionContextValid()) {
+    noteDisabledReason = 'context-invalid';
     showToast(getMessage('pickerConnectFailed') || '无法连接当前页面，请刷新页面后重试', 'error');
-    return false;
+    return { ok: false, reason: noteDisabledReason };
   }
   if (!noteEnabled) {
-    showToast(getMessage('globalDisabled') || '已在所有网站上禁用备注功能', 'error');
-    return false;
+    // 区分「全局禁用」与「本站点禁用」：原实现把两者统一说成全局禁用，误导用户
+    const isGlobal = noteDisabledReason === 'global-disabled';
+    showToast(
+      isGlobal
+        ? getMessage('globalDisabled') || '已在所有网站上禁用备注功能'
+        : getMessage('siteDisabledNote') || '本站点已禁用备注功能',
+      'error'
+    );
+    return { ok: false, reason: noteDisabledReason };
   }
 
   const candidates = collectVisibleCandidates(document);
   if (candidates.length === 0) {
     showToast(getMessage('pickerNoCandidates') || '当前页面没有可锚定的输入框', 'error');
-    return false;
+    return { ok: false, reason: 'no-candidates' };
   }
 
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -937,7 +1007,7 @@ function startFieldPicker() {
 
   pickerState = { container, candidates, highlights, reposition, repositionTimer, keyHandler };
   reposition();
-  return true;
+  return { ok: true, reason: 'started' };
 }
 
 // 退出拾取模式，彻底清理注入到宿主页面的元素与监听
@@ -1429,9 +1499,13 @@ function showAccountNote(field, noteData) {
 
 // 在 content.js 中添加消息监听
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  // 检查扩展上下文
+  // 检查扩展上下文。
+  // 这里必须应答而不是静默 return：静默会让发送方只拿到 undefined，
+  // 与「content script 根本没注入」表现一致，弹窗就无从区分两者。
   if (isExtensionInvalidated || !isExtensionContextValid()) {
     isExtensionInvalidated = true;
+    noteDisabledReason = 'context-invalid';
+    sendResponse({ ok: false, reason: 'context-invalid' });
     return;
   }
   if (request.action === 'showAddNotePopup') {
@@ -1443,8 +1517,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return;
   }
   if (request.action === 'startFieldPicker') {
-    // 返回是否成功进入拾取模式，popup 据此决定是关闭自己还是提示刷新
-    sendResponse({ ok: startFieldPicker() });
+    // 同步返回 { ok, reason }，弹窗据此决定关闭自己、提示原因还是给出恢复入口
+    sendResponse(startFieldPicker());
+    return;
+  }
+  if (request.action === 'enableCurrentSite') {
+    // 异步清理禁用配置后重新初始化，需要保持消息通道
+    enableCurrentSite().then(sendResponse, () => sendResponse({ ok: false, reason: 'context-invalid' }));
+    return true;
   }
 });
 function showToast(message, type = 'info') {

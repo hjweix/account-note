@@ -53,27 +53,91 @@ function loadAnchorInfo(domain) {
   });
 }
 
-// 拾取入口：向主框架投递指令，由 content script 在页面内完成高亮与绑定
+// 拾取入口：向主框架投递指令，由 content script 在页面内完成高亮与绑定。
+// 失败时按页面侧回传的 reason 分流——禁用类问题给恢复入口、无候选框如实说明，
+// 只有真正的消息通道失败才提「刷新」。把所有失败都说成「请刷新」是误导：
+// 站点被禁用时刷新多少次都没用。
 function setupFieldPicker(tab, domain) {
   const pickBtn = document.getElementById('pickFieldBtn');
+  const hint = document.getElementById('pickerHint');
+  const hintText = document.getElementById('pickerHintText');
+  const hintBtn = document.getElementById('pickerHintBtn');
+
+  const hideHint = () => {
+    hint.hidden = true;
+    hintBtn.hidden = true;
+  };
+
+  // 请求进入拾取模式；无响应（content script 未注入或已失效）时返回 null
+  const tryStart = async () => {
+    try {
+      return (await chrome.tabs.sendMessage(tab.id, { action: 'startFieldPicker' }, { frameId: 0 })) || null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // 站点被停用：给出去路，而不是让用户反复刷新
+  const showDisabledHint = reason => {
+    const isGlobal = reason === 'global-disabled';
+    hintText.textContent = isGlobal
+      ? getMessage('pickerGlobalDisabledHint') || '备注功能已在所有网站上停用，无法锚定输入框。'
+      : getMessage('pickerSiteDisabledHint') || '本站点的备注功能已停用，无法锚定输入框。';
+    hintBtn.textContent = getMessage('enableSiteBtn') || '启用备注功能';
+    hint.hidden = false;
+    hintBtn.hidden = false;
+  };
 
   pickBtn.addEventListener('click', async () => {
     pickBtn.disabled = true;
-    let ok = false;
-    try {
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'startFieldPicker' }, { frameId: 0 });
-      ok = !!(response && response.ok);
-    } catch (error) {
-      // 页面在扩展（重）加载之前就已打开时，content script 不会回溯注入
-      ok = false;
-    }
+    hideHint();
+    const response = await tryStart();
     pickBtn.disabled = false;
 
-    if (ok) {
+    // 已进入拾取模式，弹窗让位给页面上的高亮
+    if (response && response.ok) {
       window.close();
-    } else {
-      showToast(getMessage('pickerConnectFailed') || '无法连接当前页面，请刷新页面后重试');
+      return;
     }
+
+    const reason = (response && response.reason) || 'context-invalid';
+
+    if (reason === 'global-disabled' || reason === 'site-disabled' || reason === 'session-disabled') {
+      showDisabledHint(reason);
+      return;
+    }
+    if (reason === 'no-candidates') {
+      showToast(getMessage('pickerNoCandidates') || '当前页面没有可锚定的输入框');
+      return;
+    }
+    // context-invalid / non-http / 无任何响应：确实连不上页面
+    showToast(getMessage('pickerConnectFailed') || '无法连接当前页面，请刷新页面后重试');
+  });
+
+  hintBtn.addEventListener('click', async () => {
+    hintBtn.disabled = true;
+    let enabled = null;
+    try {
+      enabled = (await chrome.tabs.sendMessage(tab.id, { action: 'enableCurrentSite' }, { frameId: 0 })) || null;
+    } catch (error) {
+      enabled = null;
+    }
+    hintBtn.disabled = false;
+
+    if (enabled && enabled.ok) {
+      // 启用成功就直接进入拾取，省掉用户再点一次
+      const started = await tryStart();
+      if (started && started.ok) {
+        window.close();
+        return;
+      }
+      hideHint();
+      showToast(getMessage('siteEnabled') || '已启用本站点的备注功能');
+      loadSiteNotes(domain);
+      loadAnchorInfo(domain);
+      return;
+    }
+    showToast(getMessage('pickerConnectFailed') || '无法连接当前页面，请刷新页面后重试');
   });
 
   document.getElementById('clearAnchorBtn').addEventListener('click', () => {

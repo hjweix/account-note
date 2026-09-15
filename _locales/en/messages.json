@@ -555,6 +555,26 @@
     "message": "Cannot reach this page. Please refresh it and try again.",
     "description": "Toast when the content script is not available on the tab"
   },
+  "pickerSiteDisabledHint": {
+    "message": "Notes are turned off for this site, so fields cannot be anchored.",
+    "description": "Popup hint when notes are disabled for the current site"
+  },
+  "pickerGlobalDisabledHint": {
+    "message": "Notes are turned off for all sites, so fields cannot be anchored.",
+    "description": "Popup hint when notes are disabled globally"
+  },
+  "enableSiteBtn": {
+    "message": "Turn notes on",
+    "description": "Popup button to turn notes back on"
+  },
+  "siteEnabled": {
+    "message": "Notes are enabled for this site",
+    "description": "Toast after notes are enabled again"
+  },
+  "siteDisabledNote": {
+    "message": "Notes are disabled on this site",
+    "description": "Page toast when picking on a site where notes are disabled"
+  },
   "anchoredCount": {
     "message": "$1 field(s) anchored on this site",
     "description": "Popup: number of anchored fields for the current site"

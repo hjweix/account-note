@@ -531,6 +531,49 @@ h1 {
   cursor: default;
 }
 
+/* 拾取受阻提示：说清原因并提供一键恢复入口。
+   禁用类问题的正确出路是「启用」而不是「刷新」，所以这里必须给出按钮 */
+.picker-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 20px 16px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.picker-hint-text {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.picker-hint-btn {
+  padding: 6px 12px;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 8px;
+  background: transparent;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-standard);
+}
+
+.picker-hint-btn:hover {
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.picker-hint-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 /* 已锚定提示条 */
 .anchor-panel {
   display: flex;

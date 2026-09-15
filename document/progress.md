@@ -1,5 +1,47 @@
 # 项目进度日志
 
+## 2026-09-15（补充：手动锚定「无法连接当前页面」修复）
+
+### 完成的功能
+1. 扩展弹窗按真实原因提示，不再把一切失败归为「连接失败」
+   - `shouldShowNote()` 除返回布尔值外记录 `noteDisabledReason`（global-disabled / site-disabled / session-disabled / context-invalid / non-http / enabled）
+   - `startFieldPicker()` 改为返回 `{ ok, reason }`；页面侧 toast 也区分「全局禁用」与「本站点禁用」
+   - 弹窗按 reason 分流：禁用类 → 提示条 + 一键启用；无候选框 → 如实说明；只有消息通道真失败才提「刷新」
+2. 新增一键恢复能力：`enableCurrentSite()`（消息 `enableCurrentSite`）
+   - 清除 sessionStorage 会话禁用、从 `disabledSites` 移除本站点、必要时关闭 `disabledGlobal`，随后重新 bootstrap
+   - 弹窗提示条提供「启用备注功能」按钮，启用成功后直接进入拾取模式，省掉用户再点一次
+3. 消息监听器在扩展上下文失效时也作出响应
+   - 原先静默 `return`，发送方只拿到 `undefined`，与「content script 根本没注入」表现完全一致，弹窗无从区分
+4. i18n 补 5 条 key（pickerSiteDisabledHint / pickerGlobalDisabledHint / enableSiteBtn / siteEnabled / siteDisabledNote），中英各 153 条
+
+### 遇到的问题
+1. 在 GitHub 登录页点「手动指定输入框」提示「无法连接当前页面，请刷新页面后重试」，刷新后依旧
+2. popup 把所有 `ok:false` 与 reject 合并成同一条文案，content script 给出的真实原因被吞掉
+3. 站点被禁用时页面 toast 也错误地说成「已在所有网站上禁用备注功能」（文案张冠李戴）
+4. 站点禁用 / 会话禁用两类问题刷新页面永远解决不了，提示却只说「请刷新」
+
+### 解决方案
+1. 页面侧返回结构化原因，弹窗按原因分流；先用诊断脚本复现 4 种失败场景确认根因，再动手改
+2. 禁用类问题给出「启用备注功能」按钮，从「提示」到「恢复」形成闭环，不把问题转嫁给用户
+3. 页面 toast 按 global / site 分开取词
+4. 会话禁用只存在于当前标签页的 sessionStorage，弹窗改不到，故由 content script 侧新增消息处理（而非在弹窗里直改存储）
+
+### 实测验证（Playwright + 真实构建产物，19/19 通过）
+| 场景 | 期望 | 结果 |
+|---|---|---|
+| 正常站点进入拾取模式 | ok:true + 高亮覆盖层 | 通过 |
+| 站点永久禁用 | reason=site-disabled，页面提示「本站点已禁用」 | 通过 |
+| 站点会话禁用 | reason=session-disabled | 通过 |
+| 全局禁用 | reason=global-disabled，页面提示「所有网站」 | 通过 |
+| 页面无候选输入框 | reason=no-candidates | 通过 |
+| 站点禁用后一键恢复 | 启用成功 + disabledSites 移除本站点 + 可进入拾取 | 通过 |
+| 全局禁用后一键恢复 | disabledGlobal=false + 可进入拾取 | 通过 |
+| 会话禁用后一键恢复 | sessionStorage 已清 + 启用成功 | 通过 |
+
+### 备注
+- 四类失败共用一条「请刷新」文案、其中两类刷新无效，是本次问题的本质
+- 诊断脚本临时放在 /tmp，待固化进仓库 `scripts/`
+
 ## 2026-09-15
 
 ### 完成的功能
