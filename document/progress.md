@@ -1,5 +1,36 @@
 # 项目进度日志
 
+## 2026-09-16（UI 原生化重设计 M1：备注弹窗）
+
+### 完成的功能
+1. 弹窗视觉全面原生化（对标 Chrome 密码管理器气泡，规格见 `docs/superpowers/specs/2026-09-16-native-ui-restyle.md`）
+   - 弃玻璃拟态：删除全部 `backdrop-filter` / 半透明 / 渐变 / 多层阴影 / 弹跳动效
+   - 统一 token：实心表面（亮 #ffffff / 暗 #292a2d）、8px 圆角、单层柔和阴影、中性灰 + 单一蓝（#1a73e8 / #8ab4f8）、收藏星标保留琥珀色、150ms 淡入 + scale(0.98→1)
+2. 弹窗结构重排为三行式：头部（域名 + 收藏★ + 关闭✕）/ 正文 / 标签行
+   - 「编辑」「展开」「收起」按钮全部取消：点击正文 = 唯一编辑入口（Enter/失焦保存、Esc 取消），阅读态 `line-clamp: 3`，退出编辑自动收起
+   - 收藏星标进入弹窗头部；未保存备注时禁用，保存后可用
+   - 「＋标签」移入标签行右端；旧 50 字截断 + measureEl 逻辑删除
+3. 弹窗定位改实测：创建后先隐藏挂载、读 `offsetWidth/Height` 再计算，替代 260/270 魔数
+   - 默认字段右侧（间距 8px），右侧放不下翻左侧，两侧都不行视口内夹紧，底部越界上移
+   - 定位原则（老板定稿）：弹窗是辅助角色，字段正下方留给浏览器原生密码管理器
+4. 顺手修复：`.disable-options-menu` 此前完全无样式（裸 div），补齐菜单样式并给「在所有网站上禁用」加危险色
+5. i18n 清理死键：`toggleText` / `expand` / `collapse`（结构重排后无引用），中英各 150 条
+
+### 遇到的错误与解决
+1. `.note-text-readonly` 用 `display: -webkit-box` 实现 line-clamp，压过了 `[hidden]` 的 UA `display:none`，导致编辑态切换后阅读态仍占位——补 `.note-text-readonly[hidden] { display: none }`（与此前 textarea 同一个坑，`[hidden]` 会被任何 author 级 display 声明覆盖）
+2. Chrome for Testing 153 + Playwright 1.63 下 `--load-extension` 不再注入 content script（扩展本体已注册、SW 可跑、CSS/JS 均不注入）；加 `ignoreDefaultArgs: ['--disable-extensions']` 也无效——真机验证改回桩注入法（主世界注入真实 content.js + storage/i18n 桩 + addStyleTag），与既有 84 断言同一套路
+3. 验证脚本两处误判：setContent 页面 origin 是 about:blank 会被 `shouldShowNote` 拒绝（必须 goto http 页）；入场动画期间量 rect 会拿到 transform 中间态（等 250ms 再量）
+
+### 验证
+- 真机（桩注入 + 真实 dist 产物）30/30 断言全绿：三行结构 / 旧结构清除 / 实心表面无模糊 / 定位右侧 8px 与翻转 / 收藏禁用-启用-切换闭环 / 编辑态切换（点击-Esc-Enter-失焦）/ 标签增删 / 点外关闭 / line-clamp 3 行 / 暗色 #292a2d / 备注跨弹窗保留
+- 明暗双主题截图确认视觉效果（/tmp/m1-overlay-light.png、m1-overlay-dark.png）
+- `check:css`（63 规则块）与 `check:i18n`（中英各 150 条）门禁通过；dist 已重建
+
+### 待办
+- M2：popup 工具栏按同一 token 换皮（设计已定稿：行式列表、去渐变横幅、去外链字体）
+- M3：管理页按同一 token 换皮
+- CSS 死代码清理：`.account-note-btn` 的样式仍在但 content.js 已无创建逻辑（确认后删除或恢复按钮）
+
 ## 2026-09-15（补充：手动锚定「无法连接当前页面」修复）
 
 ### 完成的功能

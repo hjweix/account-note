@@ -1,6 +1,9 @@
 /* ========================================
    Account Note Content Script Styles
-   Modern Glassmorphism Design
+   Native Chrome-like Design（2026-09-16 原生化重设计）
+   规格：docs/superpowers/specs/2026-09-16-native-ui-restyle.md
+   原则：实心不透明表面、8px 圆角、system-ui 字体、
+   中性灰主体 + 单一蓝色点缀、无模糊无渐变无弹跳
    ======================================== */
 
 /* CSS Variables
@@ -8,108 +11,104 @@
    10000 悬浮按钮 < 10001 备注弹窗 < 10002 禁用菜单 < 10003 Toast
    < 10004 拾取高亮 < 10005 拾取横幅 */
 :where(.account-note-btn, .account-note-toast, .account-note-suggestion, .disable-options-menu, .account-note-picker-highlight, .account-note-picker-banner) {
-  --primary-500: #6366f1;
-  --primary-600: #4f46e5;
-  --primary-700: #4338ca;
-
-  /* Light Theme */
-  --bg-primary: #ffffff;
-  --bg-secondary: rgba(255, 255, 255, 0.95);
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-tertiary: #64748b;
-
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-
-  --hover-bg: rgba(99, 102, 241, 0.08);
-  --active-bg: rgba(99, 102, 241, 0.15);
-
-  --danger-color: #ef4444;
-  --success-color: #10b981;
-  --warning-color: #f59e0b;
-
+  /* 亮色（默认）——对齐 Chrome 原生 UI 配色 */
+  --surface: #ffffff;
+  --surface-hover: #f1f3f4;
+  --border: rgba(0, 0, 0, 0.10);
+  --border-strong: rgba(0, 0, 0, 0.20);
+  --text-primary: #202124;
+  --text-secondary: #5f6368;
+  --text-tertiary: #80868b;
+  --accent: #1a73e8;
+  --accent-soft: rgba(26, 115, 232, 0.10);
+  --star: #f9ab00;
+  --danger-color: #d93025;
+  --success-color: #188038;
+  --info-color: #1a73e8;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.30), 0 4px 12px rgba(0, 0, 0, 0.15);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :where(.account-note-btn, .account-note-toast, .account-note-suggestion, .disable-options-menu, .account-note-picker-highlight, .account-note-picker-banner) {
-    --primary-500: #818cf8;
-    --primary-600: #6366f1;
-    --primary-700: #4f46e5;
-
-    --bg-primary: #1e293b;
-    --bg-secondary: rgba(30, 41, 59, 0.95);
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-tertiary: #94a3b8;
-
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-bg: rgba(30, 41, 59, 0.9);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-
-    --hover-bg: rgba(129, 140, 248, 0.15);
-    --active-bg: rgba(129, 140, 248, 0.25);
+    --surface: #292a2d;
+    --surface-hover: #3c4043;
+    --border: rgba(255, 255, 255, 0.10);
+    --border-strong: rgba(255, 255, 255, 0.20);
+    --text-primary: #e8eaed;
+    --text-secondary: #9aa0a6;
+    --text-tertiary: #80868b;
+    --accent: #8ab4f8;
+    --accent-soft: rgba(138, 180, 248, 0.16);
+    --star: #fdd663;
+    --danger-color: #f28b82;
+    --success-color: #81c995;
+    --info-color: #8ab4f8;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.50), 0 4px 12px rgba(0, 0, 0, 0.30);
   }
 }
 
-/* Account Note Button */
+/* ========================================
+   字段内悬浮按钮
+   ======================================== */
 .account-note-btn {
-  position: absolute;
-  width: 28px;
-  height: 28px;
-  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 5px;
-  z-index: 10000;
   position: relative;
   left: 5px;
   top: 0;
   transform: translateY(-50%);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-  transition: all 0.2s var(--ease-standard);
+  width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.20);
+  transition: background 0.15s var(--ease-standard), color 0.15s var(--ease-standard);
 }
 
 .account-note-btn:hover {
-  transform: translateY(-50%) scale(1.05);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+  background: var(--surface-hover);
+  color: var(--accent);
 }
 
 .account-note-btn:active {
   transform: translateY(-50%) scale(0.95);
 }
 
-/* Toast Notification */
+/* ========================================
+   Toast 通知
+   ======================================== */
 .account-note-toast {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  color: var(--text-primary);
-  padding: 16px 24px;
-  border-radius: 16px;
   z-index: 10003; /* 阶梯顶层：Toast 永远压住其他扩展弹层 */
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow), 0 8px 32px rgba(0, 0, 0, 0.2);
-  font-size: 14px;
-  font-weight: 500;
+  box-sizing: border-box;
   max-width: 360px;
-  text-align: left;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--info-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
   opacity: 0;
   transform: translateX(100px);
-  animation: account-note-toast-slide-in 0.4s var(--ease-bounce) forwards;
+  animation: account-note-toast-slide-in 0.3s var(--ease-standard) forwards;
 }
 
 @keyframes account-note-toast-slide-in {
@@ -120,7 +119,7 @@
 }
 
 .account-note-toast.hiding {
-  animation: account-note-toast-slide-out 0.3s var(--ease-standard) forwards;
+  animation: account-note-toast-slide-out 0.25s var(--ease-standard) forwards;
 }
 
 @keyframes account-note-toast-slide-out {
@@ -132,167 +131,183 @@
 
 /* Toast Types */
 .account-note-toast.success {
-  border-left: 4px solid var(--success-color);
+  border-left-color: var(--success-color);
 }
 
 .account-note-toast.error {
-  border-left: 4px solid var(--danger-color);
+  border-left-color: var(--danger-color);
 }
 
 .account-note-toast.info {
-  border-left: 4px solid var(--primary-500);
+  border-left-color: var(--info-color);
 }
 
 .account-note-toast .toast-icon {
-  font-size: 20px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Suggestion Popup - Compact Glassmorphism */
+/* ========================================
+   备注弹窗（三行结构：头部 / 正文 / 标签行）
+   ======================================== */
 .account-note-suggestion {
-  position: absolute;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-radius: 12px;
-  padding: 10px;
+  position: fixed;
   z-index: 10001;
-  min-width: 260px;
-  max-width: 320px;
+  box-sizing: border-box;
+  min-width: 280px;
+  max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
   opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.25s var(--ease-standard), transform 0.25s var(--ease-bounce);
-}
-
-/* Light Theme (default) */
-.account-note-suggestion[data-theme="light"] {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(255, 255, 255, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-
-/* Dark Theme */
-.account-note-suggestion[data-theme="dark"] {
-  background: rgba(30, 41, 59, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: translateY(4px) scale(0.98);
+  transition: opacity 0.15s var(--ease-standard), transform 0.15s var(--ease-standard);
 }
 
 .account-note-suggestion.show {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 
-/* Favorite Button - Theme aware */
-.account-note-suggestion[data-theme="light"] .favorite-btn {
-  color: #64748b;
+/* 头部行：域名 + 收藏 + 关闭 */
+.account-note-suggestion .note-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px 9px 12px;
+  border-bottom: 1px solid var(--border);
 }
 
-.account-note-suggestion[data-theme="dark"] .favorite-btn {
-  color: #94a3b8;
+.account-note-suggestion .note-domain-dot {
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
-.account-note-suggestion .favorite-btn {
-  background: transparent;
+.account-note-suggestion .note-domain {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-note-suggestion .note-header-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
   cursor: pointer;
-  padding: 3px;
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  transition: all 0.2s var(--ease-standard);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.15s var(--ease-standard), color 0.15s var(--ease-standard);
+}
+
+.account-note-suggestion .note-header-btn:hover {
+  background: var(--surface-hover);
+}
+
+.account-note-suggestion .note-header-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  background: transparent;
+}
+
+.account-note-suggestion .favorite-btn {
+  margin-left: auto;
 }
 
 .account-note-suggestion .favorite-btn:hover {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
-  transform: scale(1.1);
+  color: var(--star);
 }
 
 .account-note-suggestion .favorite-btn.is-favorite {
-  color: #f59e0b;
+  color: var(--star);
 }
 
-.account-note-suggestion .favorite-btn.is-favorite:hover {
-  color: #d97706;
+/* 正文行：阅读态纯文本，点击进入编辑态 */
+.account-note-suggestion .note-body {
+  padding: 10px 12px;
 }
 
-/* Note Input Wrapper */
-.account-note-suggestion .note-input-wrapper {
-  position: relative;
+.account-note-suggestion .note-text-readonly {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  cursor: text;
+  overflow-wrap: anywhere;
+  min-height: 20px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* Account Note Text - Compact - Theme aware */
-.account-note-suggestion[data-theme="light"] .account-note-text {
-  color: #0f172a;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+.account-note-suggestion .note-text-readonly.empty-note {
+  color: var(--text-tertiary);
+  font-style: italic;
 }
 
-.account-note-suggestion[data-theme="dark"] .account-note-text {
-  color: #f8fafc;
-  background: rgba(30, 41, 59, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+/* hidden 属性切换编辑态，必须压过上面的 -webkit-box 声明 */
+.account-note-suggestion .note-text-readonly[hidden] {
+  display: none;
 }
 
-/* 注意：.account-note-text 的尺寸与配色统一在文件后段「Account Note Text Display」
-   处定义一次（min-height 45px / font-size 14px / border-radius 12px 等）。
-   历史上此处曾有一套紧凑尺寸（36px / 13px / 8px），其全部属性都已被后段覆盖
-   或重复，属死声明，已移除。 */
-
-.account-note-suggestion[data-theme="light"] .account-note-text:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+.account-note-suggestion .note-text-edit {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 61px;
+  max-height: 160px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-primary);
 }
 
-.account-note-suggestion[data-theme="dark"] .account-note-text:focus {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.25);
+.account-note-suggestion .note-text-edit::placeholder {
+  color: var(--text-tertiary);
+  font-style: italic;
 }
 
-.account-note-suggestion[data-theme="light"] .account-note-text.empty-note {
-  color: #64748b;
+/* hidden 属性切换编辑态，必须压过上面的 display 声明 */
+.account-note-suggestion .note-text-edit[hidden] {
+  display: none;
 }
 
-.account-note-suggestion[data-theme="dark"] .account-note-text.empty-note {
-  color: #94a3b8;
+/* 标签行：中性 chip + 右侧文字按钮 */
+.account-note-suggestion .note-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 10px;
 }
 
-.account-note-text.empty-note:focus {
-  color: inherit;
-}
-
-/* Tags Container - Compact */
 .account-note-suggestion .note-tags-container {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin: 6px 0;
-  max-height: 60px;
-  overflow-y: auto;
-}
-
-/* Note Tag - Theme aware */
-.account-note-suggestion[data-theme="light"] .note-tag {
-  background: rgba(99, 102, 241, 0.08);
-  color: #6366f1;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.account-note-suggestion[data-theme="dark"] .note-tag {
-  background: rgba(129, 140, 248, 0.15);
-  color: #818cf8;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex: 1;
+  min-width: 0;
 }
 
 .account-note-suggestion .note-tag {
@@ -300,356 +315,106 @@
   align-items: center;
   gap: 3px;
   padding: 2px 8px;
-  border-radius: 12px;
+  border-radius: 10px;
+  background: var(--surface-hover);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 500;
-  transition: all 0.2s var(--ease-standard);
-}
-
-.account-note-suggestion[data-theme="light"] .note-tag:hover {
-  background: rgba(99, 102, 241, 0.15);
-}
-
-.account-note-suggestion[data-theme="dark"] .note-tag:hover {
-  background: rgba(129, 140, 248, 0.25);
 }
 
 .account-note-suggestion .tag-remove {
   cursor: pointer;
   font-size: 12px;
   line-height: 1;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  opacity: 0.5;
   margin-left: 2px;
+  transition: opacity 0.15s;
 }
 
 .account-note-suggestion .tag-remove:hover {
   opacity: 1;
-  color: #ef4444;
-}
-
-/* Tag Input Container - Compact */
-.account-note-suggestion .note-tag-input-container {
-  display: flex;
-  gap: 6px;
-  margin: 6px 0;
-  animation: account-note-slide-down 0.2s var(--ease-standard);
-}
-
-@keyframes account-note-slide-down {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Tag Input - Theme aware */
-.account-note-suggestion[data-theme="light"] .note-tag-input {
-  color: #0f172a;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.account-note-suggestion[data-theme="dark"] .note-tag-input {
-  color: #f8fafc;
-  background: rgba(30, 41, 59, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.account-note-suggestion .note-tag-input {
-  flex: 0 0 auto;
-  width: 140px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  transition: all 0.2s;
-}
-
-.account-note-suggestion[data-theme="light"] .note-tag-input:focus {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
-}
-
-.account-note-suggestion[data-theme="dark"] .note-tag-input:focus {
-  outline: none;
-  border-color: #818cf8;
-  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
-}
-
-.account-note-suggestion[data-theme="light"] .note-tag-input::placeholder {
-  color: #64748b;
-  font-size: 11px;
-}
-
-.account-note-suggestion[data-theme="dark"] .note-tag-input::placeholder {
-  color: #94a3b8;
-  font-size: 11px;
-}
-
-/* Add Tag Button - Theme aware */
-.account-note-suggestion[data-theme="light"] .add-tag-btn {
-  color: #6366f1;
-  background: transparent;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.account-note-suggestion[data-theme="dark"] .add-tag-btn {
-  color: #818cf8;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--danger-color);
 }
 
 .account-note-suggestion .add-tag-btn {
-  padding: 4px 10px;
-  font-size: 11px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 500;
-}
-
-.account-note-suggestion[data-theme="light"] .add-tag-btn:hover {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: #6366f1;
-}
-
-.account-note-suggestion[data-theme="dark"] .add-tag-btn:hover {
-  background: rgba(129, 140, 248, 0.15);
-  border-color: #818cf8;
-}
-
-/* Footer Actions - Compact */
-.account-note-suggestion .note-footer-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-  padding-top: 6px;
-  align-items: center;
-}
-
-.account-note-suggestion[data-theme="light"] .note-footer-actions {
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.account-note-suggestion[data-theme="dark"] .note-footer-actions {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* Toggle Text Button - Theme aware */
-.account-note-suggestion[data-theme="light"] .toggle-text-btn {
-  color: #475569;
-  background: transparent;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.account-note-suggestion[data-theme="dark"] .toggle-text-btn {
-  color: #cbd5e1;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* 注意：.toggle-text-btn 的尺寸（padding / font-size / border-radius / cursor /
-   transition）统一在文件后段「Toggle Text Button」处定义一次，此处不再重复声明——
-   历史上这里曾有一套紧凑尺寸（4px 10px / 11px / 6px），已被后段覆盖成为死声明。 */
-
-.account-note-suggestion[data-theme="light"] .toggle-text-btn:hover {
-  background: rgba(99, 102, 241, 0.08);
-  color: #0f172a;
-}
-
-.account-note-suggestion[data-theme="dark"] .toggle-text-btn:hover {
-  background: rgba(129, 140, 248, 0.15);
-  color: #f8fafc;
-}
-
-/* Close Button - Theme aware */
-.account-note-suggestion[data-theme="light"] .close-note-btn {
-  color: #64748b;
-  background: transparent;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.account-note-suggestion[data-theme="dark"] .close-note-btn {
-  color: #94a3b8;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.account-note-suggestion .close-note-btn {
+  flex-shrink: 0;
   margin-left: auto;
-  padding: 4px 12px;
-  font-size: 11px;
+  height: 22px;
+  padding: 0 6px;
+  border: none;
   border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.account-note-suggestion[data-theme="light"] .close-note-btn:hover {
-  background: rgba(99, 102, 241, 0.08);
-  color: #475569;
-}
-
-.account-note-suggestion[data-theme="dark"] .close-note-btn:hover {
-  background: rgba(129, 140, 248, 0.15);
-  color: #cbd5e1;
-}
-
-/* Favorite Button in Footer - Theme aware */
-.account-note-suggestion[data-theme="light"] .note-footer-actions .favorite-btn {
-  color: #64748b;
   background: transparent;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.account-note-suggestion[data-theme="dark"] .note-footer-actions .favorite-btn {
-  color: #94a3b8;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.account-note-suggestion .note-footer-actions .favorite-btn {
-  padding: 4px 12px;
-  font-size: 11px;
-  font-weight: 500;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  min-height: 26px;
-}
-
-.account-note-suggestion .note-footer-actions .favorite-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.account-note-suggestion[data-theme="light"] .note-footer-actions .favorite-btn:hover {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-.account-note-suggestion[data-theme="dark"] .note-footer-actions .favorite-btn:hover {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.4);
-}
-
-.account-note-suggestion .note-footer-actions .favorite-btn.is-favorite {
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-.account-note-suggestion .note-footer-actions .favorite-btn.is-favorite:hover {
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.2);
-}
-/* Account Note Text Display */
-.account-note-text {
-  width: 100%;
-  min-height: 45px;
-  max-height: 200px;
-  padding: 10px 14px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-primary) !important;
-  background: transparent;
-  transition: all 0.25s var(--ease-standard);
-  resize: none;
-  overflow-y: auto;
-  font-family: "Inter", sans-serif;
-  box-sizing: border-box;
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  opacity: 0.87 !important;
-  outline: none;
-}
-
-.account-note-text:not([data-is-expanded="true"]) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.account-note-text:hover {
-  background: var(--hover-bg);
-}
-
-.account-note-text:focus {
-  outline: none;
-  border-color: var(--primary-500);
-  background: var(--bg-secondary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-/* Toggle Text Button */
-.account-note-suggestion .toggle-text-btn {
-  position: absolute;
-  right: 40px;
-  bottom: -28px;
-  padding: 6px 12px;
+  color: var(--accent);
   font-size: 12px;
-  color: var(--primary-500);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s;
-  border-radius: 8px;
-  font-weight: 600;
-  backdrop-filter: blur(4px);
+  transition: background 0.15s var(--ease-standard);
 }
 
-.account-note-suggestion .toggle-text-btn:hover {
-  background: var(--hover-bg);
-  transform: translateY(-1px);
+.account-note-suggestion .add-tag-btn:hover {
+  background: var(--accent-soft);
 }
 
-/* Empty Note State */
-.account-note-text.empty-note {
-  color: var(--text-tertiary);
-  font-style: italic;
+.account-note-suggestion .add-tag-btn[hidden] {
+  display: none;
 }
 
-.account-note-text.empty-note:not([readonly]) {
+/* 行内标签输入框：＋标签按钮原地切换，不新增行 */
+.account-note-suggestion .note-tag-input {
+  flex: 1;
+  min-width: 72px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 9px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--surface);
   color: var(--text-primary);
-  font-style: normal;
+  font-size: 11px;
+  line-height: 1.4;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s var(--ease-standard);
 }
 
-/* Animation */
-@keyframes account-note-pulse-border {
-  0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
-  70% { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+.account-note-suggestion .note-tag-input[hidden] {
+  display: none;
 }
 
-/* Scrollbar for note text */
-.account-note-text::-webkit-scrollbar {
-  width: 6px;
+.account-note-suggestion .note-tag-input::placeholder {
+  color: var(--text-tertiary);
 }
 
-.account-note-text::-webkit-scrollbar-track {
-  background: transparent;
+/* ========================================
+   禁用选项菜单（✕ 悬停弹出）
+   ======================================== */
+.disable-options-menu {
+  position: fixed;
+  z-index: 10002;
+  min-width: 190px;
+  box-sizing: border-box;
+  padding: 4px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
-.account-note-text::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
-  border-radius: 3px;
+.disable-options-menu .disable-option {
+  padding: 7px 14px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s var(--ease-standard);
 }
 
-.account-note-text::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.5);
+.disable-options-menu .disable-option:hover {
+  background: var(--surface-hover);
+}
+
+.disable-options-menu .disable-option[data-action="global"] {
+  color: var(--danger-color);
 }
 
 /* ========================================
@@ -663,26 +428,24 @@
   position: fixed;
   z-index: 10004;
   box-sizing: border-box;
-  border: 2px solid var(--primary-500);
+  border: 2px solid var(--accent);
   border-radius: 8px;
-  background: rgba(99, 102, 241, 0.14);
+  background: var(--accent-soft);
   cursor: crosshair;
   pointer-events: auto;
-  transition: background 0.15s var(--ease-standard), box-shadow 0.15s var(--ease-standard);
+  transition: background 0.15s var(--ease-standard);
 }
 
 .account-note-picker-highlight:hover {
-  background: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+  background: rgba(26, 115, 232, 0.22);
 }
 
 .account-note-picker-highlight[data-theme="dark"] {
-  background: rgba(129, 140, 248, 0.2);
+  background: rgba(138, 180, 248, 0.18);
 }
 
 .account-note-picker-highlight[data-theme="dark"]:hover {
-  background: rgba(129, 140, 248, 0.36);
-  box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.24);
+  background: rgba(138, 180, 248, 0.30);
 }
 
 /* 序号角标：多候选框时便于对照 */
@@ -698,11 +461,10 @@
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  background: var(--primary-600);
+  background: var(--accent);
   color: #ffffff;
   font-size: 11px;
-  font-weight: 600;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 500;
   line-height: 1;
   pointer-events: none;
 }
@@ -718,53 +480,48 @@
   align-items: center;
   gap: 16px;
   max-width: calc(100vw - 32px);
-  padding: 12px 14px 12px 18px;
+  padding: 10px 12px 10px 16px;
   box-sizing: border-box;
-  border-radius: 12px;
-  border: 1px solid var(--glass-border);
-  background: var(--bg-secondary);
-  box-shadow: var(--glass-shadow);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   pointer-events: auto;
 }
 
-.account-note-picker-banner-text {
+.account-note-picker-banner .account-note-picker-banner-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
 
-.account-note-picker-title {
+.account-note-picker-banner .account-note-picker-title {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
 }
 
-.account-note-picker-desc {
+.account-note-picker-banner .account-note-picker-desc {
   font-size: 11px;
   color: var(--text-tertiary);
 }
 
-.account-note-picker-exit {
+.account-note-picker-banner .account-note-picker-exit {
   flex-shrink: 0;
   padding: 6px 14px;
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s var(--ease-standard);
+  transition: background 0.15s var(--ease-standard);
 }
 
-.account-note-picker-exit:hover {
-  background: var(--hover-bg);
-  border-color: var(--primary-500);
-  color: var(--primary-600);
+.account-note-picker-banner .account-note-picker-exit:hover {
+  background: var(--surface-hover);
 }

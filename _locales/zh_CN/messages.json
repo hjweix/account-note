@@ -131,18 +131,6 @@
     "message": "当您在登录页面添加备注后，备注信息会显示在这里",
     "description": "空状态描述"
   },
-  "toggleText": {
-    "message": "展开/收起",
-    "description": "展开/收起按钮的提示文本"
-  },
-  "expand": {
-    "message": "展开",
-    "description": "展开按钮文本"
-  },
-  "collapse": {
-    "message": "收起",
-    "description": "收起按钮文本"
-  },
   "manage": {
     "message": "管理所有备注",
     "description": "管理按钮提示文本"

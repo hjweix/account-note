@@ -1045,9 +1045,6 @@ function isAccountField(input) {
   if (matchAnchor(input)) return true;
   return scoreAsAccountField(input).score >= ACCOUNT_FIELD_THRESHOLD;
 }
-// 缓存弹窗位置，避免频繁重新计算导致跳动
-const popupPositionCache = new WeakMap();
-
 // 按字段维护弹窗：同页多个账号框各管各的，不会互相顶掉
 const suggestionByField = new WeakMap();
 function getSuggestionFor(field) {
@@ -1055,19 +1052,9 @@ function getSuggestionFor(field) {
   return el && el.isConnected ? el : null;
 }
 
-// 销毁一个弹窗并解绑它的全部监听
+// 销毁一个弹窗。元素级监听随元素移除自动失效，只需解绑挂在 document 上的
 function destroySuggestion(suggestion) {
   if (!suggestion) return;
-  const oldToggleBtn = suggestion.querySelector('.toggle-text-btn');
-  if (oldToggleBtn) {
-    oldToggleBtn.removeEventListener('click', oldToggleBtn.clickHandler);
-  }
-  const oldNoteInput = suggestion.querySelector('.account-note-text');
-  if (oldNoteInput) {
-    oldNoteInput.removeEventListener('click', oldNoteInput.clickHandler);
-    oldNoteInput.removeEventListener('keydown', oldNoteInput.keydownHandler);
-    oldNoteInput.removeEventListener('blur', oldNoteInput.blurHandler);
-  }
   if (suggestion.outsideClickHandler) {
     document.removeEventListener('click', suggestion.outsideClickHandler);
   }
@@ -1086,9 +1073,9 @@ function showAccountNote(field, noteData) {
 
   // 本字段的弹窗已存在且内容没变：直接复用，不重建，避免闪烁
   if (existingSuggestion) {
-    const existingNoteInput = existingSuggestion.querySelector('.account-note-text');
-    const existingNote = existingNoteInput ? existingNoteInput.dataset.fullText : '';
-    const newNote = noteData ? noteData.note : '';
+    const existingText = existingSuggestion.querySelector('.note-text-readonly');
+    const existingNote = existingText ? (existingText.dataset.fullText || '') : '';
+    const newNote = noteData ? (noteData.note || '') : '';
     if (existingNote === newNote) {
       existingSuggestion.style.display = 'block';
       existingSuggestion.classList.add('show');
@@ -1100,252 +1087,219 @@ function showAccountNote(field, noteData) {
   // 切换到另一个账号框前，先收掉别的弹窗
   closeOtherSuggestions(field);
 
-  // 添加 HTML 转义函数
+  // HTML 转义
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     const escaped = div.innerHTML;
-    div.remove(); // 清理临时DOM元素
+    div.remove();
     return escaped;
   }
+
+  const hasNote = !!(noteData && noteData.note);
+  const note = hasNote ? noteData.note : '';
+  const hostname = window.location.hostname;
+
   const suggestion = document.createElement('div');
   suggestion.className = 'account-note-suggestion';
 
-  // 检测系统主题
+  // 主题跟随系统（与 Chrome 原生 UI 口径一致，不探测站点配色）
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  if (prefersDark) {
-    suggestion.setAttribute('data-theme', 'dark');
-  } else {
-    suggestion.setAttribute('data-theme', 'light');
-  }
-  const hasNote = noteData && noteData.note;
-  const note = hasNote ? noteData.note : '';
+  suggestion.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
 
-  // 创建一个临时元素来测量文本宽度
-  const measureEl = document.createElement('textarea');
-  measureEl.className = 'account-note-text';
-  measureEl.style.position = 'absolute';
-  measureEl.style.visibility = 'hidden';
-  measureEl.style.width = '240px';
-  measureEl.style.height = '45px';
-  measureEl.style.whiteSpace = 'nowrap';
-  measureEl.value = note;
-  getOverlayRoot().appendChild(measureEl);
+  const favTitle = hasNote
+    ? (noteData.isFavorite ? getMessage('removeFavorite') : getMessage('addFavorite'))
+    : getMessage('addFavorite');
 
-  // 检查是否需要展开按钮
-  const isLongText = measureEl.scrollWidth > measureEl.clientWidth;
-  getOverlayRoot().removeChild(measureEl);
-
-  // 根据是否需要展开来设置显示文本
-  const fullText = note;
-  const shortText = isLongText ? `${note.slice(0, 50)}...` : note;
   suggestion.innerHTML = `
-      <div class="note-input-wrapper">
-        <textarea
-          class="account-note-text ${!hasNote ? 'empty-note' : ''}"
-          placeholder="${!hasNote ? getMessage('addNote') : getMessage('editNote')}" data-full-text="${escapeHtml(fullText)}"
-          data-short-text="${escapeHtml(shortText)}"
-          data-is-expanded="false"
-          readonly
-        >${escapeHtml(shortText)}</textarea>
-      </div>
+    <div class="note-header">
+      <span class="note-domain-dot" aria-hidden="true"></span>
+      <span class="note-domain">${escapeHtml(hostname)}</span>
+      <button type="button" class="note-header-btn favorite-btn ${noteData?.isFavorite ? 'is-favorite' : ''}" ${hasNote ? '' : 'disabled'} title="${escapeHtml(favTitle)}">
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/></svg>
+      </button>
+      <button type="button" class="note-header-btn close-btn" title="${escapeHtml(getMessage('close'))}">
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <div class="note-body">
+      <div class="note-text-readonly ${hasNote ? '' : 'empty-note'}" data-full-text="${escapeHtml(note)}">${hasNote ? escapeHtml(note) : escapeHtml(getMessage('addNote'))}</div>
+      <textarea class="note-text-edit" hidden rows="3" placeholder="${escapeHtml(getMessage('addNote'))}"></textarea>
+    </div>
+    <div class="note-tags-row">
       <div class="note-tags-container">
         ${noteData?.tags?.map(tag => `<span class="note-tag" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span class="tag-remove">×</span></span>`).join('') || ''}
       </div>
-      <div class="note-tag-input-container" style="display: none;">
-        <input type="text" class="note-tag-input" placeholder="${getMessage('addTagPlaceholder') || '添加标签，按回车确认'}" />
-      </div>
-      <div class="note-footer-actions">
-        ${isLongText ? `
-          <button class="toggle-text-btn" title="${getMessage('toggleText')}">${getMessage('expand')}</button>
-        ` : ''}
-        <button class="add-tag-btn" title="${getMessage('addTag') || '添加标签'}">${getMessage('addTag') || '+ 标签'}</button>
-        <button class="close-note-btn" title="${getMessage('close')}">${getMessage('close')}</button>
-      </div>
+      <button type="button" class="add-tag-btn" title="${escapeHtml(getMessage('addTag') || '添加标签')}">${escapeHtml(getMessage('addTag') || '+ 标签')}</button>
+      <input type="text" class="note-tag-input" hidden placeholder="${escapeHtml(getMessage('addTagPlaceholder') || '添加标签，按回车确认')}" />
+    </div>
   `;
 
-  // 定位弹窗 - 使用缓存的位置信息或重新计算
-  let position = popupPositionCache.get(field);
-
-  // 如果没有缓存的位置信息，或者窗口大小发生变化，则重新计算
-  if (!position || position.viewportWidth !== window.innerWidth || position.viewportHeight !== window.innerHeight) {
-    const fieldRect = field.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-
-    // 计算最佳位置
-    let top = Math.round(fieldRect.top); // 取整避免小数位变化
-    let left = Math.round(fieldRect.right + 10);
-
-    // 检查是否超出视口右侧
-    if (left + 260 > viewportWidth) {
-      left = Math.round(fieldRect.left - 270); // 放在输入框左侧
-      if (left < 0) left = 10; // 如果左侧也放不下，则放在左侧边缘
-    }
-
-    // 检查是否超出视口底部
-    if (top + 150 > viewportHeight) {
-      top = Math.round(viewportHeight - 160);
-      if (top < 0) top = 10; // 确保不会超出顶部
-    }
-
-    // 缓存计算的位置
-    position = {
-      top,
-      left,
-      viewportWidth,
-      viewportHeight
-    };
-    popupPositionCache.set(field, position);
-  }
-
-  // 设置弹窗位置
+  // 定位：先挂载（不可见）再实测尺寸，用真实宽高做翻转与夹紧，替代旧的 260/270 魔数。
+  // 位置原则：弹窗是辅助角色，字段下方留给浏览器原生密码管理器，我们出现在右侧。
   suggestion.style.position = 'fixed';
-  suggestion.style.top = `${position.top}px`;
-  suggestion.style.left = `${position.left}px`;
+  suggestion.style.visibility = 'hidden';
   getOverlayRoot().appendChild(suggestion);
   suggestionByField.set(field, suggestion);
 
-  // 获取元素
-  const noteInput = suggestion.querySelector('.account-note-text');
-  const toggleBtn = suggestion.querySelector('.toggle-text-btn');
-  const closeBtn = suggestion.querySelector('.close-note-btn');
+  const fieldRect = field.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const popupRect = suggestion.getBoundingClientRect();
+  const popupWidth = Math.ceil(popupRect.width);
+  const popupHeight = Math.ceil(popupRect.height);
 
-  // 设置初始高度
-  noteInput.style.height = '45px';
+  // 默认字段右侧（间距 8px）；右侧放不下翻到左侧；两侧都放不下则夹紧在视口内
+  let left = fieldRect.right + 8;
+  if (left + popupWidth > viewportWidth - 8) {
+    left = fieldRect.left - popupWidth - 8;
+  }
+  left = Math.max(8, Math.min(left, viewportWidth - popupWidth - 8));
 
-  // 处理展开/收起功能
-  if (toggleBtn) {
-    toggleBtn.clickHandler = e => {
-      e.stopPropagation();
-      const isExpanded = noteInput.dataset.isExpanded === 'true';
-      if (isExpanded) {
-        noteInput.value = noteInput.dataset.shortText;
-        toggleBtn.textContent = getMessage('expand');
-        noteInput.dataset.isExpanded = 'false';
-        noteInput.style.height = '45px';
-      } else {
-        noteInput.value = noteInput.dataset.fullText;
-        toggleBtn.textContent = getMessage('collapse'); // 使用专门的'collapse'消息
-        noteInput.dataset.isExpanded = 'true';
-        noteInput.style.height = 'auto';
-        const scrollHeight = noteInput.scrollHeight;
-        noteInput.style.height = `${scrollHeight}px`;
-      }
-    };
-    toggleBtn.addEventListener('click', toggleBtn.clickHandler);
+  // 垂直方向：顶部与字段对齐，底部越界则整体上移夹紧
+  let top = fieldRect.top;
+  if (top + popupHeight > viewportHeight - 8) {
+    top = viewportHeight - popupHeight - 8;
+  }
+  top = Math.max(8, top);
+
+  suggestion.style.top = `${Math.round(top)}px`;
+  suggestion.style.left = `${Math.round(left)}px`;
+  suggestion.style.visibility = '';
+
+  // —— 头部行：收藏 / 关闭 ——
+  const favoriteBtn = suggestion.querySelector('.favorite-btn');
+  favoriteBtn.addEventListener('click', async e => {
+    e.stopPropagation();
+    const key = getFieldKey(field);
+    try {
+      const result = await chrome.storage.local.get([key]);
+      const currentData = result[key];
+      if (!currentData) return;
+      const next = !currentData.isFavorite;
+      await chrome.storage.local.set({
+        [key]: {
+          ...currentData,
+          isFavorite: next,
+          favoriteTime: next ? new Date().toISOString() : null
+        }
+      });
+      favoriteBtn.classList.toggle('is-favorite', next);
+      favoriteBtn.title = next ? getMessage('removeFavorite') : getMessage('addFavorite');
+      showToast(getMessage(next ? 'addedToFavorites' : 'removedFromFavorites'));
+    } catch (error) {
+      console.error('Toggle favorite error:', error);
+    }
+  });
+
+  const closeBtn = suggestion.querySelector('.close-btn');
+
+  // —— 正文行：点击进入编辑态；Enter/失焦保存，Esc 取消 ——
+  const readonlyText = suggestion.querySelector('.note-text-readonly');
+  const editInput = suggestion.querySelector('.note-text-edit');
+  let suppressBlurSave = false;
+
+  function renderReadonly(text) {
+    readonlyText.dataset.fullText = text;
+    if (text) {
+      readonlyText.textContent = text;
+      readonlyText.classList.remove('empty-note');
+    } else {
+      readonlyText.textContent = getMessage('addNote');
+      readonlyText.classList.add('empty-note');
+    }
   }
 
-  // 点击文本框时启用编辑
-  noteInput.clickHandler = () => {
+  function saveNote(newNote) {
+    const domain = window.location.origin;
+    const username = field.value.trim();
+    const key = getFieldKey(field);
+
+    chrome.storage.local.get([key], result => {
+      if (chrome.runtime.lastError) {
+        if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+          isExtensionInvalidated = true;
+          teardownListeners();
+        }
+        return;
+      }
+      const recordData = {
+        key: key,
+        note: newNote,
+        createTime: result[key]?.createTime || new Date().toISOString(),
+        updateTime: new Date().toISOString(),
+        domain: domain,
+        username: username,
+        tags: result[key]?.tags || [],
+        isFavorite: result[key]?.isFavorite || false,
+        favoriteTime: result[key]?.favoriteTime || null
+      };
+      chrome.storage.local.set({ [key]: recordData }, () => {
+        if (chrome.runtime.lastError) {
+          if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
+            isExtensionInvalidated = true;
+            teardownListeners();
+          }
+          return;
+        }
+        renderReadonly(newNote);
+        showToast(getMessage('successNoteSaved'));
+        favoriteBtn.disabled = false;
+      });
+    });
+  }
+
+  function exitEdit(save) {
+    if (editInput.hidden) return;
+    editInput.hidden = true;
+    readonlyText.hidden = false;
+
+    const currentText = readonlyText.dataset.fullText || '';
+    if (!save) {
+      renderReadonly(currentText);
+      return;
+    }
+    const newNote = editInput.value.trim();
+    // 内容未变或被清空：不落库（与旧版一致，不支持清空备注，标签数据得以保留）
+    if (!newNote || newNote === currentText) {
+      renderReadonly(currentText);
+      return;
+    }
+    saveNote(newNote);
+  }
+
+  readonlyText.clickHandler = () => {
     const username = field.value.trim();
     if (!username) {
       showToast(getMessage('errorEmptyUsername'));
       return;
     }
-    noteInput.readOnly = false;
-    noteInput.focus();
-    if (!hasNote) {
-      noteInput.value = '';
-    }
+    editInput.value = readonlyText.dataset.fullText || '';
+    readonlyText.hidden = true;
+    editInput.hidden = false;
+    editInput.focus();
+    editInput.selectionStart = editInput.selectionEnd = editInput.value.length;
   };
-  noteInput.addEventListener('click', noteInput.clickHandler);
+  readonlyText.addEventListener('click', readonlyText.clickHandler);
 
-  // 处理编辑完成
-  noteInput.keydownHandler = e => {
+  editInput.keydownHandler = e => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const newNote = noteInput.value.trim();
-      if (newNote) {
-        noteInput.readOnly = true;
-        noteInput.blur();
-        const domain = window.location.origin;
-        const username = field.value.trim();
-        const key = getFieldKey(field);
-
-        // 先读取现有数据，然后在回调中构建 noteData
-        chrome.storage.local.get([key], result => {
-          if (chrome.runtime.lastError) {
-            if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
-              isExtensionInvalidated = true;
-              teardownListeners();
-            }
-            return;
-          }
-          const noteData = {
-            key: key,
-            note: newNote,
-            createTime: new Date().toISOString(),
-            updateTime: new Date().toISOString(),
-            domain: domain,
-            username: username,
-            tags: result[key]?.tags || [],
-            isFavorite: result[key]?.isFavorite || false,
-            favoriteTime: result[key]?.favoriteTime || null
-          };
-          if (result[key]) {
-            noteData.createTime = result[key].createTime;
-          }
-          chrome.storage.local.set({
-            [key]: noteData
-          }, () => {
-            if (chrome.runtime.lastError) {
-              if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
-                isExtensionInvalidated = true;
-                teardownListeners();
-              }
-              return;
-            }
-            const isLongText = newNote.length > 100;
-            const displayText = isLongText ? `${newNote.slice(0, 100)}...` : newNote;
-            noteInput.value = displayText;
-            noteInput.dataset.fullText = newNote;
-            noteInput.dataset.shortText = displayText;
-            let toggleBtn = suggestion.querySelector('.toggle-text-btn');
-            if (isLongText && !toggleBtn) {
-              toggleBtn = document.createElement('button');
-              toggleBtn.className = 'toggle-text-btn';
-              toggleBtn.dataset.expanded = 'false';
-              toggleBtn.textContent = getMessage('expand');
-              suggestion.appendChild(toggleBtn);
-              toggleBtn.clickHandler = e => {
-                e.stopPropagation();
-                const isExpanded = toggleBtn.dataset.expanded === 'true';
-                if (isExpanded) {
-                  noteInput.value = noteInput.dataset.shortText;
-                  toggleBtn.textContent = getMessage('expand');
-                  toggleBtn.dataset.expanded = 'false';
-                } else {
-                  noteInput.value = noteInput.dataset.fullText;
-                  toggleBtn.textContent = getMessage('collapse'); // 使用专门的'collapse'消息
-                  toggleBtn.dataset.expanded = 'true';
-                }
-              };
-              toggleBtn.addEventListener('click', toggleBtn.clickHandler);
-            } else if (!isLongText && toggleBtn) {
-              toggleBtn.removeEventListener('click', toggleBtn.clickHandler);
-              toggleBtn.remove();
-            }
-            showToast(getMessage('successNoteSaved'));
-          });
-        });
-      }
+      exitEdit(true);
     } else if (e.key === 'Escape') {
-      noteInput.readOnly = true;
-      noteInput.blur();
-      noteInput.value = noteInput.dataset.fullText || '';
+      suppressBlurSave = true;
+      exitEdit(false);
     }
   };
-  noteInput.addEventListener('keydown', noteInput.keydownHandler);
+  editInput.addEventListener('keydown', editInput.keydownHandler);
 
-  // 失去焦点时恢复只读
-  noteInput.blurHandler = () => {
-    noteInput.readOnly = true;
-    if (!noteInput.value.trim() && !hasNote) {
-      noteInput.value = '';
+  editInput.blurHandler = () => {
+    if (!editInput.hidden && !suppressBlurSave) {
+      exitEdit(true);
     }
+    suppressBlurSave = false;
   };
-  noteInput.addEventListener('blur', noteInput.blurHandler);
+  editInput.addEventListener('blur', editInput.blurHandler);
 
   // 添加关闭按钮悬停事件
   let menuHideTimeout = null;
@@ -1367,27 +1321,38 @@ function showAccountNote(field, noteData) {
     }, 150);
   });
 
-  // 标签输入功能
+  // 标签输入功能：＋标签按钮原地切换为行内输入框，不新增行
   const addTagBtn = suggestion.querySelector('.add-tag-btn');
-  const tagInputContainer = suggestion.querySelector('.note-tag-input-container');
   const tagInput = suggestion.querySelector('.note-tag-input');
   const tagsContainer = suggestion.querySelector('.note-tags-container');
-  if (addTagBtn && tagInputContainer && tagInput) {
+  if (addTagBtn && tagInput) {
+    const collapseTagInput = () => {
+      tagInput.value = '';
+      tagInput.hidden = true;
+      addTagBtn.hidden = false;
+    };
     addTagBtn.addEventListener('click', e => {
       e.stopPropagation();
-      const isVisible = tagInputContainer.style.display !== 'none';
-      tagInputContainer.style.display = isVisible ? 'none' : 'flex';
-      if (!isVisible) {
-        tagInput.focus();
-      }
+      addTagBtn.hidden = true;
+      tagInput.hidden = false;
+      tagInput.focus();
     });
 
     // 处理标签输入
     const handleTagInput = async e => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        collapseTagInput();
+        return;
+      }
       if (e.key === 'Enter' || e.key === ',' || e.type === 'blur') {
         e.preventDefault();
         const tag = tagInput.value.trim().replace(/,/g, '');
-        if (!tag) return;
+        if (!tag) {
+          // 失焦时没输入内容：收回按钮，不打扰
+          if (e.type === 'blur') collapseTagInput();
+          return;
+        }
         const key = getFieldKey(field);
         try {
           const result = await chrome.storage.local.get([key]);
@@ -1421,8 +1386,7 @@ function showAccountNote(field, noteData) {
             e.stopPropagation();
             removeTag(key, tag, tagElement);
           });
-          tagInput.value = '';
-          tagInputContainer.style.display = 'none'; // 隐藏输入框
+          collapseTagInput();
           showToast(getMessage('tagAdded') || '标签已添加');
         } catch (error) {
           console.error('Add tag error:', error);
