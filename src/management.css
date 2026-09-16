@@ -976,6 +976,11 @@ input:checked + .slider::before {
   margin-bottom: var(--space-5);
 }
 
+/* display:flex 会压过 [hidden]，必须显式收起（与 .settings-panel 同一个坑） */
+.add-site-form[hidden] {
+  display: none;
+}
+
 .add-site-form input {
   flex: 1;
   padding: 12px 16px;
