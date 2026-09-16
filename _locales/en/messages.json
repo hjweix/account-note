@@ -737,5 +737,13 @@
   },
   "addSiteAction": {
     "message": "Add site"
+  },
+  "notesCountLabel": {
+    "message": "$1 notes",
+    "description": "备注数量（工具栏计数与分组头部共用）"
+  },
+  "notesCountFiltered": {
+    "message": "$1 / $2 notes",
+    "description": "筛选生效时的备注数量 filtered/total"
   }
 }

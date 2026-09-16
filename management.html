@@ -30,8 +30,8 @@
         <button id="settingsTab" class="tab-btn">Settings</button>
       </div>
       <div id="notesContent" class="tab-content active">
-        <!-- 筛选区域 -->
-        <div class="filter-container" id="filterContainer">
+        <!-- 统一工具栏：筛选 + 排序 + 批量操作 + 计数（原 filter-container 与 control-bar 两条合并） -->
+        <div class="notes-toolbar" id="notesToolbar">
           <button id="favoriteFilter" class="favorite-filter-btn" title="只看收藏">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
@@ -41,36 +41,33 @@
           <select id="tagFilter" class="tag-filter-select">
             <option value="">所有标签</option>
           </select>
-        </div>
-
-      <div class="control-bar">
-        <div class="sort-controls">
-          <select id="sortSelect" class="sort-select">
-            <option value="updateTime" id="sortByTime">按更新时间排序</option>
-            <option value="username" id="sortByUsername">按用户名排序</option>
-            <option value="domain" id="sortByDomain">按网站排序</option>
-          </select>
-          <button id="sortDirection" class="sort-direction" title="">
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path d="M7 10l5 5 5-5H7z"/>
-            </svg>
-          </button>
-        </div>
-        <div class="batch-controls">
-          <div class="select-all-control">
-            <input type="checkbox" id="selectAll" class="select-checkbox">
-            <label for="selectAll" id="selectAllLabel">全选</label>
+          <div class="sort-controls">
+            <select id="sortSelect" class="sort-select">
+              <option value="updateTime" id="sortByTime">按更新时间排序</option>
+              <option value="username" id="sortByUsername">按用户名排序</option>
+              <option value="domain" id="sortByDomain">按网站排序</option>
+            </select>
+            <button id="sortDirection" class="sort-direction" title="">
+              <svg viewBox="0 0 24 24" width="18" height="18">
+                <path d="M7 10l5 5 5-5H7z"/>
+              </svg>
+            </button>
           </div>
-          <button id="toggleSelect" class="batch-btn">选择</button>
-          <button id="deleteSelected" class="batch-btn danger" style="display: none;">
-            删除所选
-          </button>
-
+          <span class="notes-count" id="notesCount"></span>
+          <div class="batch-controls">
+            <div class="select-all-control">
+              <input type="checkbox" id="selectAll" class="select-checkbox">
+              <label for="selectAll" id="selectAllLabel">全选</label>
+            </div>
+            <button id="toggleSelect" class="batch-btn">选择</button>
+            <button id="deleteSelected" class="batch-btn danger" style="display: none;">
+              删除所选
+            </button>
+          </div>
         </div>
-      </div>
 
       <div class="notes-grid" id="notesList">
-        <!-- 备注列表将通过 JS 动态插入 -->
+        <!-- 备注列表（按站点分组）将通过 JS 动态插入 -->
       </div>
       </div>
 

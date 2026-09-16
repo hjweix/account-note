@@ -331,6 +331,16 @@ function displayNotes(notes, searchTerm = '') {
     }
   });
 
+  // 更新工具栏计数（筛选/搜索生效时显示 filtered/total；置于空态早退之前，0 条也要刷新）
+  const totalNotes = notes.filter(note => note && note.domain && note.note && note.username && note.key).length;
+  notesCountStats = { filtered: validNotes.length, total: totalNotes };
+  const countEl = document.getElementById('notesCount');
+  if (countEl) {
+    countEl.textContent = validNotes.length === totalNotes
+      ? getMessage('notesCountLabel', [String(totalNotes)])
+      : getMessage('notesCountFiltered', [String(validNotes.length), String(totalNotes)]);
+  }
+
   if (validNotes.length === 0) {
     if (searchTerm || currentFilter.tags.length > 0 || currentFilter.isFavorite) {
       // 搜索无结果状态
@@ -356,52 +366,48 @@ function displayNotes(notes, searchTerm = '') {
     return;
   }
 
-  // 修改卡片模板，添加头像和紧凑布局
-  notesList.innerHTML = validNotes.map(note => {
-    // 格式化域名显示
-    const url = new URL(note.domain);
-    const displayDomain = url.hostname.replace(/^www\./, '');
-    // 直接取站点自身 /favicon.ico：第三方 favicon 服务（google.com/s2）在国内不可达
-    const favicon = `${url.origin}/favicon.ico`;
+  // 按站点分组渲染：hostOf 已在文件头引入（上下级域名互通、平级子域隔离的同一套口径）。
+  // validNotes 已排好序，按「首次出现顺序」建组，组间顺序自然跟随当前排序（组顶即该站最新/最靠前的记录）
+  const groups = new Map();
+  validNotes.forEach(note => {
+    const host = hostOf(note.domain);
+    if (!groups.has(host)) groups.set(host, []);
+    groups.get(host).push(note);
+  });
 
-    // 生成标签HTML
-    const tagsHtml = note.tags && note.tags.length > 0
-      ? `<div class="note-tags">${note.tags.map(tag =>
-          `<span class="tag-badge">${escapeHtml(tag)}</span>`
-        ).join('')}</div>`
-      : '';
+  notesList.innerHTML = [...groups.entries()].map(([host, list]) => {
+    // favicon 直接取站点自身 /favicon.ico：第三方 favicon 服务（google.com/s2）在国内不可达
+    let faviconSrc = '';
+    try { faviconSrc = new URL(list[0].domain).origin + '/favicon.ico'; } catch (e) { faviconSrc = ''; }
+    const displayName = host.replace(/^www\./, '');
+    const hasFavorite = list.some(note => note.isFavorite);
 
-    // 生成头像字母（用户名首字母大写）
-    const avatarLetter = note.username.charAt(0).toUpperCase();
+    const cardsHtml = list.map(note => {
+      const tagsHtml = note.tags && note.tags.length > 0
+        ? `<div class="note-tags">${note.tags.map(tag =>
+            `<span class="tag-badge">${escapeHtml(tag)}</span>`
+          ).join('')}</div>`
+        : '';
 
-    return `
-      <div class="note-card ${note.isFavorite ? 'is-favorite' : ''}" data-key="${note.key}">
+      return `
+      <div class="note-card ${note.isFavorite ? 'is-favorite' : ''}" data-key="${note.key}" data-domain="${escapeHtml(displayName)}">
         <input type="checkbox" class="select-checkbox" aria-label="${escapeHtml(getMessage('select'))}">
-        <div class="note-header">
-          <div class="note-domain">
-            <img src="${favicon}" class="domain-icon" alt="${displayDomain}">
-            <span>${displayDomain}</span>
-          </div>
+        <div class="note-row-top">
+          <div class="note-username">${escapeHtml(note.username)}</div>
           <button class="favorite-btn ${note.isFavorite ? 'is-favorite' : ''}" title="${note.isFavorite ? escapeHtml(getMessage('removeFavorite')) : escapeHtml(getMessage('addFavorite'))}">
             <svg viewBox="0 0 24 24" width="16" height="16">
               <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/>
             </svg>
           </button>
         </div>
-        <div class="note-body">
-          <div class="note-avatar">${avatarLetter}</div>
-          <div class="note-info">
-            <div class="note-username">${escapeHtml(note.username)}</div>
-            <div class="note-content" title="${escapeHtml(note.note)}">
-              ${note.note.length > NOTE_PREVIEW_LEN ? escapeHtml(note.note.slice(0, NOTE_PREVIEW_LEN)) + '...' : escapeHtml(note.note)}
-            </div>
-          </div>
+        <div class="note-content" title="${escapeHtml(note.note)}">
+          ${note.note.length > NOTE_PREVIEW_LEN ? escapeHtml(note.note.slice(0, NOTE_PREVIEW_LEN)) + '...' : escapeHtml(note.note)}
         </div>
-        ${tagsHtml}
-        <div class="note-footer">
-          <div class="note-time" title="${new Date(note.updateTime).toLocaleString()}">
+        <div class="note-row-bottom">
+          <span class="note-time" title="${new Date(note.updateTime).toLocaleString()}">
             ${formatTime(note.updateTime)}
-          </div>
+          </span>
+          ${tagsHtml}
           <div class="note-actions">
             <button class="action-btn edit-btn" title="${escapeHtml(getMessage('editNote'))}">
               <svg viewBox="0 0 24 24" width="16" height="16">
@@ -417,6 +423,20 @@ function displayNotes(notes, searchTerm = '') {
         </div>
       </div>
     `;
+    }).join('');
+
+    return `
+      <div class="note-group">
+        <div class="note-group-head">
+          <img src="${faviconSrc}" class="domain-icon note-group-icon" alt="${escapeHtml(displayName)}">
+          <span class="note-group-name">${escapeHtml(displayName)}</span>
+          ${hasFavorite ? '<span class="note-group-fav">★</span>' : ''}
+          <span class="note-group-count">${getMessage('notesCountLabel', [String(list.length)])}</span>
+          <span class="note-group-line"></span>
+        </div>
+        <div class="note-group-grid">${cardsHtml}</div>
+      </div>
+    `;
   }).join('');
 
   wireFaviconFallback(notesList);
@@ -427,15 +447,19 @@ function displayNotes(notes, searchTerm = '') {
 // 备注预览截断长度（初始渲染与编辑保存后共用，避免同卡片前后不一致）
 const NOTE_PREVIEW_LEN = 60;
 
-// 按域名分组备注
-function groupNotesByDomain(notes) {
-  return notes.reduce((groups, note) => {
-    if (!groups[note.domain]) {
-      groups[note.domain] = [];
-    }
-    groups[note.domain].push(note);
-    return groups;
-  }, {});
+// 工具栏计数快照：单条/批量删除走 noteCard.remove() 不重渲染，靠它同步计数
+let notesCountStats = { filtered: 0, total: 0 };
+
+// 删除备注后同步工具栏计数（removed 必然来自当前过滤后的集合）
+function syncNotesCountAfterDelete(removed = 1) {
+  notesCountStats.filtered = Math.max(0, notesCountStats.filtered - removed);
+  notesCountStats.total = Math.max(0, notesCountStats.total - removed);
+  const countEl = document.getElementById('notesCount');
+  if (countEl) {
+    countEl.textContent = notesCountStats.filtered === notesCountStats.total
+      ? getMessage('notesCountLabel', [String(notesCountStats.total)])
+      : getMessage('notesCountFiltered', [String(notesCountStats.filtered), String(notesCountStats.total)]);
+  }
 }
 
 // 搜索功能
@@ -1253,7 +1277,7 @@ function addNoteActions() {
     const handleClick = async (e) => {
       const noteCard = e.target.closest('.note-card');
       const key = noteCard.dataset.key;
-      const domainText = noteCard.querySelector('.note-domain span')?.textContent || '';
+      const domainText = noteCard.dataset.domain || '';
       const usernameText = noteCard.querySelector('.note-username')?.textContent || '';
 
       const ok = await showConfirmDialog({
@@ -1266,9 +1290,15 @@ function addNoteActions() {
       if (!ok) return;
 
       try {
-        const entries = await softDeleteNotes([key]);
-        noteCard.remove();
-        if (document.querySelectorAll('.note-card').length === 0) {
+      const entries = await softDeleteNotes([key]);
+      // 卡片移除后，若其所在分组已空则整组摘掉，避免留下「有头无身」的空组
+      const group = noteCard.closest('.note-group');
+      noteCard.remove();
+      syncNotesCountAfterDelete(1);
+      if (group && group.querySelectorAll('.note-card').length === 0) {
+        group.remove();
+      }
+      if (document.querySelectorAll('.note-card').length === 0) {
           const notesList = document.getElementById('notesList');
           if (notesList) {
             notesList.innerHTML = `
@@ -1530,13 +1560,17 @@ async function restoreFromTrash(entries) {
 function showSkeleton() {
   const notesList = document.getElementById('notesList');
   if (!notesList) return;
-  notesList.innerHTML = Array.from({ length: 4 }).map(() => `
-    <div class="note-card skeleton" aria-hidden="true">
-      <div class="sk-row"><span class="sk-circle"></span><span class="sk-line sk-w40"></span></div>
-      <span class="sk-line sk-w80"></span>
-      <span class="sk-line sk-w60"></span>
+  notesList.innerHTML = `
+    <div class="note-group-grid">
+      ${Array.from({ length: 4 }).map(() => `
+        <div class="note-card skeleton" aria-hidden="true">
+          <div class="sk-row"><span class="sk-circle"></span><span class="sk-line sk-w40"></span></div>
+          <span class="sk-line sk-w80"></span>
+          <span class="sk-line sk-w60"></span>
+        </div>
+      `).join('')}
     </div>
-  `).join('');
+  `;
 }
 
 // favicon 加载失败时回退为首字母头像（站点自身 /favicon.ico 为唯一来源，
@@ -1662,6 +1696,7 @@ function setupControls() {
       document.getElementById('toggleSelect').textContent = getMessage('select');
       document.getElementById('deleteSelected').style.display = 'none';
       selectAll.checked = false;
+      syncNotesCountAfterDelete(entries.length);
 
       if (entries.length > 0) {
         showUndoToast(getMessage('deletedCount', [String(entries.length)]), async () => {
@@ -1693,7 +1728,7 @@ async function getAllTags() {
 
 // 设置筛选
 function setupFilters() {
-  const filterContainer = document.getElementById('filterContainer');
+  const filterContainer = document.getElementById('notesToolbar');
   if (!filterContainer) return;
 
   // 收藏筛选按钮
