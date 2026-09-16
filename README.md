@@ -1,18 +1,22 @@
 # Account Note
 
-A browser extension that helps you add and manage notes for your online accounts. Quickly add notes to any login form, and manage all your account notes in one place.
+A browser extension that helps you add and manage notes for your online accounts. Your note appears right next to the login form, so you always know which account is which — and all notes are managed in one place.
 
 [中文文档](./README_zh.md)
 
 ## Features
 
-- **Smart Detection**: Automatically identifies password fields and account fields on web pages
-- **Quick Notes**: Add notes directly to any login form with one click
-- **Tag Organization**: Categorize notes with custom tags for easy filtering
-- **Favorites**: Mark important notes as favorites for quick access
-- **Search & Filter**: Find notes by website, username, tag, or content
-- **Secure Storage**: All data is stored locally in your browser
-- **Responsive Design**: Works great on any screen size
+- **Smart Detection**: A scoring-based engine locks onto the account field using keywords, form structure, and input attributes — zero configuration needed
+- **Manual Anchoring**: For fields the engine can't identify (multi-step logins, delayed rendering), pick the field once and it's remembered forever
+- **Quick Notes**: The note card pops up as soon as you focus the account field; click the text to edit, press Enter to save
+- **Tag Organization**: Add tags inline and filter notes by tag
+- **Favorites**: Star important accounts for quick access
+- **Search & Filter**: Find notes by website, username, tag, or content; sortable
+- **Safe Deletion**: Deleted notes stay in a trash for 7 days and can be undone anytime — batch deletion included
+- **Data Backup**: One-click JSON export / import, including tags, theme, and anchor settings
+- **Do-not-Disturb Controls**: Disable per session / per site / globally, one hover away
+- **Native Feel**: Chrome-style native UI, automatic light/dark theme, English & Chinese
+- **Secure Storage**: All data stays in your browser; passwords are never touched
 
 ## Installation
 
@@ -33,25 +37,30 @@ A browser extension that helps you add and manage notes for your online accounts
 
 ### Adding Notes
 
-1. Click on any input field on a login page
-2. A note icon will appear next to the field
-3. Click the icon to add or edit notes
-4. Press Enter to save, Esc to cancel
+1. Focus the account field on a login page (or click "Add a note on the page" in the toolbar popup)
+2. A note card appears to the right of the field
+3. Click the card text to type, press Enter to save, Esc to cancel
+4. Click "＋ tag" to tag this account
 
-### Managing Notes
+### Viewing & Managing
 
-- Click the extension icon in the browser toolbar to view notes for the current site
-- Use the management page to view and organize all your notes
-- Search by website, username, or content
-- Filter by tags or favorites
-- Batch select and delete notes as needed
+- Focus the same account field again and the note card appears automatically
+- Click the toolbar icon: view all notes for the current site, favorite, edit, or pick a field manually
+- Management page: search, sort, tag filters, batch deletion
+- Deleted notes stay in the trash for 7 days — click "Undo" in the toast to restore
+
+### Do-not-Disturb Controls
+
+- Hover the ⚙ icon on the note card: disable for this session / this site / all sites
+- Click ✕ to dismiss the card for now
+- Disabled state can be restored anytime from the management page or the toolbar popup
 
 ## Privacy & Security
 
 - All data is stored locally in your browser
 - No data is uploaded to any server
 - Notes are associated only with websites and usernames
-- No passwords are ever stored or accessed
+- Passwords are never read or stored
 
 ## Development
 
@@ -64,6 +73,10 @@ npm run watch
 
 # Build for production
 npm run build
+
+# Quality gates
+npm run check:css   # content-script CSS scope-leak check
+npm run check:i18n  # locale key consistency (en / zh_CN)
 ```
 
 ## Project Structure
@@ -71,7 +84,7 @@ npm run build
 ```
 project/
 ├── src/          # Source files
-├── dist/         # Compiled files
+├── dist/         # Compiled files (load the extension from here)
 ├── icons/        # Extension icons
 └── document/     # Documentation
 ```
