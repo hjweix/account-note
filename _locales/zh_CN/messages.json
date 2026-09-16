@@ -680,5 +680,62 @@
   },
   "siteScopeSaved": {
     "message": "站点范围已更新"
+  },
+  "appearanceTitle": {
+    "message": "外观设置"
+  },
+  "sitesTitle": {
+    "message": "站点"
+  },
+  "sitesDesc": {
+    "message": "一行一个站点。展开可看该站点的输入框锚定记录与备注弹窗开关——这三项原来是三张独立的列表，现在合在一处。"
+  },
+  "settingsNavAppearance": {
+    "message": "外观"
+  },
+  "settingsNavSites": {
+    "message": "站点"
+  },
+  "settingsNavTags": {
+    "message": "标签"
+  },
+  "settingsNavData": {
+    "message": "数据与关于"
+  },
+  "siteFilterPlaceholder": {
+    "message": "筛选站点…"
+  },
+  "siteCount": {
+    "message": "$1 个站点"
+  },
+  "siteCountFiltered": {
+    "message": "$1 / $2 个站点"
+  },
+  "siteBadgeNotes": {
+    "message": "备注 $1"
+  },
+  "siteBadgeDisabled": {
+    "message": "已禁用"
+  },
+  "siteBadgeAnchor": {
+    "message": "锚定 $1"
+  },
+  "siteDetailPopup": {
+    "message": "备注弹窗"
+  },
+  "siteDetailEnabled": {
+    "message": "已启用"
+  },
+  "siteDetailEnableHint": {
+    "message": "点击启用该站点的备注弹窗"
+  },
+  "siteDetailDisableHint": {
+    "message": "点击停用该站点的备注弹窗"
+  },
+  "noSiteMatch": {
+    "message": "没有匹配的站点"
+  },
+  "addSiteAction": {
+    "message": "添加站点"
   }
 }

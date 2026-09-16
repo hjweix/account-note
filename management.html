@@ -73,134 +73,146 @@
         <!-- 备注列表将通过 JS 动态插入 -->
       </div>
       </div>
+
+      <!-- 设置区：左分区导航 + 右内容面板。
+           分区依据是「配置对象」而非重要性——站点级的三个列表合入同一面板，
+           面板切换取代纵向滚动（详见 docs/superpowers/specs/2026-09-16-settings-layout-redesign.md） -->
       <div id="settingsContent" class="tab-content">
-        <div class="settings-container">
-          <!-- 主题设置卡片 -->
-          <div class="settings-card">
-            <h2 class="card-title">外观设置</h2>
-            <div class="card-content">
-              <div class="theme-selector">
-                <div class="theme-option active" data-theme="auto">
-                  <div class="theme-option-icon">🌓</div>
-                  <div class="theme-option-label">跟随系统</div>
-                </div>
-                <div class="theme-option" data-theme="light">
-                  <div class="theme-option-icon">☀️</div>
-                  <div class="theme-option-label">浅色</div>
-                </div>
-                <div class="theme-option" data-theme="dark">
-                  <div class="theme-option-icon">🌙</div>
-                  <div class="theme-option-label">深色</div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="settings-layout">
+          <nav class="settings-nav" id="settingsNav" aria-label="设置分区">
+            <button type="button" class="settings-nav-item" data-panel="appearance">外观</button>
+            <button type="button" class="settings-nav-item active" data-panel="sites">站点</button>
+            <button type="button" class="settings-nav-item" data-panel="tags">标签</button>
+            <button type="button" class="settings-nav-item" data-panel="data">数据与关于</button>
+          </nav>
 
-          <!-- 标签管理卡片：标签依附于备注记录，此处只读展示使用统计，
-               添加/移除入口在页面弹窗与备注编辑中——独立添加表单是假功能，已移除 -->
-          <div class="settings-card">
-            <h2 id="tagManagementTitle" class="card-title">标签管理</h2>
-            <div class="card-content">
-              <p class="switch-description" id="tagsFromNotesHint"></p>
-              <div class="tags-list" id="tagsList">
-                <!-- 标签列表将通过 JS 动态插入 -->
-              </div>
-            </div>
-          </div>
-
-          <!-- 已禁用网站卡片 -->
-          <div class="settings-card">
-            <h2 id="disabledSitesTitle" class="card-title">已禁用网站</h2>
-            <div class="card-content">
-              <div class="global-disable-switch">
-                <label class="switch-label">
-                  <span id="globalDisableText">全局禁用备注</span>
-                  <div class="switch">
-                    <input type="checkbox" id="globalDisableToggle">
-                    <span class="slider round"></span>
+          <div class="settings-panels">
+            <!-- 外观 -->
+            <section class="settings-panel" data-panel="appearance" hidden>
+              <div class="settings-card">
+                <h2 id="appearanceTitle" class="card-title">外观设置</h2>
+                <div class="card-content">
+                  <div class="theme-selector">
+                    <div class="theme-option active" data-theme="auto">
+                      <div class="theme-option-icon">🌓</div>
+                      <div class="theme-option-label">跟随系统</div>
+                    </div>
+                    <div class="theme-option" data-theme="light">
+                      <div class="theme-option-icon">☀️</div>
+                      <div class="theme-option-label">浅色</div>
+                    </div>
+                    <div class="theme-option" data-theme="dark">
+                      <div class="theme-option-icon">🌙</div>
+                      <div class="theme-option-label">深色</div>
+                    </div>
                   </div>
-                </label>
-                <p class="switch-description" id="globalDisableDesc">启用此选项将在所有网站上禁用备注弹窗</p>
+                </div>
               </div>
-              <div class="add-site-form">
-                <input type="text" id="newSiteInput" placeholder="输入网站域名，如 example.com">
-                <button id="addSiteBtn">添加</button>
-              </div>
-              <div class="disabled-sites-list" id="disabledSitesList">
-                <!-- 禁用网站列表将通过 JS 动态插入 -->
-              </div>
-            </div>
-          </div>
-          
-          <!-- 输入框锚定卡片 -->
-          <div class="settings-card">
-            <h2 id="fieldAnchorsTitle" class="card-title">输入框锚定</h2>
-            <div class="card-content">
-              <p class="switch-description" id="fieldAnchorsDesc">手动指定过的输入框会始终显示备注弹窗。识别不准时，可在扩展弹窗里重新指定。</p>
-              <div class="field-anchors-list" id="fieldAnchorsList">
-                <!-- 锚定记录将通过 JS 动态插入 -->
-              </div>
-            </div>
-          </div>
+            </section>
 
-          <!-- 站点范围卡片 -->
-          <div class="settings-card">
-            <h2 id="siteScopeTitle" class="card-title">站点范围</h2>
-            <div class="card-content">
-              <p class="switch-description" id="siteScopeDesc">同一网站的上下级入口共用备注（登录域写的，主站也看得到）；平级子域各记各的。想让某个站点彻底分开，把它设为「仅本站」。</p>
-              <div class="site-scope-list" id="siteScopeList">
-                <!-- 站点范围设置将通过 JS 动态插入 -->
-              </div>
-            </div>
-          </div>
+            <!-- 站点：备注作用域 + 禁用 + 锚定 三源合一 -->
+            <section class="settings-panel" data-panel="sites">
+              <div class="settings-card">
+                <h2 id="sitesTitle" class="card-title">站点</h2>
+                <div class="card-content">
+                  <p class="switch-description" id="sitesDesc"></p>
 
-          <!-- 数据管理卡片 -->
-          <div class="settings-card">
-            <h2 id="dataManagementTitle" class="card-title">数据管理</h2>
-            <div class="card-content">
-              <div class="data-management-actions">
-                <button id="settingsExportBtn" class="settings-btn">
-                  <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px;">
-                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>
-                  </svg>
-                  <span id="settingsExportText">导出所有数据</span>
-                </button>
-                <button id="settingsImportBtn" class="settings-btn">
-                  <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px;">
-                    <path d="M5 15h4v6h6v-6h4l-7-7-7 7zM5 4v2h14V4H5z" fill="currentColor"/>
-                  </svg>
-                  <span id="settingsImportText">导入数据</span>
-                </button>
-                <input type="file" id="settingsImportFileInput" accept=".json" style="display: none;">
-              </div>
-              <div class="data-management-actions danger-zone">
-                <h3 id="clearDataTitle">清除所有数据</h3>
-                <button id="clearAllDataBtn" class="settings-btn danger">
-                  <span id="clearDataText">清除</span>
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 关于卡片 -->
-          <div class="settings-card">
-            <h2 id="aboutTitle" class="card-title">关于</h2>
-            <div class="card-content">
-              <div class="about-info">
-                <div class="info-row">
-                  <span class="info-label" id="versionLabel">版本:</span>
-                  <span class="info-value" id="versionValue">1.1.0</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label" id="developerLabel">开发者:</span>
-                  <span class="info-value" id="developerValue">Account Note Team</span>
-                </div>
-                <div class="about-actions">
-                  <a href="#" id="viewChangelogLink" class="text-link">查看更新日志</a>
-                  <a href="#" id="reportIssueLink" class="text-link">反馈问题</a>
+                  <div class="global-disable-switch">
+                    <label class="switch-label">
+                      <span id="globalDisableText">全局禁用备注</span>
+                      <div class="switch">
+                        <input type="checkbox" id="globalDisableToggle">
+                        <span class="slider round"></span>
+                      </div>
+                    </label>
+                    <p class="switch-description" id="globalDisableDesc">启用此选项将在所有网站上禁用备注弹窗</p>
+                  </div>
+
+                  <div class="site-table">
+                    <div class="site-table-head">
+                      <input type="text" id="siteFilterInput" class="site-filter-input" placeholder="">
+                      <span class="site-count" id="siteCount"></span>
+                      <button type="button" id="addSiteAction" class="site-add-btn">添加站点</button>
+                    </div>
+
+                    <!-- 手动添加域名（可添加没有备注的站点，语义与旧「已禁用网站」一致） -->
+                    <div class="add-site-form" id="addSiteFormRow" hidden>
+                      <input type="text" id="newSiteInput" placeholder="">
+                      <button id="addSiteBtn">添加</button>
+                    </div>
+
+                    <div class="site-table-body" id="siteTableBody">
+                      <!-- 站点行将通过 JS 动态插入 -->
+                    </div>
+                  </div>
+
+                  <p class="switch-description site-scope-hint" id="siteScopeDesc"></p>
                 </div>
               </div>
-            </div>
+            </section>
+
+            <!-- 标签：chip 云 -->
+            <section class="settings-panel" data-panel="tags" hidden>
+              <div class="settings-card">
+                <h2 id="tagManagementTitle" class="card-title">标签管理</h2>
+                <div class="card-content">
+                  <p class="switch-description" id="tagsFromNotesHint"></p>
+                  <div class="tag-chips" id="tagsList">
+                    <!-- 标签胶囊将通过 JS 动态插入 -->
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 数据与关于 -->
+            <section class="settings-panel" data-panel="data" hidden>
+              <div class="settings-card">
+                <h2 id="dataManagementTitle" class="card-title">数据管理</h2>
+                <div class="card-content">
+                  <div class="data-management-actions">
+                    <button id="settingsExportBtn" class="settings-btn">
+                      <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px;">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/>
+                      </svg>
+                      <span id="settingsExportText">导出所有数据</span>
+                    </button>
+                    <button id="settingsImportBtn" class="settings-btn">
+                      <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px;">
+                        <path d="M5 15h4v6h6v-6h4l-7-7-7 7zM5 4v2h14V4H5z" fill="currentColor"/>
+                      </svg>
+                      <span id="settingsImportText">导入数据</span>
+                    </button>
+                    <input type="file" id="settingsImportFileInput" accept=".json" style="display: none;">
+                  </div>
+                  <div class="data-management-actions danger-zone">
+                    <h3 id="clearDataTitle">清除所有数据</h3>
+                    <button id="clearAllDataBtn" class="settings-btn danger">
+                      <span id="clearDataText">清除</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-card">
+                <h2 id="aboutTitle" class="card-title">关于</h2>
+                <div class="card-content">
+                  <div class="about-info">
+                    <div class="info-row">
+                      <span class="info-label" id="versionLabel">版本:</span>
+                      <span class="info-value" id="versionValue">1.1.0</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label" id="developerLabel">开发者:</span>
+                      <span class="info-value" id="developerValue">Account Note Team</span>
+                    </div>
+                    <div class="about-actions">
+                      <a href="#" id="viewChangelogLink" class="text-link">查看更新日志</a>
+                      <a href="#" id="reportIssueLink" class="text-link">反馈问题</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>

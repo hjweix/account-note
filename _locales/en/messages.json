@@ -680,5 +680,62 @@
   },
   "siteScopeSaved": {
     "message": "Site scope updated"
+  },
+  "appearanceTitle": {
+    "message": "Appearance"
+  },
+  "sitesTitle": {
+    "message": "Sites"
+  },
+  "sitesDesc": {
+    "message": "One row per site. Expand to see its field anchors and the note popup toggle — these were three separate lists before."
+  },
+  "settingsNavAppearance": {
+    "message": "Appearance"
+  },
+  "settingsNavSites": {
+    "message": "Sites"
+  },
+  "settingsNavTags": {
+    "message": "Tags"
+  },
+  "settingsNavData": {
+    "message": "Data & about"
+  },
+  "siteFilterPlaceholder": {
+    "message": "Filter sites…"
+  },
+  "siteCount": {
+    "message": "$1 site(s)"
+  },
+  "siteCountFiltered": {
+    "message": "$1 / $2 sites"
+  },
+  "siteBadgeNotes": {
+    "message": "$1 note(s)"
+  },
+  "siteBadgeDisabled": {
+    "message": "Disabled"
+  },
+  "siteBadgeAnchor": {
+    "message": "$1 anchor(s)"
+  },
+  "siteDetailPopup": {
+    "message": "Note popup"
+  },
+  "siteDetailEnabled": {
+    "message": "Enabled"
+  },
+  "siteDetailEnableHint": {
+    "message": "Click to enable the note popup on this site"
+  },
+  "siteDetailDisableHint": {
+    "message": "Click to disable the note popup on this site"
+  },
+  "noSiteMatch": {
+    "message": "No matching sites"
+  },
+  "addSiteAction": {
+    "message": "Add site"
   }
 }

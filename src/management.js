@@ -232,8 +232,8 @@ function initI18nTexts() {
   }
   
   // 设置卡片标题
-  if (document.getElementById('disabledSitesTitle')) {
-    document.getElementById('disabledSitesTitle').textContent = getMessage('disabledSites') || '已禁用网站';
+  if (document.getElementById('appearanceTitle')) {
+    document.getElementById('appearanceTitle').textContent = getMessage('appearanceTitle') || '外观设置';
   }
   if (document.getElementById('dataManagementTitle')) {
     document.getElementById('dataManagementTitle').textContent = getMessage('dataManagement') || '数据管理';
@@ -508,139 +508,216 @@ function setupTabs() {
     
     // 只在第一次切换到设置页面时初始化
     if (!settingsInitialized) {
-      console.log('首次初始化设置页面');
-      loadDisabledSites();
       setupSettingsSidebar();
       settingsInitialized = true;
     } else {
-      console.log('设置页面已初始化，仅更新禁用网站列表');
-      loadDisabledSites(); // 仍然需要更新禁用网站列表
+      // 设置页面已初始化，回到该页时只刷新数据，不重复绑事件
+      loadSitesPanel();
+      loadTagsList();
     }
   });
 }
 
 // 设置卡片布局
 function setupSettingsSidebar() {
-  // 设置卡片标题国际化文本
-  document.getElementById('disabledSitesTitle').textContent = getMessage('disabledSites');
-  document.getElementById('dataManagementTitle').textContent = getMessage('dataManagement') || '数据管理';
-  document.getElementById('aboutTitle').textContent = getMessage('about') || '关于';
-  document.getElementById('tagManagementTitle').textContent = getMessage('tagManagement') || '标签管理';
+  // 分区导航（外观 / 站点 / 标签 / 数据与关于）
+  setupSettingsNav();
 
-  // 输入框锚定卡片国际化
-  document.getElementById('fieldAnchorsTitle').textContent = getMessage('fieldAnchorsTitle') || '输入框锚定';
-  document.getElementById('fieldAnchorsDesc').textContent = getMessage('fieldAnchorsDesc') || '手动指定过的输入框会始终显示备注弹窗。识别不准时，可在扩展弹窗里重新指定。';
-
-  // 站点范围卡片国际化
-  const siteScopeTitle = document.getElementById('siteScopeTitle');
-  if (siteScopeTitle) siteScopeTitle.textContent = getMessage('siteScopeTitle') || '站点范围';
+  // 站点面板
+  const sitesTitle = document.getElementById('sitesTitle');
+  if (sitesTitle) sitesTitle.textContent = getMessage('sitesTitle') || '站点';
+  const sitesDesc = document.getElementById('sitesDesc');
+  if (sitesDesc) {
+    sitesDesc.textContent = getMessage('sitesDesc')
+      || '一行一个站点。展开可看该站点的输入框锚定记录与备注弹窗开关——三者原来是三张独立的列表，现在合在一处。';
+  }
   const siteScopeDesc = document.getElementById('siteScopeDesc');
   if (siteScopeDesc) {
     siteScopeDesc.textContent = getMessage('siteScopeDesc')
       || '同一网站的上下级入口共用备注（登录域写的，主站也看得到）；平级子域各记各的。想让某个站点彻底分开，把它设为「仅本站」。';
   }
+  const siteFilterInput = document.getElementById('siteFilterInput');
+  if (siteFilterInput) siteFilterInput.placeholder = getMessage('siteFilterPlaceholder') || '筛选站点…';
+  const addSiteAction = document.getElementById('addSiteAction');
+  if (addSiteAction) addSiteAction.textContent = getMessage('addSiteAction') || '添加站点';
 
-  // 添加网站表单国际化
+  // 添加站点表单（可添加没有备注的域名，语义等同旧的「已禁用网站」手动添加）
   const newSiteInput = document.getElementById('newSiteInput');
-  newSiteInput.placeholder = getMessage('newSiteInputPlaceholder') || '输入网站域名，如 example.com';
+  if (newSiteInput) newSiteInput.placeholder = getMessage('newSiteInputPlaceholder') || '输入网站域名，如 example.com';
   const addSiteBtn = document.getElementById('addSiteBtn');
-  addSiteBtn.textContent = getMessage('addSite') || '添加';
+  if (addSiteBtn) addSiteBtn.textContent = getMessage('addSite') || '添加';
 
-  // 标签管理卡片：来源说明（标签依附于备注，独立添加表单是假功能已移除）
+  // 标签面板：来源说明（标签依附于备注，独立添加表单是假功能已移除）
+  const tagTitle = document.getElementById('tagManagementTitle');
+  if (tagTitle) tagTitle.textContent = getMessage('tagManagement') || '标签管理';
   const tagsHint = document.getElementById('tagsFromNotesHint');
   if (tagsHint) {
-    tagsHint.textContent = getMessage('tagsFromNotes') || '标签来自备注本身，在页面弹窗或编辑备注时添加。';
+    tagsHint.textContent = getMessage('tagsFromNotes') || '标签来自备注本身，在页面弹窗或编辑备注时添加。点击标签可重命名。';
   }
-
-  // 加载标签列表（只读展示使用统计）
-  loadTagsList();
 
   // 数据管理卡片国际化
   document.getElementById('settingsExportText').textContent = getMessage('exportAllData') || '导出所有数据';
   document.getElementById('settingsImportText').textContent = getMessage('importData') || '导入数据';
   document.getElementById('clearDataTitle').textContent = getMessage('clearAllData') || '清除所有数据';
   document.getElementById('clearDataText').textContent = getMessage('clear') || '清除';
-  
+
   // 关于卡片国际化
   document.getElementById('versionLabel').textContent = getMessage('version') || '版本:';
   document.getElementById('developerLabel').textContent = getMessage('developer') || '开发者:';
   document.getElementById('viewChangelogLink').textContent = getMessage('viewChangelog') || '查看更新日志';
   document.getElementById('reportIssueLink').textContent = getMessage('reportIssue') || '反馈问题';
-  
+
   // 添加禁用网站功能
   setupAddDisabledSite();
-  
+
   // 添加数据管理功能
   setupDataManagement();
 
-  // 输入框锚定记录列表
-  loadFieldAnchors();
+  // 标签胶囊（使用统计，支持重命名/删除）
+  loadTagsList();
 
-  // 站点范围设置
-  loadSiteScopes();
-  
+  // 站点表（备注作用域 + 禁用 + 锚定 三源合一）
+  loadSitesPanel();
+  setupSiteFilter();
+
   // 添加关于功能
   setupAbout();
 }
 
-// 设置添加禁用网站功能
+// ===== 设置分区导航 =====
+// 四个分区同时只有一组卡片可见，取代原来的单列纵向堆叠。
+// 当前分区记在 sessionStorage：关掉页面即忘，不污染 chrome.storage 的备份内容。
+const SETTINGS_PANEL_KEY = 'accountNoteSettingsPanel';
+let currentSettingsPanel = 'sites';
+
+function setupSettingsNav() {
+  const nav = document.getElementById('settingsNav');
+  if (!nav) return;
+
+  const items = Array.from(nav.querySelectorAll('.settings-nav-item'));
+  const panels = Array.from(document.querySelectorAll('.settings-panel'));
+  if (items.length === 0) return;
+
+  // 导航项文案。写成字面 getMessage 调用而非动态拼 key，
+  // 否则 check:i18n 看不到引用、会把这 4 个 key 报成孤儿
+  const LABELS = {
+    appearance: getMessage('settingsNavAppearance') || '外观',
+    sites: getMessage('settingsNavSites') || '站点',
+    tags: getMessage('settingsNavTags') || '标签',
+    data: getMessage('settingsNavData') || '数据与关于'
+  };
+  items.forEach(item => {
+    const panel = item.dataset.panel;
+    item.textContent = LABELS[panel] || panel;
+  });
+
+  function show(panelId) {
+    const target = panels.some(p => p.dataset.panel === panelId) ? panelId : 'sites';
+    currentSettingsPanel = target;
+    items.forEach(item => {
+      const on = item.dataset.panel === target;
+      item.classList.toggle('active', on);
+      if (on) {
+        item.setAttribute('aria-current', 'true');
+      } else {
+        item.removeAttribute('aria-current');
+      }
+    });
+    panels.forEach(p => { p.hidden = p.dataset.panel !== target; });
+    try {
+      sessionStorage.setItem(SETTINGS_PANEL_KEY, target);
+    } catch (error) {
+      // 会话存储不可用时忽略，仅失去记忆能力
+    }
+  }
+
+  items.forEach(item => {
+    item.addEventListener('click', () => show(item.dataset.panel));
+  });
+
+  // 恢复上次所在分区（默认站点）
+  let remembered = null;
+  try {
+    remembered = sessionStorage.getItem(SETTINGS_PANEL_KEY);
+  } catch (error) {
+    remembered = null;
+  }
+  show(remembered || 'sites');
+}
+
+
+// ===== 站点表：全局禁用开关 + 手动添加站点 + 筛选 =====
+
+// 全局禁用开关 + 「添加站点」入口。手动添加的域名允许没有备注——
+// 语义等同旧的「已禁用网站」表单（禁用与备注本来就是两件事）
 function setupAddDisabledSite() {
   const newSiteInput = document.getElementById('newSiteInput');
   const addSiteBtn = document.getElementById('addSiteBtn');
+  const addSiteAction = document.getElementById('addSiteAction');
+  const addSiteFormRow = document.getElementById('addSiteFormRow');
   const globalDisableToggle = document.getElementById('globalDisableToggle');
-  
-  // 初始化全局禁用开关状态
-  chrome.storage.local.get(['disabledGlobal'], (result) => {
-    globalDisableToggle.checked = result.disabledGlobal === true;
-  });
-  
-  // 添加全局禁用开关事件
-  globalDisableToggle.addEventListener('change', () => {
-    chrome.storage.local.set({ disabledGlobal: globalDisableToggle.checked }, () => {
-      if (globalDisableToggle.checked) {
-        showToast(getMessage('globalDisableEnabled') || '已全局禁用备注功能');
-      } else {
-        showToast(getMessage('globalDisableDisabled') || '已启用备注功能');
+
+  if (globalDisableToggle) {
+    // 初始化全局禁用开关状态
+    chrome.storage.local.get(['disabledGlobal'], (result) => {
+      globalDisableToggle.checked = result.disabledGlobal === true;
+    });
+
+    globalDisableToggle.addEventListener('change', () => {
+      chrome.storage.local.set({ disabledGlobal: globalDisableToggle.checked }, () => {
+        if (globalDisableToggle.checked) {
+          showToast(getMessage('globalDisableEnabled') || '已全局禁用备注功能');
+        } else {
+          showToast(getMessage('globalDisableDisabled') || '已启用备注功能');
+        }
+      });
+    });
+  }
+
+  // 添加站点：默认收起，点一下就地展开，不让一行输入框常驻占高度
+  if (addSiteAction && addSiteFormRow) {
+    addSiteAction.addEventListener('click', () => {
+      const willShow = addSiteFormRow.hidden;
+      addSiteFormRow.hidden = !willShow;
+      if (willShow && newSiteInput) newSiteInput.focus();
+    });
+  }
+
+  if (addSiteBtn) addSiteBtn.addEventListener('click', addDisabledSite);
+  if (newSiteInput) {
+    newSiteInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addDisabledSite();
       }
     });
-  });
-  
-  addSiteBtn.addEventListener('click', () => {
-    addDisabledSite();
-  });
-  
-  newSiteInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      addDisabledSite();
-    }
-  });
-  
+  }
+
   function addDisabledSite() {
-    let site = newSiteInput.value.trim();
+    let site = (newSiteInput && newSiteInput.value.trim()) || '';
     if (!site) return;
-    
-    // 确保输入的是有效URL
+
+    // 确保输入的是有效 URL
     if (!site.startsWith('http://') && !site.startsWith('https://')) {
       site = 'https://' + site;
     }
-    
+
     try {
-      const url = new URL(site);
-      const domain = url.origin;
-      
+      const domain = new URL(site).origin;
+
       chrome.storage.local.get(['disabledSites'], (result) => {
-        let disabledSites = result.disabledSites || [];
-        
-        // 检查是否已存在
+        const disabledSites = Array.isArray(result.disabledSites) ? result.disabledSites.slice() : [];
+
         if (disabledSites.includes(domain)) {
           showToast(getMessage('siteAlreadyDisabled') || '该网站已在禁用列表中');
           return;
         }
-        
+
         disabledSites.push(domain);
         chrome.storage.local.set({ disabledSites }, () => {
-          newSiteInput.value = '';
-          loadDisabledSites();
+          if (newSiteInput) newSiteInput.value = '';
+          if (addSiteFormRow) addSiteFormRow.hidden = true;
+          loadSitesPanel();
           showToast(getMessage('siteDisabled') || '网站已禁用');
         });
       });
@@ -650,76 +727,34 @@ function setupAddDisabledSite() {
   }
 }
 
-// 加载禁用网站列表
-function loadDisabledSites() {
-  const disabledSitesList = document.getElementById('disabledSitesList');
-  
-  chrome.storage.local.get(['disabledSites'], (result) => {
-    const disabledSites = result.disabledSites || [];
-    
-    if (disabledSites.length === 0) {
-      disabledSitesList.innerHTML = `
-        <div class="empty-state">
-          <p>${getMessage('noDisabledSites') || '没有禁用的网站'}</p>
-        </div>
-      `;
-      return;
-    }
-    
-    disabledSitesList.innerHTML = '';
-    
-    disabledSites.forEach(site => {
-      try {
-        const url = new URL(site);
-        const displayDomain = url.hostname.replace(/^www\./, '');
-        // 站点自身 /favicon.ico，失败回退首字母（不依赖国内不可达的第三方服务）
-        const favicon = `${url.origin}/favicon.ico`;
-
-        const siteItem = document.createElement('div');
-        siteItem.className = 'disabled-site-item';
-        siteItem.innerHTML = `
-          <div class="site-info">
-            <img src="${favicon}" class="site-icon" alt="${escapeHtml(displayDomain)}">
-            <span>${escapeHtml(displayDomain)}</span>
-          </div>
-          <button class="enable-site-btn" data-site="${site}">${getMessage('enableSite')}</button>
-        `;
-
-        disabledSitesList.appendChild(siteItem);
-      } catch (error) {
-        console.error('Invalid URL:', site);
-      }
-    });
-
-    wireFaviconFallback(disabledSitesList);
-    
-    // 添加启用网站按钮事件
-    const enableButtons = disabledSitesList.querySelectorAll('.enable-site-btn');
-    enableButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const site = button.dataset.site;
-        enableSite(site);
-      });
-    });
+// 站点表筛选框：只过滤渲染，不动存储
+function setupSiteFilter() {
+  const input = document.getElementById('siteFilterInput');
+  if (!input) return;
+  input.addEventListener('input', () => {
+    SITES_FILTER = input.value.trim().toLowerCase();
+    renderSiteRows();
   });
 }
 
-// 启用网站
-function enableSite(site) {
-  chrome.storage.local.get(['disabledSites'], (result) => {
-    let disabledSites = result.disabledSites || [];
-    disabledSites = disabledSites.filter(s => s !== site);
-    
-    chrome.storage.local.set({ disabledSites }, () => {
-      loadDisabledSites(); // 重新加载禁用网站列表
-    });
-  });
-}
 
-// ===== 输入框锚定记录 =====
-// 用户在页面上手动指定过的输入框（识别引擎的兜底层）。content.js 侧按 origin 分组写入，
-// 这里只做只读展示与移除——绑错了要能救回来。
+// ===== 站点表：备注作用域 + 禁用 + 锚定 三源合一 =====
+//
+// 这三个数据源都是站点级的：
+//   备注作用域  note.domain（hostOf 去重）+ siteScopeOverrides
+//   禁用        disabledSites（存精确 origin，同 host 可能有 http/https 两条）
+//   锚定        fieldAnchors（按 origin 分组）
+// 原来各渲染一张表，同一站点最多在三处出现、三张表的长度直接叠加。
+// 现在取三源 host 的并集，一行一个站点、详情就地展开。
+// 三者的写入路径（各自的 storage key）一个都没改。
+
 const ANCHOR_STORAGE_KEY = 'fieldAnchors';
+
+// 站点表状态。筛选与展开都是内存态，重渲染时按 host 恢复
+let SITES_DATA = [];
+let SITES_OVERRIDES = {};
+let SITES_FILTER = '';
+const SITES_EXPANDED = new Set();
 
 // 把锚定指纹转成人类可读的一行描述（纯文本，由 textContent 写入，无需转义）
 function describeAnchor(anchor) {
@@ -731,6 +766,244 @@ function describeAnchor(anchor) {
     return getMessage('anchorIndexLabel', [String(anchor.nth + 1)]) || `第 ${anchor.nth + 1} 个输入框`;
   }
   return '—';
+}
+
+// 汇总三源，得到站点行数据
+function collectSiteRows(result) {
+  const rows = new Map();
+  const ensure = (host) => {
+    if (!rows.has(host)) {
+      rows.set(host, { host, noteCount: 0, disabledOrigins: [], anchorGroups: [] });
+    }
+    return rows.get(host);
+  };
+
+  // 1) 备注
+  Object.values(result || {}).forEach(value => {
+    if (value && value.domain && value.note && value.username) {
+      const host = hostOf(value.domain);
+      if (host) ensure(host).noteCount += 1;
+    }
+  });
+
+  // 2) 禁用
+  const disabledSites = Array.isArray(result && result.disabledSites) ? result.disabledSites : [];
+  disabledSites.forEach(origin => {
+    const host = hostOf(origin);
+    if (host) ensure(host).disabledOrigins.push(origin);
+  });
+
+  // 3) 锚定
+  const anchors = result && result[ANCHOR_STORAGE_KEY];
+  if (anchors && typeof anchors === 'object') {
+    Object.keys(anchors).forEach(origin => {
+      const list = anchors[origin];
+      if (Array.isArray(list) && list.length > 0) {
+        const host = hostOf(origin);
+        if (host) ensure(host).anchorGroups.push({ origin, anchors: list });
+      }
+    });
+  }
+
+  return Array.from(rows.values()).sort((a, b) => a.host.localeCompare(b.host));
+}
+
+// 加载站点表
+async function loadSitesPanel() {
+  const body = document.getElementById('siteTableBody');
+  if (!body) return;
+
+  const result = await chrome.storage.local.get(null);
+  SITES_DATA = collectSiteRows(result);
+  SITES_OVERRIDES = normalizeOverrides(result && result[SCOPE_STORAGE_KEY]);
+
+  // 展开态只保留仍存在的站点，避免集合无限增长
+  const alive = new Set(SITES_DATA.map(row => row.host));
+  Array.from(SITES_EXPANDED).forEach(host => {
+    if (!alive.has(host)) SITES_EXPANDED.delete(host);
+  });
+
+  renderSiteRows();
+}
+
+function renderSiteRows() {
+  const body = document.getElementById('siteTableBody');
+  if (!body) return;
+
+  const total = SITES_DATA.length;
+  const rows = SITES_FILTER
+    ? SITES_DATA.filter(row => row.host.toLowerCase().includes(SITES_FILTER))
+    : SITES_DATA;
+
+  const countEl = document.getElementById('siteCount');
+  if (countEl) {
+    countEl.textContent = SITES_FILTER
+      ? (getMessage('siteCountFiltered', [String(rows.length), String(total)]) || `${rows.length} / ${total} 个站点`)
+      : (getMessage('siteCount', [String(total)]) || `${total} 个站点`);
+  }
+
+  body.innerHTML = '';
+
+  if (rows.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state site-table-empty';
+    const hint = document.createElement('p');
+    hint.textContent = total === 0
+      ? (getMessage('noSiteScopes') || '还没有任何站点记录')
+      : (getMessage('noSiteMatch') || '没有匹配的站点');
+    empty.appendChild(hint);
+    body.appendChild(empty);
+    return;
+  }
+
+  rows.forEach(row => body.appendChild(buildSiteRow(row)));
+}
+
+function buildSiteBadge(text, kind) {
+  const badge = document.createElement('span');
+  badge.className = 'site-badge' + (kind ? ' ' + kind : '');
+  badge.textContent = text;
+  return badge;
+}
+
+// 单行站点：头部（展开箭头 + 域名 + 徽章 + 范围选择）+ 详情
+function buildSiteRow(site) {
+  const wrap = document.createElement('div');
+  wrap.className = 'site-row';
+  wrap.dataset.host = site.host;
+
+  const head = document.createElement('div');
+  head.className = 'site-row-head';
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'site-row-toggle';
+  const expanded = SITES_EXPANDED.has(site.host);
+  toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+  const chevron = document.createElement('span');
+  chevron.className = 'site-row-chevron';
+  chevron.textContent = expanded ? '▴' : '▾';
+  toggle.appendChild(chevron);
+
+  const name = document.createElement('span');
+  name.className = 'site-row-host';
+  name.textContent = site.host;
+  name.title = site.host;
+  toggle.appendChild(name);
+
+  toggle.addEventListener('click', () => {
+    if (SITES_EXPANDED.has(site.host)) {
+      SITES_EXPANDED.delete(site.host);
+    } else {
+      SITES_EXPANDED.add(site.host);
+    }
+    renderSiteRows();
+  });
+
+  head.appendChild(toggle);
+
+  const badges = document.createElement('div');
+  badges.className = 'site-row-badges';
+  if (site.noteCount > 0) {
+    badges.appendChild(buildSiteBadge(getMessage('siteBadgeNotes', [String(site.noteCount)]) || `备注 ${site.noteCount}`));
+  }
+  if (site.disabledOrigins.length > 0) {
+    badges.appendChild(buildSiteBadge(getMessage('siteBadgeDisabled') || '已禁用', 'danger'));
+  }
+  const anchorTotal = site.anchorGroups.reduce((n, group) => n + group.anchors.length, 0);
+  if (anchorTotal > 0) {
+    badges.appendChild(buildSiteBadge(getMessage('siteBadgeAnchor', [String(anchorTotal)]) || `锚定 ${anchorTotal}`));
+  }
+  head.appendChild(badges);
+
+  // 归并范围是最常改的一项，直接放在行上，不必展开
+  const select = document.createElement('select');
+  select.className = 'site-scope-select';
+  select.dataset.host = site.host;
+  select.setAttribute('aria-label', site.host);
+  [
+    { value: SCOPE_INHERIT, label: getMessage('siteScopeInherit') || '跟随上下级' },
+    { value: SCOPE_EXACT, label: getMessage('siteScopeExact') || '仅本站' }
+  ].forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt.value;
+    option.textContent = opt.label;
+    select.appendChild(option);
+  });
+  select.value = SITES_OVERRIDES[site.host] ? SITES_OVERRIDES[site.host].level : SCOPE_INHERIT;
+  select.addEventListener('change', () => setSiteScope(site.host, select.value));
+  head.appendChild(select);
+
+  wrap.appendChild(head);
+
+  if (expanded) wrap.appendChild(buildSiteDetail(site));
+  return wrap;
+}
+
+// 展开的详情：备注弹窗开关 + 锚定记录
+function buildSiteDetail(site) {
+  const detail = document.createElement('div');
+  detail.className = 'site-row-detail';
+
+  const popupLine = document.createElement('div');
+  popupLine.className = 'site-detail-line';
+
+  const popupLabel = document.createElement('span');
+  popupLabel.className = 'site-detail-label';
+  popupLabel.textContent = getMessage('siteDetailPopup') || '备注弹窗';
+  popupLine.appendChild(popupLabel);
+
+  const isDisabled = site.disabledOrigins.length > 0;
+  const popupBtn = document.createElement('button');
+  popupBtn.type = 'button';
+  popupBtn.className = 'site-detail-toggle' + (isDisabled ? ' is-off' : ' is-on');
+  popupBtn.textContent = isDisabled
+    ? (getMessage('enableSite') || '启用')
+    : (getMessage('siteDetailEnabled') || '已启用');
+  popupBtn.title = isDisabled
+    ? (getMessage('siteDetailEnableHint') || '点击启用该站点的备注弹窗')
+    : (getMessage('siteDetailDisableHint') || '点击停用该站点的备注弹窗');
+  popupBtn.addEventListener('click', () => {
+    setSiteDisabled(site.host, !isDisabled, site.disabledOrigins);
+  });
+  popupLine.appendChild(popupBtn);
+  detail.appendChild(popupLine);
+
+  const anchorLabel = document.createElement('div');
+  anchorLabel.className = 'site-detail-label site-detail-block-label';
+  anchorLabel.textContent = getMessage('fieldAnchorsTitle') || '输入框锚定';
+  detail.appendChild(anchorLabel);
+
+  const anchorHint = document.createElement('p');
+  anchorHint.className = 'site-detail-hint';
+  anchorHint.textContent = getMessage('fieldAnchorsDesc')
+    || '手动指定过的输入框会始终显示备注弹窗。识别不准时，可在扩展弹窗里重新指定。';
+  detail.appendChild(anchorHint);
+
+  if (site.anchorGroups.length === 0) {
+    const none = document.createElement('p');
+    none.className = 'site-detail-hint';
+    none.textContent = getMessage('noFieldAnchors') || '暂无锚定记录';
+    detail.appendChild(none);
+    return detail;
+  }
+
+  // 同一 host 可能对应 http/https 两个 origin，多条时才标出来源
+  const showOrigin = site.anchorGroups.length > 1;
+  site.anchorGroups.forEach(group => {
+    if (showOrigin) {
+      const originLine = document.createElement('div');
+      originLine.className = 'site-anchor-origin';
+      originLine.textContent = group.origin;
+      detail.appendChild(originLine);
+    }
+    group.anchors.forEach((anchor, index) => {
+      detail.appendChild(buildAnchorItem(group.origin, anchor, index));
+    });
+  });
+
+  return detail;
 }
 
 // 单条锚定记录
@@ -762,120 +1035,6 @@ function buildAnchorItem(origin, anchor, index) {
   return item;
 }
 
-// 加载全部锚定记录，按站点分组展示
-function loadFieldAnchors() {
-  const list = document.getElementById('fieldAnchorsList');
-  if (!list) return;
-
-  chrome.storage.local.get([ANCHOR_STORAGE_KEY], (result) => {
-    const all = result[ANCHOR_STORAGE_KEY];
-    const origins = all && typeof all === 'object'
-      ? Object.keys(all).filter(origin => Array.isArray(all[origin]) && all[origin].length > 0)
-      : [];
-
-    if (origins.length === 0) {
-      list.innerHTML = `
-        <div class="empty-state">
-          <p>${getMessage('noFieldAnchors') || '暂无锚定记录'}</p>
-        </div>
-      `;
-      return;
-    }
-
-    list.innerHTML = '';
-    origins.sort().forEach(origin => {
-      const group = document.createElement('div');
-      group.className = 'field-anchor-group';
-
-      const header = document.createElement('div');
-      header.className = 'field-anchor-origin';
-      header.textContent = origin;
-      group.appendChild(header);
-
-      all[origin].forEach((anchor, index) => {
-        group.appendChild(buildAnchorItem(origin, anchor, index));
-      });
-
-      list.appendChild(group);
-    });
-  });
-}
-
-// ===== 站点范围（备注按「网站」而不是整串 origin 归属）=====
-//
-// 默认：上下级域名互通（api.x.com ↔ x.com），平级子域隔离（ipsdev ↔ ipsprod 各记各的）。
-// 例外：把某个站点设为「仅本站」即从上下级链上摘掉，只认自己的备注。
-// 备注数据本身不动，改的只是「能看到哪些」，因此随时可改回来、不会丢记录。
-
-function loadSiteScopes() {
-  const list = document.getElementById('siteScopeList');
-  if (!list) return;
-
-  chrome.storage.local.get(null, (result) => {
-    const overrides = normalizeOverrides(result && result[SCOPE_STORAGE_KEY]);
-
-    // 只列出真正有备注的站点，避免出现一堆空壳设置项
-    const hosts = new Set();
-    Object.values(result || {}).forEach(value => {
-      if (value && value.domain && value.note && value.username) {
-        const host = hostOf(value.domain);
-        if (host) hosts.add(host);
-      }
-    });
-
-    if (hosts.size === 0) {
-      list.innerHTML = `
-        <div class="empty-state">
-          <p>${getMessage('noSiteScopes') || '还没有任何站点记录'}</p>
-        </div>
-      `;
-      return;
-    }
-
-    const sorted = Array.from(hosts).sort();
-    list.innerHTML = '';
-
-    sorted.forEach(host => {
-      const row = document.createElement('div');
-      row.className = 'site-scope-item';
-
-      const info = document.createElement('div');
-      info.className = 'site-scope-info';
-
-      const name = document.createElement('span');
-      name.className = 'site-scope-host';
-      name.textContent = host;
-      name.title = host;
-      info.appendChild(name);
-
-      const select = document.createElement('select');
-      select.className = 'site-scope-select';
-      select.dataset.host = host;
-      select.setAttribute('aria-label', host);
-
-      const options = [
-        { value: SCOPE_INHERIT, label: getMessage('siteScopeInherit') || '跟随上下级' },
-        { value: SCOPE_EXACT, label: getMessage('siteScopeExact') || '仅本站' }
-      ];
-      options.forEach(opt => {
-        const option = document.createElement('option');
-        option.value = opt.value;
-        option.textContent = opt.label;
-        select.appendChild(option);
-      });
-      select.value = overrides[host] ? overrides[host].level : SCOPE_INHERIT;
-
-      select.addEventListener('change', () => {
-        setSiteScope(host, select.value);
-      });
-
-      row.appendChild(info);
-      row.appendChild(select);
-      list.appendChild(row);
-    });
-  });
-}
-
 // 写入站点范围设置。跟随上下级是默认态，直接删键，不留冗余配置
 function setSiteScope(host, level) {
   chrome.storage.local.get([SCOPE_STORAGE_KEY], (result) => {
@@ -887,7 +1046,7 @@ function setSiteScope(host, level) {
     }
 
     const done = () => {
-      loadSiteScopes();
+      loadSitesPanel();
       showToast(getMessage('siteScopeSaved') || '站点范围已更新');
     };
 
@@ -895,6 +1054,34 @@ function setSiteScope(host, level) {
       chrome.storage.local.remove(SCOPE_STORAGE_KEY, done);
     } else {
       chrome.storage.local.set({ [SCOPE_STORAGE_KEY]: all }, done);
+    }
+  });
+}
+
+// 停用/启用某站点的备注弹窗。
+// 启用时把该 host 相关的所有 origin 一并摘掉——同 host 可能有 http 与 https 两条记录
+function setSiteDisabled(host, disabled, existingOrigins) {
+  chrome.storage.local.get(['disabledSites'], (result) => {
+    let sites = Array.isArray(result.disabledSites) ? result.disabledSites.slice() : [];
+
+    if (disabled) {
+      const target = (existingOrigins && existingOrigins[0]) || `https://${host}`;
+      if (!sites.includes(target)) sites.push(target);
+    } else {
+      sites = sites.filter(origin => hostOf(origin) !== host);
+    }
+
+    const done = () => {
+      loadSitesPanel();
+      showToast(disabled
+        ? (getMessage('siteDisabled') || '网站已禁用')
+        : (getMessage('siteEnabled') || '已启用该站点的备注弹窗'));
+    };
+
+    if (sites.length === 0) {
+      chrome.storage.local.remove('disabledSites', done);
+    } else {
+      chrome.storage.local.set({ disabledSites: sites }, done);
     }
   });
 }
@@ -917,7 +1104,7 @@ function removeFieldAnchor(origin, index) {
     }
 
     const done = () => {
-      loadFieldAnchors();
+      loadSitesPanel();
       showToast(getMessage('anchorRemoved') || '已移除锚定记录');
     };
 
@@ -929,6 +1116,7 @@ function removeFieldAnchor(origin, index) {
     }
   });
 }
+
 
 // 添加备注操作的事件监听
 function addNoteActions() {
@@ -1666,13 +1854,13 @@ async function refreshViewsAfterImport() {
   if (typeof loadTagsList === 'function') loadTagsList();
   if (typeof setupFilters === 'function') setupFilters();
 
-  if (typeof loadDisabledSites === 'function') loadDisabledSites();
+  if (typeof loadSitesPanel === 'function') loadSitesPanel();
 
   // 导入的备份可能带来锚定记录（others 会一并还原）
-  if (typeof loadFieldAnchors === 'function') loadFieldAnchors();
+  if (typeof loadSitesPanel === 'function') loadSitesPanel();
 
   // 导入的备份可能带来站点范围设置（同样在 others 里）
-  if (typeof loadSiteScopes === 'function') loadSiteScopes();
+  if (typeof loadSitesPanel === 'function') loadSitesPanel();
 
   // 全局禁用开关
   const globalToggle = document.getElementById('globalDisableToggle');
@@ -2051,106 +2239,82 @@ async function loadTagsList() {
 
   tagsList.innerHTML = '';
 
+  // 胶囊云：标签是短词，一行一个浪费 52px 才换来一次点击。
+  // 计数是只读统计，重命名与删除仍保留（动作随胶囊走，不另占一行）
   tagStats.forEach(({ tag, count }) => {
-    const tagItem = document.createElement('div');
-    tagItem.className = 'tag-item';
-    tagItem.dataset.tag = tag;
+    const chip = document.createElement('div');
+    chip.className = 'tag-chip';
+    chip.dataset.tag = tag;
 
-    tagItem.innerHTML = `
-      <div class="tag-item-info">
-        <span class="tag-item-name">${escapeHtml(tag)}</span>
-        <span class="tag-item-count">${count} ${getMessage('notesCount') || '个备注'}</span>
-      </div>
-      <div class="tag-item-actions">
-        <button class="tag-action-btn rename" title="${escapeHtml(getMessage('renameTag') || '重命名')}">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
-          </svg>
-        </button>
-        <button class="tag-action-btn delete" title="${escapeHtml(getMessage('deleteTag') || '删除标签')}">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-          </svg>
-        </button>
-      </div>
-    `;
+    const nameBtn = document.createElement('button');
+    nameBtn.type = 'button';
+    nameBtn.className = 'tag-chip-name';
+    nameBtn.textContent = tag;
+    nameBtn.title = getMessage('renameTag') || '重命名';
+    nameBtn.addEventListener('click', () => enterTagEditMode(chip, tag));
 
-    // 重命名按钮事件
-    const renameBtn = tagItem.querySelector('.tag-action-btn.rename');
-    renameBtn.addEventListener('click', () => {
-      enterTagEditMode(tagItem, tag);
-    });
+    const countEl = document.createElement('span');
+    countEl.className = 'tag-chip-count';
+    countEl.textContent = String(count);
+    countEl.title = `${count} ${getMessage('notesCount') || '个备注'}`;
 
-    // 删除按钮事件
-    const deleteBtn = tagItem.querySelector('.tag-action-btn.delete');
-    deleteBtn.addEventListener('click', () => {
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'tag-chip-remove';
+    removeBtn.textContent = '✕';
+    removeBtn.title = getMessage('deleteTag') || '删除标签';
+    removeBtn.setAttribute('aria-label', `${getMessage('deleteTag') || '删除标签'}: ${tag}`);
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       deleteTag(tag);
     });
 
-    tagsList.appendChild(tagItem);
+    chip.appendChild(nameBtn);
+    chip.appendChild(countEl);
+    chip.appendChild(removeBtn);
+    tagsList.appendChild(chip);
   });
 }
 
-// 进入标签编辑模式
-function enterTagEditMode(tagItem, oldTagName) {
-  tagItem.classList.add('editing');
+// 进入标签编辑模式：胶囊原地变输入框（与备注弹窗「点正文即编辑」同一套语言）
+function enterTagEditMode(chip, oldTagName) {
+  chip.classList.add('editing');
 
-  tagItem.innerHTML = `
-    <div class="tag-item-info" style="flex: 1;">
-      <input type="text" class="tag-edit-input" value="${escapeHtml(oldTagName)}" />
-    </div>
-    <div class="tag-edit-actions">
-      <button class="tag-edit-btn save">${getMessage('save') || '保存'}</button>
-      <button class="tag-edit-btn cancel">${getMessage('cancel') || '取消'}</button>
-    </div>
-  `;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'tag-chip-input';
+  input.value = oldTagName;
 
-  const input = tagItem.querySelector('.tag-edit-input');
-  const saveBtn = tagItem.querySelector('.tag-edit-btn.save');
-  const cancelBtn = tagItem.querySelector('.tag-edit-btn.cancel');
-
+  chip.innerHTML = '';
+  chip.appendChild(input);
   input.focus();
   input.select();
 
-  // 保存按钮事件
-  saveBtn.addEventListener('click', () => {
+  // settled 保证「回车提交 + 随后 blur」只生效一次
+  let settled = false;
+  const commit = (save) => {
+    if (settled) return;
+    settled = true;
     const newTagName = input.value.trim();
-    if (newTagName && newTagName !== oldTagName) {
+    if (save && newTagName && newTagName !== oldTagName) {
       renameTag(oldTagName, newTagName);
     } else {
-      loadTagsList(); // 取消编辑，重新加载列表
-    }
-  });
-
-  // 取消按钮事件
-  cancelBtn.addEventListener('click', () => {
-    loadTagsList(); // 重新加载列表，退出编辑模式
-  });
-
-  // 键盘事件
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const newTagName = input.value.trim();
-      if (newTagName && newTagName !== oldTagName) {
-        renameTag(oldTagName, newTagName);
-      }
-    } else if (e.key === 'Escape') {
       loadTagsList();
     }
+  };
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commit(true);
+    } else if (e.key === 'Escape') {
+      commit(false);
+    }
   });
 
-  // 失去焦点时保存（有延迟，避免点击按钮时的问题）
+  // 失去焦点时保存，延迟一拍避免与上面的提交重复
   input.addEventListener('blur', () => {
-    setTimeout(() => {
-      if (tagItem.classList.contains('editing')) {
-        const newTagName = input.value.trim();
-        if (newTagName && newTagName !== oldTagName) {
-          renameTag(oldTagName, newTagName);
-        } else if (!newTagName) {
-          loadTagsList();
-        }
-      }
-    }, 200);
+    setTimeout(() => commit(true), 150);
   });
 }
 
