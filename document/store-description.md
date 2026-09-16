@@ -24,7 +24,7 @@ Account Note 会在你聚焦登录页账号框时，自动在旁边显示你为�
 - 手动锚定：遇到识别不了的输入框（多步登录、延迟渲染），手动指定一次，之后永久命中
 - 即时编辑：点击备注卡正文直接输入，回车保存；支持标签与收藏
 - 放心删除：删除进回收站保留 7 天，随时撤销，批量操作同样可逆
-- 集中管理：按网站、用户名、标签、内容搜索与排序；批量整理
+- 集中管理：备注按站点分组展示，同站账号聚合一处；搜索、排序、标签筛选、批量整理，工具栏实时计数
 - 数据备份：一键导出 / 导入 JSON，标签、主题、锚定等设置一并迁移
 - 免打扰：单次隐藏 / 此网站禁用 / 全局禁用三种粒度，悬停备注卡即可设置
 - 原生体验：Chrome 风格界面，自适应明暗主题，中英双语
@@ -53,7 +53,7 @@ Account Note shows your own note right next to the account field when you focus 
 - Manual Anchoring: For fields the engine can't identify (multi-step logins, delayed rendering), pick it once — it's remembered forever.
 - Instant Editing: Click the note text to type, Enter to save. Tags and favorites supported.
 - Safe Deletion: Deleted notes stay in a trash for 7 days and can be undone — batch deletion included.
-- Central Management: Search and sort by site, username, tag, or content. Batch actions.
+- Central Management: Notes are grouped by site, keeping accounts of the same site together. Search, sort, tag filters, batch actions, and a live counter.
 - Data Backup: One-click JSON export / import, including tags, theme, and anchors.
 - Do-not-Disturb: Disable per session / per site / globally — one hover on the note card.
 - Native Feel: Chrome-style UI, automatic light/dark theme, English & Chinese.

@@ -1,5 +1,26 @@
 # 项目进度日志
 
+## 2026-09-16（备注列表按站点分组 + 统一工具栏：第十轮）
+
+### 问题（实测，1440×900 / 40 条备注）
+改造前备注 tab：文档总高 3085px（3.4 屏）、筛选条 + 控制条双工具栏占 263px、卡片高 202–261px、一屏仅约 9 张，同站账号散落各处。
+
+### 三方案比选（Demo 交付用户选择）
+分组卡片 / 纯紧凑平铺 / 行式列表三方案做成可切换 Demo（`/tmp/notes-layout-demo.html`），用户拍板 **A：按站点分组 + 紧凑卡片**。
+
+### 落地
+- 筛选条与排序/批量控制条合并为一条 `.notes-toolbar`，右侧新增备注计数（筛选生效时显示 filtered/total）
+- `displayNotes()` 按 `hostOf(domain)` 分组：组头 favicon + 域名 + 数量 + 收藏★，组内网格；组间顺序跟随当前排序（validNotes 已排序，按首次出现建组，无需二次排序）
+- 紧凑卡片三段式（用户名+星标 / 备注 2 行截断 / 时间+标签+操作），移除 note-domain / avatar / footer
+- 删除后空组自动摘除；选择模式下星标让位勾选框；favicon 回退首字母照常
+- 修自留 bug：计数元素在 `noteCard.remove()` 路径不重渲染 → 模块级 `notesCountStats` + `syncNotesCountAfterDelete()`；计数更新置于空态 early-return 之前
+
+### 结果与验证
+- 文档总高 3085 → **2380px（2.6 屏）**；工具区 263 → **170px**；卡片 125–143px；一屏约 **19 张**
+- 新增 notes-layout-verify 24 断言；回归 settings 44 / uxfix 22 / m3 16 / netscope 9 / tag-inline 全绿（旧套件两处断言对象过时已更新：头像移除、favicon 挪组头）
+- i18n +2（notesCountLabel / notesCountFiltered），两语言各 198 条
+- 提交 `b4c4627`；截图归档 `document/screenshots/2026-09-16-notes-grouped-{light,dark}.png`
+
 ## 2026-09-16（设置页布局重设计：分区导航 + 站点三表合一）
 
 ### 问题（实测，非估计）

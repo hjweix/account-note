@@ -47,7 +47,7 @@ A browser extension that helps you add and manage notes for your online accounts
 
 - Focus the same account field again and the note card appears automatically
 - Click the toolbar icon: view all notes for the current site, favorite, edit, or pick a field manually
-- Management page: search, sort, tag filters, batch deletion
+- Management page: notes grouped by site (same-site accounts together), with search, sort, tag filters, batch deletion, and a live counter
 - Deleted notes stay in the trash for 7 days — click "Undo" in the toast to restore
 
 ### Do-not-Disturb Controls
