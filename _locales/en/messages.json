@@ -602,5 +602,62 @@
   "anchorIndexLabel": {
     "message": "input field #$1",
     "description": "Fallback description for a bare anchor with no attributes"
+  },
+  "saveNoteFirst": {
+    "message": "Save the note first"
+  },
+  "emptyNoteHint": {
+    "message": "Type your username below to add a note for it"
+  },
+  "noLoginForm": {
+    "message": "No login form found on this page. Focus the account field first."
+  },
+  "noteOptionsTitle": {
+    "message": "Note options"
+  },
+  "deleteNoteFor": {
+    "message": "Delete the note for $2 on $1? You can undo within 7 days."
+  },
+  "deletedCount": {
+    "message": "Deleted $1 note(s)"
+  },
+  "undo": {
+    "message": "Undo"
+  },
+  "restored": {
+    "message": "Note restored"
+  },
+  "more": {
+    "message": "More"
+  },
+  "less": {
+    "message": "Less"
+  },
+  "themeApplied": {
+    "message": "$1 theme applied"
+  },
+  "themeAuto": {
+    "message": "System"
+  },
+  "themeLight": {
+    "message": "Light"
+  },
+  "themeDark": {
+    "message": "Dark"
+  },
+  "dialogDeleteTitle": {
+    "message": "Delete note"
+  },
+  "deleteBtn": {
+    "message": "Delete"
+  },
+  "addNoteOnPage": {
+    "message": "Add a note on the page"
+  },
+  "tagsFromNotes": {
+    "message": "Tags come from the notes themselves. Add them in the page popup or while editing a note."
+  },
+  "importOverwrite": {
+    "message": "Overwrite"
   }
 }

@@ -118,6 +118,27 @@
   }
 }
 
+/* 全周期关键帧：供 JS 内联 animation 使用（时长按消息类型可变）。
+   M1 重写时误删了此关键帧，导致内联动画名失效、toast 停留在 opacity:0 */
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  8% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  88% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
 .account-note-toast.hiding {
   animation: account-note-toast-slide-out 0.25s var(--ease-standard) forwards;
 }
@@ -264,6 +285,32 @@
 
 /* hidden 属性切换编辑态，必须压过上面的 -webkit-box 声明 */
 .account-note-suggestion .note-text-readonly[hidden] {
+  display: none;
+}
+
+/* 「更多 / 收起」：仅当长备注真实被截断时由 JS 显示 */
+.account-note-suggestion .note-text-readonly.expanded {
+  -webkit-line-clamp: unset;
+}
+
+.account-note-suggestion .note-more-btn {
+  display: block;
+  padding: 2px 0 0;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s var(--ease-standard);
+}
+
+.account-note-suggestion .note-more-btn:hover {
+  opacity: 0.8;
+}
+
+.account-note-suggestion .note-more-btn[hidden] {
   display: none;
 }
 

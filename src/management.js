@@ -237,26 +237,23 @@ function initI18nTexts() {
 
 // 加载所有备注
 async function loadAllNotes() {
-  console.log('[LoadAllNotes] 开始加载备注');
+  // 骨架占位 + 回收站超期清理（异步，不阻塞加载）
+  showSkeleton();
+  cleanupTrash();
 
   // 第一步：执行数据迁移
   await migrateAllNotes();
 
   // 第二步：加载所有数据（此时已都是最新格式）
   chrome.storage.local.get(null, (result) => {
-    console.log('[LoadAllNotes] 原始数据:', Object.keys(result));
-
     const notes = Object.entries(result)
       .filter(([key, note]) =>
         note && note.domain && note.note && note.username
       )
       .map(([key, note]) => {
-        const finalKey = note.key || key;
-        console.log(`[LoadAllNotes] 处理备注: 存储key=${key}, note.key=${note.key}, 最终key=${finalKey}`);
-
         // 确保返回的数据结构完整
         return {
-          key: finalKey,
+          key: note.key || key,
           domain: note.domain,
           username: note.username,
           note: note.note,
@@ -267,10 +264,6 @@ async function loadAllNotes() {
           favoriteTime: getNoteFavoriteTime(note)
         };
       });
-
-    console.log('[LoadAllNotes] 过滤后的备注数:', notes.length);
-    console.log('[LoadAllNotes] 第一个备注的tags:', notes[0]?.tags);
-    console.log('[LoadAllNotes] 第一个备注的isFavorite:', notes[0]?.isFavorite);
 
     displayNotes(notes, currentFilter.searchTerm);
   });
@@ -360,7 +353,8 @@ function displayNotes(notes, searchTerm = '') {
     // 格式化域名显示
     const url = new URL(note.domain);
     const displayDomain = url.hostname.replace(/^www\./, '');
-    const favicon = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`;
+    // 直接取站点自身 /favicon.ico：第三方 favicon 服务（google.com/s2）在国内不可达
+    const favicon = `${url.origin}/favicon.ico`;
 
     // 生成标签HTML
     const tagsHtml = note.tags && note.tags.length > 0
@@ -391,7 +385,7 @@ function displayNotes(notes, searchTerm = '') {
           <div class="note-info">
             <div class="note-username">${escapeHtml(note.username)}</div>
             <div class="note-content" title="${escapeHtml(note.note)}">
-              ${note.note.length > 60 ? escapeHtml(note.note.slice(0, 60)) + '...' : escapeHtml(note.note)}
+              ${note.note.length > NOTE_PREVIEW_LEN ? escapeHtml(note.note.slice(0, NOTE_PREVIEW_LEN)) + '...' : escapeHtml(note.note)}
             </div>
           </div>
         </div>
@@ -417,10 +411,13 @@ function displayNotes(notes, searchTerm = '') {
     `;
   }).join('');
 
-  console.log('[DisplayNotes] 共渲染', validNotes.length, '个卡片');
+  wireFaviconFallback(notesList);
 
   addNoteActions();
 }
+
+// 备注预览截断长度（初始渲染与编辑保存后共用，避免同卡片前后不一致）
+const NOTE_PREVIEW_LEN = 60;
 
 // 按域名分组备注
 function groupNotesByDomain(notes) {
@@ -532,14 +529,14 @@ function setupSettingsSidebar() {
   const addSiteBtn = document.getElementById('addSiteBtn');
   addSiteBtn.textContent = getMessage('addSite') || '添加';
 
-  // 标签管理国际化
-  const newTagInput = document.getElementById('newTagInput');
-  newTagInput.placeholder = getMessage('newTagInputPlaceholder') || '输入标签名称，如 工作';
-  const addTagBtn = document.getElementById('addTagBtn');
-  addTagBtn.textContent = getMessage('addTag') || '添加';
+  // 标签管理卡片：来源说明（标签依附于备注，独立添加表单是假功能已移除）
+  const tagsHint = document.getElementById('tagsFromNotesHint');
+  if (tagsHint) {
+    tagsHint.textContent = getMessage('tagsFromNotes') || '标签来自备注本身，在页面弹窗或编辑备注时添加。';
+  }
 
-  // 添加标签管理功能
-  setupTagManagement();
+  // 加载标签列表（只读展示使用统计）
+  loadTagsList();
 
   // 数据管理卡片国际化
   document.getElementById('settingsExportText').textContent = getMessage('exportAllData') || '导出所有数据';
@@ -655,8 +652,9 @@ function loadDisabledSites() {
       try {
         const url = new URL(site);
         const displayDomain = url.hostname.replace(/^www\./, '');
-        const favicon = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`;
-        
+        // 站点自身 /favicon.ico，失败回退首字母（不依赖国内不可达的第三方服务）
+        const favicon = `${url.origin}/favicon.ico`;
+
         const siteItem = document.createElement('div');
         siteItem.className = 'disabled-site-item';
         siteItem.innerHTML = `
@@ -666,12 +664,14 @@ function loadDisabledSites() {
           </div>
           <button class="enable-site-btn" data-site="${site}">${getMessage('enableSite')}</button>
         `;
-        
+
         disabledSitesList.appendChild(siteItem);
       } catch (error) {
         console.error('Invalid URL:', site);
       }
     });
+
+    wireFaviconFallback(disabledSitesList);
     
     // 添加启用网站按钮事件
     const enableButtons = disabledSitesList.querySelectorAll('.enable-site-btn');
@@ -814,7 +814,6 @@ function removeFieldAnchor(origin, index) {
 
 // 添加备注操作的事件监听
 function addNoteActions() {
-  console.log('[addNoteActions] 开始绑定事件');
   // 移除之前的事件监听器
   document.querySelectorAll('.edit-btn').forEach(btn => {
     const oldHandler = btn.onclick;
@@ -894,8 +893,8 @@ function addNoteActions() {
           }, () => {
             // 更新显示并移除编辑状态
             noteCard.classList.remove('editing');
-            noteContent.innerHTML = newNote.length > 50 ?
-              escapeHtml(newNote.slice(0, 50)) + '...' : escapeHtml(newNote);
+            noteContent.innerHTML = newNote.length > NOTE_PREVIEW_LEN ?
+              escapeHtml(newNote.slice(0, NOTE_PREVIEW_LEN)) + '...' : escapeHtml(newNote);
             noteContent.setAttribute('title', newNote);
 
             // 显示成功提示
@@ -913,8 +912,8 @@ function addNoteActions() {
       const cancelEdit = () => {
         const originalNote = noteContent.getAttribute('title');
         noteCard.classList.remove('editing');
-        noteContent.innerHTML = originalNote.length > 50 ?
-          escapeHtml(originalNote.slice(0, 50)) + '...' : escapeHtml(originalNote);
+        noteContent.innerHTML = originalNote.length > NOTE_PREVIEW_LEN ?
+          escapeHtml(originalNote.slice(0, NOTE_PREVIEW_LEN)) + '...' : escapeHtml(originalNote);
 
         // 移除事件监听器
         saveBtn.removeEventListener('click', saveEdit);
@@ -943,40 +942,55 @@ function addNoteActions() {
     btn.onclick = handleClick;
   });
   
-  // 删除按钮
+  // 删除按钮：自绘对话框确认（写明删除目标）→ 软删除进回收站 → toast 提供撤销
   document.querySelectorAll('.delete-btn').forEach(btn => {
-    const handleClick = (e) => {
+    const handleClick = async (e) => {
       const noteCard = e.target.closest('.note-card');
       const key = noteCard.dataset.key;
-      
-      if (confirmDelete()) {
-        chrome.storage.local.remove(key, () => {
-          noteCard.remove();
-          // 如果没有备注了，显示空状态
-          if (document.querySelectorAll('.note-card').length === 0) {
-            const notesList = document.getElementById('notesList');
-            if (notesList) {
-              notesList.innerHTML = `
-                <div class="empty-state">
-                  <p>${getMessage('emptyStateManagement')}</p>
-                </div>
-              `;
-            }
+      const domainText = noteCard.querySelector('.note-domain span')?.textContent || '';
+      const usernameText = noteCard.querySelector('.note-username')?.textContent || '';
+
+      const ok = await showConfirmDialog({
+        title: getMessage('dialogDeleteTitle') || '删除备注',
+        message: getMessage('deleteNoteFor', [domainText, usernameText]) ||
+          `确定删除 ${domainText} / ${usernameText} 的备注吗？删除后 7 天内可撤销。`,
+        confirmText: getMessage('deleteBtn') || '删除',
+        danger: true
+      });
+      if (!ok) return;
+
+      try {
+        const entries = await softDeleteNotes([key]);
+        noteCard.remove();
+        if (document.querySelectorAll('.note-card').length === 0) {
+          const notesList = document.getElementById('notesList');
+          if (notesList) {
+            notesList.innerHTML = `
+              <div class="empty-state">
+                <p>${getMessage('emptyStateManagement')}</p>
+              </div>
+            `;
           }
-        });
+        }
+        if (entries.length > 0) {
+          showUndoToast(getMessage('deletedCount', [String(entries.length)]), async () => {
+            await restoreFromTrash(entries);
+            await loadAllNotes();
+          });
+        }
+      } catch (error) {
+        showToast(getMessage('deleteFailure') || '删除失败', 'error');
       }
     };
 
     btn.addEventListener('click', handleClick);
   });
 
-  // 收藏按钮事件处理 - 移到 addNoteActions 中以便每次重新渲染时重新绑定
+  // 收藏按钮事件处理 - 移到 addNoteActions 中以便每次重新渲染时重新绑定。
+  // 星标颜色变化本身就是即时反馈，高频微操作不再弹 toast
   const favoriteBtns = document.querySelectorAll('.favorite-btn');
-  console.log('[Favorite] 找到', favoriteBtns.length, '个收藏按钮');
 
-  favoriteBtns.forEach((btn, index) => {
-    console.log('[Favorite] 绑定按钮', index, 'data-key:', btn.closest('.note-card')?.dataset.key);
-
+  favoriteBtns.forEach((btn) => {
     // 如果已经绑定过，先移除旧的事件监听器
     if (btn._favoriteHandler) {
       btn.removeEventListener('click', btn._favoriteHandler);
@@ -985,64 +999,35 @@ function addNoteActions() {
     // 定义新的事件处理函数
     const handler = async (e) => {
       e.stopPropagation();
-      console.log('[Favorite] 点击星标按钮');
 
       // 保存按钮引用，避免异步操作后 e.currentTarget 失效
       const button = e.currentTarget;
       if (!button) {
-        console.error('[Favorite] 无法获取按钮元素');
-        showToast('操作失败，请重试', 'error');
+        showToast(getMessage('operationFailed') || '操作失败，请重试', 'error');
         return;
       }
 
       const noteCard = button.closest('.note-card');
-      console.log('[Favorite] noteCard:', noteCard);
-
       if (!noteCard) {
-        console.error('[Favorite] 找不到 note-card 元素');
-        showToast('找不到备注卡片', 'error');
+        showToast(getMessage('operationFailed') || '操作失败，请重试', 'error');
         return;
       }
 
       const key = noteCard.dataset.key;
-      console.log('[Favorite] key:', key);
-
       if (!key) {
-        console.error('[Favorite] 备注标识缺失，dataset:', noteCard.dataset);
-        showToast('备注标识缺失', 'error');
+        showToast(getMessage('noteNotFound') || '备注数据不存在', 'error');
         return;
       }
 
       try {
-        console.log('[Favorite] 正在查询存储，key:', key);
-
-        // 先获取所有存储的 key 用于调试
-        const allData = await chrome.storage.local.get(null);
-        console.log('[Favorite] 当前存储的所有 key:', Object.keys(allData));
-        console.log('[Favorite] 目标 key 是否存在:', Object.keys(allData).includes(key));
-
         const result = await chrome.storage.local.get([key]);
-        console.log('[Favorite] 查询结果:', result);
-        console.log('[Favorite] result[key] 的值:', result[key]);
-
         const noteData = result[key];
         if (!noteData) {
-          console.error('[Favorite] 备注数据不存在，key:', key);
-          console.error('[Favorite] 尝试用其他方式查找...');
-
-          // 尝试用 domain + username 组合查找
-          const domainEl = noteCard.querySelector('.note-domain span');
-          const usernameEl = noteCard.querySelector('.note-username');
-          console.log('[Favorite] DOM 中的域名:', domainEl?.textContent);
-          console.log('[Favorite] DOM 中的用户名:', usernameEl?.textContent?.trim());
-
           showToast(getMessage('noteNotFound') || '备注数据不存在', 'error');
           return;
         }
 
-        console.log('[Favorite] 当前收藏状态:', noteData.isFavorite);
         const newFavoriteStatus = !noteData.isFavorite;
-        console.log('[Favorite] 新收藏状态:', newFavoriteStatus);
 
         const updatedData = {
           ...noteData,
@@ -1050,19 +1035,13 @@ function addNoteActions() {
           favoriteTime: newFavoriteStatus ? new Date().toISOString() : null
         };
 
-        console.log('[Favorite] 正在保存数据...');
         await chrome.storage.local.set({ [key]: updatedData });
-        console.log('[Favorite] 保存成功');
 
         // 更新UI
         button.classList.toggle('is-favorite', newFavoriteStatus);
         noteCard.classList.toggle('is-favorite', newFavoriteStatus);
         button.title = newFavoriteStatus ? getMessage('removeFavorite') : getMessage('addFavorite');
-
-        showToast(newFavoriteStatus ? getMessage('addedToFavorites') : getMessage('removedFromFavorites'));
-        console.log('[Favorite] 操作完成');
       } catch (error) {
-        console.error('[Favorite] 错误:', error);
         showToast(getMessage('operationFailed') || '操作失败，请重试', 'error');
       }
     };
@@ -1074,17 +1053,197 @@ function addNoteActions() {
 }
 
 // 添加 Toast 提示函数
-function showToast(message, type = null, duration = 2000) {
+// type 决定左侧状态色条（success/error/info）；错误默认停留 4s，其余 2s
+function showToast(message, type = 'info', duration = null) {
+  // 单例：新 toast 顶掉旧 toast，避免叠加残留误导后续反馈
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+
   const toast = document.createElement('div');
   toast.className = 'toast' + (type ? ' ' + type : '');
   toast.textContent = message;
   document.body.appendChild(toast);
 
+  const stay = duration || (type === 'error' ? 4000 : 2000);
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transform = 'translate(-50%, 100%)';
     setTimeout(() => toast.remove(), 300);
+  }, stay);
+}
+
+// 带撤销按钮的 toast：删除类操作的数据安全网
+function showUndoToast(message, onUndo, duration = 5000) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast info';
+
+  const text = document.createElement('span');
+  text.textContent = message;
+  toast.appendChild(text);
+
+  const undoBtn = document.createElement('button');
+  undoBtn.type = 'button';
+  undoBtn.className = 'toast-undo-btn';
+  undoBtn.textContent = getMessage('undo') || '撤销';
+  toast.appendChild(undoBtn);
+
+  document.body.appendChild(toast);
+
+  let timer = null;
+  undoBtn.addEventListener('click', async () => {
+    if (timer) clearTimeout(timer);
+    toast.remove();
+    try {
+      await onUndo();
+      showToast(getMessage('restored') || '备注已恢复', 'success');
+    } catch (error) {
+      showToast(getMessage('operationFailed') || '操作失败，请重试', 'error');
+    }
+  });
+  timer = setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translate(-50%, 100%)';
+    setTimeout(() => toast.remove(), 300);
   }, duration);
+}
+
+// 自绘确认对话框：替代原生 confirm，与整体视觉语言一致。
+// Esc / 点击遮罩 / 取消 = false；确认按钮 = true
+function showConfirmDialog({ title, message, confirmText, danger = true }) {
+  return new Promise(resolve => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'dialog-backdrop';
+    backdrop.innerHTML = `
+      <div class="confirm-dialog" role="alertdialog" aria-modal="true">
+        <h3 class="dialog-title"></h3>
+        <p class="dialog-message"></p>
+        <div class="dialog-actions">
+          <button type="button" class="dialog-btn cancel"></button>
+          <button type="button" class="dialog-btn confirm${danger ? ' danger' : ''}"></button>
+        </div>
+      </div>
+    `;
+    backdrop.querySelector('.dialog-title').textContent = title || '';
+    backdrop.querySelector('.dialog-message').textContent = message || '';
+    const cancelBtn = backdrop.querySelector('.dialog-btn.cancel');
+    const confirmBtn = backdrop.querySelector('.dialog-btn.confirm');
+    cancelBtn.textContent = getMessage('cancel') || '取消';
+    confirmBtn.textContent = confirmText || getMessage('deleteBtn') || '删除';
+
+    const close = result => {
+      document.removeEventListener('keydown', onKey);
+      backdrop.remove();
+      resolve(result);
+    };
+    const onKey = e => {
+      if (e.key === 'Escape') close(false);
+    };
+    cancelBtn.addEventListener('click', () => close(false));
+    confirmBtn.addEventListener('click', () => close(true));
+    backdrop.addEventListener('click', e => {
+      if (e.target === backdrop) close(false);
+    });
+    document.addEventListener('keydown', onKey);
+
+    document.body.appendChild(backdrop);
+    confirmBtn.focus();
+  });
+}
+
+// ===== 软删除（回收站）=====
+// 删除的备注先移入 trash 键保留 7 天，toast 提供「撤销」；超期条目在管理页启动时清理。
+// 备份切分按 isNoteRecord 口径，trash（数组）自动落入 others、随备份走，无需改导出代码。
+const TRASH_STORAGE_KEY = 'trash';
+const TRASH_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
+// 清理超期条目。无 deletedAt 的异常条目保留，宁可多留不误删
+async function cleanupTrash() {
+  try {
+    const result = await chrome.storage.local.get([TRASH_STORAGE_KEY]);
+    const trash = result[TRASH_STORAGE_KEY];
+    if (!Array.isArray(trash) || trash.length === 0) return;
+    const cutoff = Date.now() - TRASH_RETENTION_MS;
+    const kept = trash.filter(item =>
+      !(item && typeof item.deletedAt === 'string' && new Date(item.deletedAt).getTime() <= cutoff)
+    );
+    if (kept.length === trash.length) return;
+    if (kept.length === 0) {
+      await chrome.storage.local.remove(TRASH_STORAGE_KEY);
+    } else {
+      await chrome.storage.local.set({ [TRASH_STORAGE_KEY]: kept });
+    }
+  } catch (error) {
+    // 回收站清理失败不影响正常功能
+  }
+}
+
+// 软删除：把备注移入回收站并从主存储摘除，返回移入的记录（供撤销用）
+async function softDeleteNotes(keys) {
+  const result = await chrome.storage.local.get(keys);
+  const entries = [];
+  keys.forEach(key => {
+    const note = result[key];
+    if (!note) return;
+    entries.push(Object.assign({}, note, { key, deletedAt: new Date().toISOString() }));
+  });
+  if (entries.length === 0) return [];
+
+  const trashResult = await chrome.storage.local.get([TRASH_STORAGE_KEY]);
+  const trash = Array.isArray(trashResult[TRASH_STORAGE_KEY]) ? trashResult[TRASH_STORAGE_KEY] : [];
+  await chrome.storage.local.set({ [TRASH_STORAGE_KEY]: [...trash, ...entries] });
+  await chrome.storage.local.remove(keys);
+  return entries;
+}
+
+// 撤销：把回收站记录还原回主存储
+async function restoreFromTrash(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return;
+
+  const patch = {};
+  entries.forEach(entry => {
+    const { deletedAt, ...note } = entry;
+    patch[entry.key] = note;
+  });
+  await chrome.storage.local.set(patch);
+
+  const trashResult = await chrome.storage.local.get([TRASH_STORAGE_KEY]);
+  const trash = Array.isArray(trashResult[TRASH_STORAGE_KEY]) ? trashResult[TRASH_STORAGE_KEY] : [];
+  const restoredKeys = new Set(entries.map(e => e.key));
+  const remaining = trash.filter(item => !item || !restoredKeys.has(item.key));
+  if (remaining.length === 0) {
+    await chrome.storage.local.remove(TRASH_STORAGE_KEY);
+  } else {
+    await chrome.storage.local.set({ [TRASH_STORAGE_KEY]: remaining });
+  }
+}
+
+// 首屏骨架：数据加载/迁移期间给占位卡片，避免「闪空状态」被误读成数据丢失
+function showSkeleton() {
+  const notesList = document.getElementById('notesList');
+  if (!notesList) return;
+  notesList.innerHTML = Array.from({ length: 4 }).map(() => `
+    <div class="note-card skeleton" aria-hidden="true">
+      <div class="sk-row"><span class="sk-circle"></span><span class="sk-line sk-w40"></span></div>
+      <span class="sk-line sk-w80"></span>
+      <span class="sk-line sk-w60"></span>
+    </div>
+  `).join('');
+}
+
+// favicon 加载失败时回退为首字母头像（站点自身 /favicon.ico 为唯一来源，
+// 不依赖任何第三方 favicon 服务——google.com/s2 在国内环境必然失败）
+function wireFaviconFallback(container) {
+  container.querySelectorAll('img.domain-icon, img.site-icon').forEach(img => {
+    img.addEventListener('error', () => {
+      const fallback = document.createElement('span');
+      fallback.className = `${img.className} domain-fallback`;
+      fallback.textContent = (img.alt || '?').charAt(0).toUpperCase();
+      img.replaceWith(fallback);
+    });
+  });
 }
 
 // 修改 setupControls 函数
@@ -1124,6 +1283,13 @@ function setupControls() {
     document.body.classList.toggle('select-mode', isSelectMode);
     toggleSelect.textContent = isSelectMode ? getMessage('cancel') : getMessage('select');
     deleteSelected.style.display = isSelectMode ? 'block' : 'none';
+    // 退出选择模式时清掉所有勾选，避免残留状态
+    if (!isSelectMode) {
+      selectAll.checked = false;
+      document.querySelectorAll('.note-card .select-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+      });
+    }
   };
 
   toggleSelect.addEventListener('click', handleToggleSelect);
@@ -1161,41 +1327,7 @@ function setupControls() {
     document.removeEventListener('change', handleCheckboxChange);
   });
 
-  // 添加数据验证函数
-  async function validateKeys(keys) {
-    if (!Array.isArray(keys) || keys.length === 0) {
-      throw new Error(getMessage('invalidDeleteData'));
-    }
-    
-    // 验证所有 key 是否存在
-    const data = await chrome.storage.local.get(keys);
-    const validKeys = keys.filter(key => data[key]);
-    
-    if (validKeys.length === 0) {
-      throw new Error(getMessage('noNotesToDelete'));
-    }
-    
-    return validKeys;
-  }
-
-  // 修改删除处理函数
-  async function deleteNotes(keys) {
-    try {
-      // 验证要删除的 keys
-      const validKeys = await validateKeys(keys);
-      
-      // 执行删除操作
-      await chrome.storage.local.remove(validKeys);
-      
-      // 返回成功删除的数量
-      return validKeys.length;
-    } catch (error) {
-      console.error('删除笔记失败:', error);
-      throw error;
-    }
-  }
-
-  // 更新批量删除事件处理
+  // 更新批量删除事件处理：自绘对话框确认 → 软删除 → 可撤销
   deleteSelected.addEventListener('click', async () => {
     const selectedNotes = document.querySelectorAll('.note-card .select-checkbox:checked');
     if (selectedNotes.length === 0) {
@@ -1203,26 +1335,39 @@ function setupControls() {
       return;
     }
 
-    if (confirmDelete(selectedNotes.length)) {
-      try {
-        const keys = Array.from(selectedNotes).map(checkbox =>
-          checkbox.closest('.note-card').dataset.key
-        );
+    const ok = await showConfirmDialog({
+      title: getMessage('dialogDeleteTitle') || '删除备注',
+      message: getMessage('confirmDeleteMultiple', [selectedNotes.length.toString()]),
+      confirmText: getMessage('deleteBtn') || '删除',
+      danger: true
+    });
+    if (!ok) return;
 
-        const deletedCount = await deleteNotes(keys);
-        showToast(getMessage('importSuccess', [deletedCount.toString()]));
+    try {
+      const keys = Array.from(selectedNotes).map(checkbox =>
+        checkbox.closest('.note-card').dataset.key
+      );
 
-        // 重置选择状态
-        isSelectMode = false;
-        document.body.classList.remove('select-mode');
-        document.getElementById('toggleSelect').textContent = getMessage('select');
-        document.getElementById('deleteSelected').style.display = 'none';
+      const entries = await softDeleteNotes(keys);
 
-        // 重新加载数据
-        await loadAllNotes();
-      } catch (error) {
-        showToast(error.message || getMessage('deleteFailure'));
+      // 退出选择模式并重置勾选状态
+      isSelectMode = false;
+      document.body.classList.remove('select-mode');
+      document.getElementById('toggleSelect').textContent = getMessage('select');
+      document.getElementById('deleteSelected').style.display = 'none';
+      selectAll.checked = false;
+
+      if (entries.length > 0) {
+        showUndoToast(getMessage('deletedCount', [String(entries.length)]), async () => {
+          await restoreFromTrash(entries);
+          await loadAllNotes();
+        });
       }
+
+      // 重新加载数据
+      await loadAllNotes();
+    } catch (error) {
+      showToast(error.message || getMessage('deleteFailure'), 'error');
     }
   });
 }
@@ -1314,24 +1459,6 @@ function formatTime(timeStr) {
 // 添加获取消息的辅助函数
 function getMessage(key, substitutions = null) {
   return chrome.i18n.getMessage(key, substitutions);
-}
-
-// 修改删除确认
-function confirmDelete(count = 1) {
-  const message = count === 1 ? 
-    getMessage('confirmDelete') : 
-    getMessage('confirmDeleteMultiple', [count.toString()]);
-  return confirm(message);
-}
-
-// 修改删除成功提示
-function showDeleteSuccess(count = 1) {
-  showToast(getMessage('successNoteDeleted'));
-}
-
-// 修改更新成功提示
-function showUpdateSuccess() {
-  showToast(getMessage('successNoteUpdated'));
 }
 
 // ==================== 备份信封（导出 / 导入共用的数据切分与校验） ====================
@@ -1543,7 +1670,14 @@ async function importNotes(file) {
         const conflicts = validNotes.filter(note => existingData[note.key]);
 
         if (conflicts.length > 0) {
-          if (!confirm(getMessage('conflictPrompt', [conflicts.length.toString()]))) {
+          // 自绘对话框：确认 = 覆盖，取消 = 跳过重复
+          const overwrite = await showConfirmDialog({
+            title: getMessage('importData') || '导入数据',
+            message: getMessage('conflictPrompt', [conflicts.length.toString()]),
+            confirmText: getMessage('importOverwrite') || '覆盖导入',
+            danger: false
+          });
+          if (!overwrite) {
             // 用户选择跳过重复：只补新增备注，不动任何既有设置
             const newNotes = validNotes.filter(note => !existingData[note.key]);
             if (newNotes.length === 0) {
@@ -1552,16 +1686,16 @@ async function importNotes(file) {
             }
 
             await chrome.storage.local.set(toMap(newNotes));
-            showToast(getMessage('importSuccess', [newNotes.length.toString()]));
+            showToast(getMessage('importSuccess', [newNotes.length.toString()]), 'success');
           } else {
             // 用户选择覆盖：备注与设置类数据一并还原
             await chrome.storage.local.set(Object.assign({}, toMap(validNotes), safeOthers));
-            showToast(getMessage('importSuccess', [validNotes.length.toString()]));
+            showToast(getMessage('importSuccess', [validNotes.length.toString()]), 'success');
           }
         } else {
           // 没有冲突，完整还原
           await chrome.storage.local.set(Object.assign({}, toMap(validNotes), safeOthers));
-          showToast(getMessage('importSuccess', [validNotes.length.toString()]));
+          showToast(getMessage('importSuccess', [validNotes.length.toString()]), 'success');
         }
 
         // 重新加载所有受影响的视图（备注 / 标签 / 筛选器 / 禁用列表 / 全局开关 / 主题）
@@ -1609,12 +1743,13 @@ function setupDataManagement() {
     settingsImportFileInput.click();
   });
 
-  // 文件选择处理
+  // 文件选择处理：按扩展名判断（部分系统对 .json 的 MIME 标注为空或 text/plain，
+  // 用 file.type 判断会误拒；真正的格式错误由 JSON.parse 兜底）
   settingsImportFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.type !== 'application/json') {
-        showToast(getMessage('selectFileType'));
+      if (!file.name.toLowerCase().endsWith('.json')) {
+        showToast(getMessage('selectFileType'), 'error');
         return;
       }
       importNotes(file);
@@ -1622,15 +1757,20 @@ function setupDataManagement() {
     }
   });
 
-  // 清除所有数据按钮点击事件
-  clearAllDataBtn.addEventListener('click', () => {
-    if (confirm(getMessage('confirmClearAllData') || '确定要清除所有数据吗？备注、标签、主题设置、禁用网站列表（以及输入框锚定记录）都将被删除，此操作无法恢复。')) {
-      chrome.storage.local.clear(() => {
-        showToast(getMessage('dataCleared') || '所有数据已清除');
-        // 备注、标签、筛选器、禁用列表、全局开关、主题一并刷新（清空后应回到默认态）
-        refreshViewsAfterImport();
-      });
-    }
+  // 清除所有数据：自绘对话框二次确认，写明后果
+  clearAllDataBtn.addEventListener('click', async () => {
+    const ok = await showConfirmDialog({
+      title: getMessage('clearAllData') || '清除所有数据',
+      message: getMessage('confirmClearAllData') || '确定要清除所有数据吗？备注、标签、主题设置、禁用网站列表（以及输入框锚定记录）都将被删除，此操作无法恢复。',
+      confirmText: getMessage('clear') || '清除',
+      danger: true
+    });
+    if (!ok) return;
+    chrome.storage.local.clear(() => {
+      showToast(getMessage('dataCleared') || '所有数据已清除', 'success');
+      // 备注、标签、筛选器、禁用列表、全局开关、主题一并刷新（清空后应回到默认态）
+      refreshViewsAfterImport();
+    });
   });
 
   // 标记为已初始化
@@ -1739,7 +1879,7 @@ function setTheme(theme) {
 
   // 保存到存储
   chrome.storage.local.set({ theme }, () => {
-    showToast(getThemeLabel(theme) + '主题已应用');
+    showToast(getMessage('themeApplied', [getThemeLabel(theme)]) || `${getThemeLabel(theme)}主题已应用`, 'success');
   });
 }
 
@@ -1756,67 +1896,19 @@ function updateThemeSelector(theme) {
   });
 }
 
-// 获取主题标签
+// 获取主题标签（走 i18n，两语言同步；缺失时回落中文文案）
 function getThemeLabel(theme) {
   const labels = {
-    auto: '跟随系统',
-    light: '浅色',
-    dark: '深色'
+    auto: getMessage('themeAuto') || '跟随系统',
+    light: getMessage('themeLight') || '浅色',
+    dark: getMessage('themeDark') || '深色'
   };
   return labels[theme] || theme;
 }
 
 // ==================== Tag Management ====================
-
-// 设置标签管理功能
-function setupTagManagement() {
-  const newTagInput = document.getElementById('newTagInput');
-  const addTagBtn = document.getElementById('addTagBtn');
-
-  if (!newTagInput || !addTagBtn) return;
-
-  // 添加标签按钮事件
-  addTagBtn.addEventListener('click', () => {
-    addNewTag();
-  });
-
-  // 回车键添加标签
-  newTagInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addNewTag();
-    }
-  });
-
-  // 加载标签列表
-  loadTagsList();
-}
-
-// 添加新标签
-async function addNewTag() {
-  const newTagInput = document.getElementById('newTagInput');
-  const tagName = newTagInput.value.trim();
-
-  if (!tagName) {
-    showToast(getMessage('tagNameEmpty') || '请输入标签名称');
-    return;
-  }
-
-  // 检查标签是否已存在
-  const existingTags = await getAllTags();
-  if (existingTags.includes(tagName)) {
-    showToast(getMessage('tagAlreadyExists') || '标签已存在');
-    return;
-  }
-
-  // 标签只是存储在备注中的字符串，所以我们只需提示添加成功
-  // 实际创建标签需要在编辑备注时添加
-  showToast(getMessage('tagAdded') || '标签添加成功');
-  newTagInput.value = '';
-
-  // 刷新标签列表（虽然新标签还没有被任何备注使用）
-  loadTagsList();
-}
+// 标签依附于备注记录，管理页只做只读展示（含使用计数）与重命名/删除。
+// 独立的「添加标签」表单已被移除：它从不创建任何数据，只会弹出虚假的成功提示。
 
 // 加载标签列表
 async function loadTagsList() {
@@ -1992,11 +2084,15 @@ async function renameTag(oldTagName, newTagName) {
   }
 }
 
-// 删除标签
+// 删除标签：自绘对话框确认，写明影响的备注范围
 async function deleteTag(tagName) {
-  if (!confirm(getMessage('confirmDeleteTag', [tagName]) || `确定要删除标签 "${tagName}" 吗？`)) {
-    return;
-  }
+  const ok = await showConfirmDialog({
+    title: getMessage('deleteTag') || '删除标签',
+    message: getMessage('confirmDeleteTag', [tagName]) || `确定要删除标签 "${tagName}" 吗？`,
+    confirmText: getMessage('deleteBtn') || '删除',
+    danger: true
+  });
+  if (!ok) return;
 
   try {
     // 获取所有包含该标签的备注

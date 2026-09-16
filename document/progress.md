@@ -504,6 +504,59 @@
 - `src/management.js`（+223/−61）：备份信封公共层 + `exportNotes()` / `importNotes()` 重写 + 清空数据文案与刷新范围
 - `_locales/en/messages.json` / `_locales/zh_CN/messages.json`：新增 `backupFromNewerVersion`，更新 `confirmClearAllData`
 
+## 2026-09-16 · 第七轮：交互体验全面修复（P0/P1/P2 清账）
+
+### 功能
+
+基于 `document/ux-audit-2026-09-16.md` 的三端审计（4 P0 / 6 P1 / 8 P2），一次性修复全部主要问题。
+
+**P0（功能性硬伤）**
+1. **标签管理假功能移除**：删除 `addNewTag()` 虚假添加入口与「添加成功」toast；卡片改为「标签来自备注本身」说明 + 已使用标签展示（`tagsFromNotesHint`）
+2. **添加备注流程打通**：`showAddNotePopup` 结构化回传 `{ok, reason}`（无可承载输入框 → `no-password-field`）；弹窗优先挂**账号框**而非密码框（备注归属用户名）；空记录正文改为引导文案 `emptyNoteHint`
+3. **弹窗 ✕ 恢复关闭语义**：✕ 点击关闭（旧实现是 hover 展开禁用菜单且点击无反应）；新增 ⚙ `options-btn` 点击展开禁用菜单，点菜单外任意处关闭——键盘/触屏用户由此可达
+4. **删除有后悔药**：软删除进 `trash` 键（数组，含 `deletedAt`），7 天后管理页启动时清理（`cleanupTrash()`）；toast 带「撤销」按钮（`showUndoToast`，5s）；原生 `confirm` 全部替换为自绘对话框 `showConfirmDialog`（danger 样式，写明删除目标「域名 / 账号」）
+
+**P1**
+- favicon 改用站点自身 `/favicon.ico`（google.com/s2 国内不可达），失败回退首字母头像 `domain-fallback`（`wireFaviconFallback()`）
+- 长备注「更多/收起」原地展开：JS 检测 `scrollHeight > clientHeight` 真实截断后才显示按钮，短备注不打扰
+- 静默失败提示：无备注记录时点标签/收藏给出「请先保存备注内容」
+- toast 单例化（新顶旧）+ 三态语义（success/error/info，error 停 4s）；收藏切换去 toast（星标颜色即反馈）
+- 管理页首屏骨架屏（`showSkeleton()`，4 张 shimmer 占位卡）
+- 主题切换 toast 走 i18n（`themeApplied` + `themeAuto/Light/Dark`）
+
+**P2**
+- 批量删除 toast 文案修正（此前复用「导入成功」→ `deletedCount`「已删除 N 条备注」）
+- 退出选择模式重置全选框；导入冲突对话框化（`importOverwrite`）
+- 删除/清空/导入/标签删除等所有原生 `confirm` 对话框化
+
+**i18n**：新增 20 个 key（en/zh_CN 各 170 条），`npm run check:i18n` 通过
+
+### 错误与解决方案
+
+| 问题 | 根因 | 解决 |
+|---|---|---|
+| `setupControls` 函数被编辑提前闭合，批量删除块成孤儿代码，构建报错 | 多段编辑后括号配对破坏 | 修复闭合位置，构建通过 |
+| toast 一直透明不可见（存量 bug） | M1 重写删掉了 `fadeInOut` 关键帧，但 toast 动画名仍引用它 | 重写 toast 动画（translateX 滑入），顺带单例化 |
+| content 验证脚本卡死：弹窗 ✕ 关闭后重聚焦不出现 | 测试页用 `setContent`（origin=null），`shouldShowNote` 正确拒绝 non-http——**扩展行为正确** | 脚本改本地 http 服务 + `addInitScript` 注入（再次验证「setContent 必须 goto http」经验） |
+| 管理端验证首跑 store 被打平（备注字段铺在根上） | 测试数据写错：`{...NOTE_A}` 少包一层键 | 改 `{ [NOTE_A.key]: NOTE_A }`；非扩展 bug |
+| showToast 不移除旧 toast，多 toast 叠加误导 | 新写 showToast 漏了单例逻辑 | 补 `existing.remove()`（popup/content 原本就有） |
+| m3 回归 gradient 断言失败 | 骨架屏 shimmer 合法使用 linear-gradient | 回归脚本剔除骨架屏段落再验（断言过时，非缺陷） |
+
+### 实测结论
+
+六套验证 **110 断言全绿**：
+
+| 套件 | 断言 | 覆盖 |
+|---|---|---|
+| uxfix-content（新增） | 19 | 结构化回传、账号框锚定、✕/⚙ 语义、菜单外点关闭、全局禁用、更多/收起、空记录引导、静默失败提示、无密码框拒绝 |
+| uxfix-mgmt（新增） | 22 | 假标签入口移除、favicon 本地源+兜底、收藏无 toast、删除对话框（danger+写明目标）、软删除进 trash、撤销恢复、批量删除文案、主题 i18n、清空对话框 |
+| m1-overlay | 30 | 弹窗定位/编辑/标签/暗色无回归 |
+| tag-inline | 7 | 标签行内编辑无回归 |
+| m2-popup | 16 | popup 换皮无回归 |
+| m3-mgmt | 16 | 管理页换皮无回归（断言已适配骨架屏 shimmer） |
+
+`npm run build` + `check:css` + `check:i18n` 全绿。
+
 ## 2026-09-15 · 第六轮：手动锚定记忆（二期主体）
 
 ### 功能

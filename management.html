@@ -96,16 +96,12 @@
             </div>
           </div>
 
-          <!-- 标签管理卡片 -->
+          <!-- 标签管理卡片：标签依附于备注记录，此处只读展示使用统计，
+               添加/移除入口在页面弹窗与备注编辑中——独立添加表单是假功能，已移除 -->
           <div class="settings-card">
             <h2 id="tagManagementTitle" class="card-title">标签管理</h2>
             <div class="card-content">
-              <div class="tag-management-actions">
-                <div class="add-tag-form">
-                  <input type="text" id="newTagInput" placeholder="输入标签名称，如 工作">
-                  <button id="addTagBtn">添加</button>
-                </div>
-              </div>
+              <p class="switch-description" id="tagsFromNotesHint"></p>
               <div class="tags-list" id="tagsList">
                 <!-- 标签列表将通过 JS 动态插入 -->
               </div>

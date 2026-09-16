@@ -1722,3 +1722,181 @@ input:checked + .slider::before {
 .tag-edit-btn.cancel:hover {
   background: var(--glass-border);
 }
+
+/* ========================================
+   自绘确认对话框（替代原生 confirm）
+   ======================================== */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  animation: dialogFadeIn 0.15s ease;
+}
+
+@keyframes dialogFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.confirm-dialog {
+  width: min(420px, calc(100vw - 48px));
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 20px 22px 18px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  animation: dialogPopIn 0.15s ease;
+}
+
+@keyframes dialogPopIn {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.dialog-title {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dialog-message {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.dialog-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid var(--glass-border);
+}
+
+.dialog-btn.cancel {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.dialog-btn.cancel:hover {
+  background: var(--bg-tertiary);
+}
+
+.dialog-btn.confirm {
+  background: var(--primary-600);
+  border-color: var(--primary-600);
+  color: #fff;
+}
+
+.dialog-btn.confirm:hover {
+  background: var(--primary-700);
+}
+
+.dialog-btn.confirm.danger {
+  background: var(--danger-color, #d93025);
+  border-color: var(--danger-color, #d93025);
+}
+
+.dialog-btn.confirm.danger:hover {
+  filter: brightness(0.92);
+}
+
+/* ========================================
+   撤销按钮（toast 内）
+   ======================================== */
+.toast-undo-btn {
+  margin-left: 14px;
+  padding: 4px 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--primary-500, #1a73e8);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.toast-undo-btn:hover {
+  background: rgba(26, 115, 232, 0.10);
+}
+
+/* ========================================
+   首屏骨架屏
+   ======================================== */
+.note-card.skeleton {
+  pointer-events: none;
+}
+
+.note-card.skeleton .sk-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.note-card.skeleton .sk-line,
+.note-card.skeleton .sk-circle {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-tertiary, #f1f3f4) 25%,
+    var(--glass-border, #e8eaed) 50%,
+    var(--bg-tertiary, #f1f3f4) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease infinite;
+}
+
+.note-card.skeleton .sk-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.note-card.skeleton .sk-line {
+  height: 12px;
+}
+
+.note-card.skeleton .sk-w40 { width: 40%; }
+.note-card.skeleton .sk-w60 { width: 60%; }
+.note-card.skeleton .sk-w80 { width: 80%; }
+
+@keyframes skeletonShimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* ========================================
+   favicon 首字母兜底（站点图标加载失败时）
+   ======================================== */
+.domain-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(26, 115, 232, 0.12);
+  color: var(--primary-600, #1a73e8);
+  font-size: 10px;
+  font-weight: 600;
+  box-shadow: none;
+}

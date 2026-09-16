@@ -291,7 +291,7 @@ h1 {
 /* 空状态 */
 .empty-state {
   text-align: center;
-  padding: 36px 20px;
+  padding: 36px 20px 20px;
   color: var(--text-tertiary);
 }
 
@@ -301,8 +301,39 @@ h1 {
   line-height: 1.6;
 }
 
+/* 空状态的「去页面添加备注」入口：描边蓝字，与拾取入口同语言 */
+.add-note-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: calc(100% - 32px);
+  margin: 0 16px 4px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-standard), border-color 0.15s var(--ease-standard);
+}
+
+.add-note-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.add-note-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 /* ========================================
    Toast：实心 + 150ms 淡入，去弹跳
+   type 决定左侧 3px 状态色条（success/error/info），与页面弹窗同语言
    ======================================== */
 .toast {
   position: fixed;
@@ -316,10 +347,33 @@ h1 {
   font-size: 12px;
   font-weight: 500;
   border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   z-index: 1000;
   opacity: 0;
   animation: toastIn 0.15s var(--ease-standard) forwards;
+}
+
+.toast.success {
+  border-left-color: #188038;
+}
+
+.toast.error {
+  border-left-color: var(--danger-color);
+}
+
+.toast.info {
+  border-left-color: var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .toast.success {
+    border-left-color: #81c995;
+  }
+}
+
+body[data-theme="dark"] .toast.success {
+  border-left-color: #81c995;
 }
 
 @keyframes toastIn {

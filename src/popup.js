@@ -205,14 +205,33 @@ async function loadSiteNotes(domain) {
     );
 
     if (notes.length === 0) {
-      // 保持原有的空状态显示
-      showEmptyState(notesList);
-      
-      // 添加新备注按钮事件
+      // 空状态 + 「去页面添加备注」入口（chrome:// 等不可注入页面除外）
+      const canInject = /^https?:\/\//.test(domain);
+      showEmptyState(notesList, canInject);
+
       const addBtn = notesList.querySelector('.add-note-btn');
       if (addBtn) {
-        addBtn.addEventListener('click', () => {
-          chrome.tabs.sendMessage(tab.id, { action: 'showAddNotePopup' });
+        addBtn.addEventListener('click', async () => {
+          addBtn.disabled = true;
+          let response = null;
+          try {
+            response = await chrome.tabs.sendMessage(tab.id, { action: 'showAddNotePopup' }) || null;
+          } catch (error) {
+            response = null;
+          }
+          addBtn.disabled = false;
+
+          if (response && response.ok) {
+            // 弹窗已在页面上打开，popup 让位
+            window.close();
+            return;
+          }
+          if (response && response.reason === 'no-password-field') {
+            showToast(getMessage('noLoginForm'));
+            return;
+          }
+          // content script 未注入或已失效：确实连不上页面
+          showToast(getMessage('pickerConnectFailed'));
         });
       }
     } else {
@@ -300,13 +319,12 @@ function displayNotes(notes) {
 
         await chrome.storage.local.set({ [note.key]: updatedData });
 
-        // 更新UI
+        // 更新UI。星标颜色本身就是即时反馈，高频微操作不再弹 toast
         favoriteBtn.classList.toggle('is-favorite', newFavoriteStatus);
         favoriteBtn.title = newFavoriteStatus ? getMessage('removeFavorite') : getMessage('addFavorite');
-
-        showToast(newFavoriteStatus ? getMessage('addedToFavorites') : getMessage('removedFromFavorites'));
       } catch (error) {
         console.error('Toggle favorite error:', error);
+        showToast(getMessage('operationFailed') || '操作失败，请重试', 'error');
       }
     });
 
@@ -318,6 +336,7 @@ function displayNotes(notes) {
       input.type = 'text';
       input.className = 'note-edit-input';
       input.value = note.note;
+      input.setAttribute('aria-label', getMessage('editNote'));
 
       // 处理保存
       const saveEdit = () => {
@@ -359,12 +378,17 @@ function displayNotes(notes) {
         }
       });
 
-      // 处理失去焦点
+      // 处理失去焦点。200ms 缓冲让点击事件的冒泡先走完；
+      // 若焦点移到了本行的星标按钮，让位给收藏点击并重新聚焦输入框，
+      // 避免保存动作与收藏切换撞在同一时刻
       input.addEventListener('blur', () => {
         setTimeout(() => {
-          if (noteText.isEditing) {
-            saveEdit();
+          if (!noteText.isEditing) return;
+          if (document.activeElement === favoriteBtn) {
+            input.focus();
+            return;
           }
+          saveEdit();
         }, 200);
       });
 
@@ -379,6 +403,17 @@ function displayNotes(notes) {
     };
     noteElement.addEventListener('click', handleEditClick);
 
+    // 键盘可达：行可聚焦，Enter / Space 触发编辑
+    noteElement.tabIndex = 0;
+    noteElement.setAttribute('role', 'button');
+    noteElement.setAttribute('aria-label', `${note.username}：${note.note}`);
+    noteElement.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleEditClick(e);
+      }
+    });
+
     noteElement.appendChild(avatar);
     noteElement.appendChild(main);
     noteElement.appendChild(favoriteBtn);
@@ -386,25 +421,37 @@ function displayNotes(notes) {
   });
 }
 
-// 添加 Toast 提示函数
-function showToast(message) {
+// Toast：type 决定左侧状态色条（success/error/info），错误停留 4s 保证可读
+function showToast(message, type = 'info') {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
   const toast = document.createElement('div');
-  toast.className = 'toast';
+  toast.className = `toast ${type}`;
   toast.textContent = message;
   document.body.appendChild(toast);
-  
+
+  const duration = type === 'error' ? 4000 : 2000;
   setTimeout(() => {
-    toast.remove();
-  }, 2000);
+    toast.classList.add('hiding');
+    setTimeout(() => toast.remove(), 200);
+  }, duration);
 }
 
-// 修改空状态显示
-function showEmptyState(notesList) {
+// 空状态显示。canInject 为 false（chrome:// 等内置页面）时不显示添加入口，
+// 因为那些页面连不上 content script，点了也只会失败
+function showEmptyState(notesList, canInject) {
   notesList.innerHTML = `
     <div class="empty-state">
       <p>${getMessage('emptyStateTitle')}</p>
       <p>${getMessage('emptyStateDesc')}</p>
     </div>
+    ${canInject ? `
+    <button type="button" class="add-note-btn">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
+      </svg>
+      <span>${getMessage('addNoteOnPage')}</span>
+    </button>` : ''}
   `;
 }
 

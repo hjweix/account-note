@@ -602,5 +602,62 @@
   "anchorIndexLabel": {
     "message": "第 $1 个输入框",
     "description": "Fallback description for a bare anchor with no attributes"
+  },
+  "saveNoteFirst": {
+    "message": "请先保存备注内容"
+  },
+  "emptyNoteHint": {
+    "message": "先在下方输入账号，即可为它添加备注"
+  },
+  "noLoginForm": {
+    "message": "本页未找到登录表单，请先聚焦账号输入框"
+  },
+  "noteOptionsTitle": {
+    "message": "备注功能选项"
+  },
+  "deleteNoteFor": {
+    "message": "确定删除 $1 / $2 的备注吗？删除后 7 天内可撤销。"
+  },
+  "deletedCount": {
+    "message": "已删除 $1 条备注"
+  },
+  "undo": {
+    "message": "撤销"
+  },
+  "restored": {
+    "message": "备注已恢复"
+  },
+  "more": {
+    "message": "更多"
+  },
+  "less": {
+    "message": "收起"
+  },
+  "themeApplied": {
+    "message": "已应用 $1 主题"
+  },
+  "themeAuto": {
+    "message": "跟随系统"
+  },
+  "themeLight": {
+    "message": "浅色"
+  },
+  "themeDark": {
+    "message": "深色"
+  },
+  "dialogDeleteTitle": {
+    "message": "删除备注"
+  },
+  "deleteBtn": {
+    "message": "删除"
+  },
+  "addNoteOnPage": {
+    "message": "去页面添加备注"
+  },
+  "tagsFromNotes": {
+    "message": "标签来自备注本身，在页面弹窗或编辑备注时添加。"
+  },
+  "importOverwrite": {
+    "message": "覆盖导入"
   }
 }

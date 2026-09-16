@@ -301,19 +301,18 @@ function showDisableOptions(suggestion, field, closeBtn) {
     disableMenu.style.top = `${closeBtnRect.top - menuRect.height - 5}px`;
   }
 
-  // 添加悬停事件 - 鼠标在菜单上时保持显示
-  let menuHideTimeout = null;
-  disableMenu.addEventListener('mouseenter', () => {
-    if (menuHideTimeout) {
-      clearTimeout(menuHideTimeout);
-      menuHideTimeout = null;
-    }
-  });
-  disableMenu.addEventListener('mouseleave', () => {
-    menuHideTimeout = setTimeout(() => {
-      disableMenu.remove();
-    }, 100);
-  });
+  // 菜单现为「点击打开」：点击菜单外任意处即关闭，不再依赖 hover 保持——
+  // 键盘 / 触屏用户由此可达。所有关闭路径统一走 removeMenu，确保监听器不残留。
+  const removeMenu = () => {
+    document.removeEventListener('click', closeOnOutside, true);
+    disableMenu.remove();
+  };
+  const closeOnOutside = event => {
+    if (disableMenu.contains(event.target)) return;
+    removeMenu();
+  };
+  document.addEventListener('click', closeOnOutside, true);
+  disableMenu._removeMenu = removeMenu;
 
   // 添加选项点击事件
   const options = disableMenu.querySelectorAll('.disable-option');
@@ -385,8 +384,8 @@ function showDisableOptions(suggestion, field, closeBtn) {
           break;
       }
 
-      // 移除备注弹窗和禁用选项菜单
-      disableMenu.remove();
+      // 移除备注弹窗和禁用选项菜单（顺带清掉菜单的外点监听）
+      if (disableMenu._removeMenu) disableMenu._removeMenu(); else disableMenu.remove();
       destroySuggestion(suggestion);
     });
   });
@@ -532,14 +531,19 @@ function getDefaultMessage(key) {
 
 
 // 生成输入框的唯一标识
+// DEBUG 开关默认关闭：key 含用户名，控制台输出会进入宿主页面的 DevTools，
+// 生产构建虽已由 Terser drop_console 剔除，dev 模式下也不该默认外泄
+const DEBUG = false;
 function getFieldKey(field) {
   const domain = window.location.origin;
   const username = field.value.trim(); // 添加 trim 以保持一致性
-  console.log('[getFieldKey] 生成 key:', {
-    domain,
-    username,
-    key: `${domain}_${username}`
-  });
+  if (DEBUG) {
+    console.log('[getFieldKey] 生成 key:', {
+      domain,
+      username,
+      key: `${domain}_${username}`
+    });
+  }
   return `${domain}_${username}`;
 }
 
@@ -1052,9 +1056,12 @@ function getSuggestionFor(field) {
   return el && el.isConnected ? el : null;
 }
 
-// 销毁一个弹窗。元素级监听随元素移除自动失效，只需解绑挂在 document 上的
+// 销毁一个弹窗。元素级监听随元素移除自动失效，只需解绑挂在 document 上的；
+// 若禁用菜单还开着，一并收掉（含其外点监听）
 function destroySuggestion(suggestion) {
   if (!suggestion) return;
+  const openMenu = document.querySelector('.disable-options-menu');
+  if (openMenu && openMenu._removeMenu) openMenu._removeMenu();
   if (suggestion.outsideClickHandler) {
     document.removeEventListener('click', suggestion.outsideClickHandler);
   }
@@ -1109,7 +1116,7 @@ function showAccountNote(field, noteData) {
 
   const favTitle = hasNote
     ? (noteData.isFavorite ? getMessage('removeFavorite') : getMessage('addFavorite'))
-    : getMessage('addFavorite');
+    : getMessage('saveNoteFirst');
 
   suggestion.innerHTML = `
     <div class="note-header">
@@ -1118,13 +1125,17 @@ function showAccountNote(field, noteData) {
       <button type="button" class="note-header-btn favorite-btn ${noteData?.isFavorite ? 'is-favorite' : ''}" ${hasNote ? '' : 'disabled'} title="${escapeHtml(favTitle)}">
         <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/></svg>
       </button>
+      <button type="button" class="note-header-btn options-btn" title="${escapeHtml(getMessage('noteOptionsTitle'))}" aria-haspopup="menu">
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill="currentColor"/></svg>
+      </button>
       <button type="button" class="note-header-btn close-btn" title="${escapeHtml(getMessage('close'))}">
         <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>
       </button>
     </div>
     <div class="note-body">
-      <div class="note-text-readonly ${hasNote ? '' : 'empty-note'}" data-full-text="${escapeHtml(note)}">${hasNote ? escapeHtml(note) : escapeHtml(getMessage('addNote'))}</div>
+      <div class="note-text-readonly ${hasNote ? '' : 'empty-note'}" data-full-text="${escapeHtml(note)}">${hasNote ? escapeHtml(note) : escapeHtml(getMessage('emptyNoteHint'))}</div>
       <textarea class="note-text-edit" hidden rows="3" placeholder="${escapeHtml(getMessage('addNote'))}"></textarea>
+      <button type="button" class="note-more-btn" hidden></button>
     </div>
     <div class="note-tags-row">
       <div class="note-tags-container">
@@ -1175,7 +1186,11 @@ function showAccountNote(field, noteData) {
     try {
       const result = await chrome.storage.local.get([key]);
       const currentData = result[key];
-      if (!currentData) return;
+      if (!currentData) {
+        // 没有备注记录可收藏：说清楚原因，不再静默吞掉点击
+        showToast(getMessage('saveNoteFirst'));
+        return;
+      }
       const next = !currentData.isFavorite;
       await chrome.storage.local.set({
         [key]: {
@@ -1186,7 +1201,7 @@ function showAccountNote(field, noteData) {
       });
       favoriteBtn.classList.toggle('is-favorite', next);
       favoriteBtn.title = next ? getMessage('removeFavorite') : getMessage('addFavorite');
-      showToast(getMessage(next ? 'addedToFavorites' : 'removedFromFavorites'));
+      // 星标颜色变化本身就是即时反馈，高频微操作不弹 toast
     } catch (error) {
       console.error('Toggle favorite error:', error);
     }
@@ -1205,10 +1220,30 @@ function showAccountNote(field, noteData) {
       readonlyText.textContent = text;
       readonlyText.classList.remove('empty-note');
     } else {
-      readonlyText.textContent = getMessage('addNote');
+      readonlyText.textContent = getMessage('emptyNoteHint');
       readonlyText.classList.add('empty-note');
     }
+    updateMoreLink();
   }
+
+  // —— 长备注「更多 / 收起」：JS 检测 line-clamp 是否真实截断后再显示，
+  // 短备注不出按钮，不打扰。展开/收起原地完成，不影响保存语义。
+  const moreBtn = suggestion.querySelector('.note-more-btn');
+  function isTextClamped() {
+    return readonlyText.scrollHeight > readonlyText.clientHeight + 1;
+  }
+  function updateMoreLink() {
+    if (readonlyText.hidden) return;
+    const clamped = isTextClamped();
+    const expanded = readonlyText.classList.contains('expanded');
+    moreBtn.hidden = !(clamped || expanded);
+    moreBtn.textContent = getMessage(expanded ? 'less' : 'more');
+  }
+  moreBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    readonlyText.classList.toggle('expanded');
+    updateMoreLink();
+  });
 
   function saveNote(newNote) {
     const domain = window.location.origin;
@@ -1271,7 +1306,9 @@ function showAccountNote(field, noteData) {
   readonlyText.clickHandler = () => {
     const username = field.value.trim();
     if (!username) {
-      showToast(getMessage('errorEmptyUsername'));
+      // 还没有账号可归属：不报错，把用户引导回宿主页面的输入框
+      showToast(getMessage('emptyNoteHint'));
+      try { field.focus(); } catch (error) { /* 字段可能已被移除 */ }
       return;
     }
     editInput.value = readonlyText.dataset.fullText || '';
@@ -1301,24 +1338,23 @@ function showAccountNote(field, noteData) {
   };
   editInput.addEventListener('blur', editInput.blurHandler);
 
-  // 添加关闭按钮悬停事件
-  let menuHideTimeout = null;
-  closeBtn.addEventListener('mouseenter', () => {
-    // 清除隐藏的定时器
-    if (menuHideTimeout) {
-      clearTimeout(menuHideTimeout);
-      menuHideTimeout = null;
-    }
-    showDisableOptions(suggestion, field, closeBtn);
+  // —— 头部按钮：✕ = 关闭弹窗（通用约定）；⚙ = 点击展开禁用菜单 ——
+  // 旧实现把 ✕ 当禁用菜单入口且只有 hover 触发：语义错位，键盘/触屏用户完全不可达。
+  const optionsBtn = suggestion.querySelector('.options-btn');
+  closeBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    document.querySelector('.disable-options-menu')?.remove();
+    suggestion.classList.remove('show');
+    setTimeout(() => destroySuggestion(suggestion), 200);
   });
-  closeBtn.addEventListener('mouseleave', e => {
-    // 延迟隐藏，给用户时间移动到菜单
-    menuHideTimeout = setTimeout(() => {
-      const disableMenu = document.querySelector('.disable-options-menu');
-      if (disableMenu && !disableMenu.matches(':hover')) {
-        disableMenu.remove();
-      }
-    }, 150);
+  optionsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const existing = document.querySelector('.disable-options-menu');
+    if (existing) {
+      existing.remove();
+      return;
+    }
+    showDisableOptions(suggestion, field, optionsBtn);
   });
 
   // 标签输入功能：＋标签按钮原地切换为行内输入框，不新增行
@@ -1357,7 +1393,12 @@ function showAccountNote(field, noteData) {
         try {
           const result = await chrome.storage.local.get([key]);
           const currentData = result[key];
-          if (!currentData) return;
+          if (!currentData) {
+            // 标签依附于备注记录，记录不存在时给出原因并收回输入框
+            showToast(getMessage('saveNoteFirst'));
+            collapseTagInput();
+            return;
+          }
 
           // 检查标签是否已存在
           if (currentData.tags && currentData.tags.includes(tag)) {
@@ -1449,6 +1490,8 @@ function showAccountNote(field, noteData) {
   });
 
   // 确保弹窗可见（层级由 CSS 统一管理，见 styles.css 的 z-index 阶梯）
+  // 定位测量时元素已有布局，此时即可检测长备注是否被截断
+  updateMoreLink();
   suggestion.style.display = 'block';
   suggestion.style.opacity = '1';
   suggestion.style.visibility = 'visible';
@@ -1473,10 +1516,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return;
   }
   if (request.action === 'showAddNotePopup') {
-    // 找到第一个密码框并显示添加备注弹窗
+    // 优先挂到「账号框」而不是密码框：备注归属用户名，密码框旁的账号框才是语义正确的载体。
+    // 找不到任何可承载的输入框时，结构化回传原因——调用方（popup）据此提示，
+    // 而不是让点击石沉大海。
     const passwordField = document.querySelector('input[type="password"]');
+    let target = null;
     if (passwordField) {
-      showAccountNote(passwordField, null);
+      const context = getFormContext(passwordField);
+      target = (context.closestCandidate && isVisibleInput(context.closestCandidate))
+        ? context.closestCandidate
+        : passwordField;
+    }
+    if (target) {
+      showAccountNote(target, null);
+      sendResponse({ ok: true });
+    } else {
+      sendResponse({ ok: false, reason: 'no-password-field' });
     }
     return;
   }
@@ -1510,8 +1565,11 @@ function showToast(message, type = 'info') {
   toast.innerHTML = `${icon}${message}`;
   getOverlayRoot().appendChild(toast);
 
+  // 错误信息需要更长的阅读时间，成功/提示短暂停留即可
+  const duration = type === 'error' ? 4000 : 2500;
+
   // 添加进入动画
-  toast.style.animation = 'fadeInOut 2.5s ease-in-out';
+  toast.style.animation = `fadeInOut ${duration / 1000}s ease-in-out`;
 
   // 自动移除
   setTimeout(() => {
@@ -1521,7 +1579,7 @@ function showToast(message, type = 'info') {
         toast.remove();
       }
     }, 300);
-  }, 2200);
+  }, duration - 300);
 }
 // 只接管扩展自身抛出的错误。
 // 宿主页面自身的报错一律不处理：不弹 toast、不打印日志、不阻止默认行为，
