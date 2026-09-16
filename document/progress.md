@@ -1,5 +1,43 @@
 # 项目进度日志
 
+## 2026-09-16（站点作用域：备注按「网站」而不是整串 origin 归属）
+
+### 背景
+老板实测 `https://api.choerodon.com.cn/oauth/login` 写的备注，在登录后的 `https://choerodon.com.cn` 看不到；同时又有 `ipsuat/ipsdev/ipsprod.hwwt2.com` 三个平级环境需要各自独立。原口径是**完整 origin 全等**，两个需求同时落空。
+
+### 新的判定规则
+> **上下级域名互通，平级子域隔离。**
+
+- `api.choerodon.com.cn` ↔ `choerodon.com.cn`：同一个网站，备注互通 ✅
+- `ipsuat.hwwt2.com` ↔ `ipsdev.hwwt2.com`：平级兄弟，互不可见 ✅
+- 比较只看 hostname，忽略协议与端口（http→https 跳转、同域不同端口都算同一站）
+- **刻意不依赖公共后缀表（PSL）**：父子关系只需判断域名后缀，`a.com` 与 `evilchoerodon.com.cn` 这类前缀相似项靠前置点号天然排除，无需内嵌、也无需维护后缀清单
+
+### 实现
+1. **新增 `src/site-scope.js`**（三端共用，随各自 bundle 打包）：`hostOf` / `sameHostScope` / `inSameScope` / `normalizeOverrides` / `scopeRank` / `scopeRepresentative` / `collectNoteCandidates`
+2. **零数据迁移**：备注的存储 key 与 `note.domain` 一个字都不动，作用域只在读取时现算。跨子域命中后**沿用那条记录自己的 key** 写入（新增 `getActiveKey()` + `fieldStorageKey` WeakMap），从根上避免「新记录写在主域、旧记录留在子域」的分裂
+3. **`saveNote()` 修复归属漂移**：原实现无条件 `domain: window.location.origin`，在主域改一条子域写的备注会把它「搬」到主域；改为沿用 `result[key].domain`
+4. **content 弹窗**：同作用域并存多条同名记录时只展示最优那条，另加提示行如实说明「另有 N 条」；多候选排序 = 同站 → 上级域 → 下级域，同层优先精确 key，再按更新时间
+5. **锚定同口径**：`refreshAnchors` 合并同作用域各 origin 的锚定（写入仍存精确 origin），本 origin 的记录优先，避免「备注通了、锚定没通」
+6. **禁用同口径**：`disabledSites` 判断改按作用域（在登录域禁用，主站同样静默）；会话禁用键由 origin 改 host，并兼容旧 origin 键
+7. **popup**：列表按作用域过滤；并存多个 host 时每行标注来源子域；「清除本页锚定」按作用域清
+8. **管理页新增「站点范围」卡片**：按 host 去重列出有备注的站点，逐站可选「跟随上下级 / 仅本站」；默认档不落盘，切回默认即删键（不留冗余配置）
+9. **i18n** 两端各 177 条（本轮 +7）
+
+### 验证
+- `netscope-unit` 41 断言（纯逻辑，无浏览器）：hostOf / 上下级 / 平级 / 后缀混淆 / github.io 私有后缀 / 覆盖表清洗 / 层级序 / 候选排序
+- `netscope-integration` 25 断言（真实 dist + 桩注入 + `--host-resolver-rules=MAP *` 拿到真实子域 origin）：choerodon 上下级互通、编辑回写原 key、零迁移、并存提示、hwwt2 三环境隔离、仅本站覆盖、锚定跨上下级、禁用跨上下级、popup 来源标注
+- `netscope-mgmt` 9 断言：卡片渲染 / 去重 / 默认档 / 切换落盘 / 切回删键 / 空状态
+- 存量回归全绿：m1 30、tag-inline 7、m2 16、m3 16、uxfix-content 22、uxfix-mgmt 22；本批合计 **188 断言**
+- check:css / check:i18n 门禁通过
+
+### 顺手修的测试桩缺陷
+`m1-overlay-verify.mjs` 的 chrome 桩把 `get(null)` 当 `Object.keys(null || {})` → 返回空对象，与真实 Chrome 的「全表读」语义不符。改为 `key == null` 时取全部键。
+
+### 已知边界
+- 「并入指定域」（让两个平级子域互相互通）本轮**未做**：新的默认规则已覆盖上下级与平级两类需求，这一档属于锦上添花，留待有实际诉求时再加
+- 上级域页面会聚合其下各子域的记录（带来源标注）。若嫌吵，把该上级域设为「仅本站」即可断开
+
 ## 2026-09-16（UI 原生化重设计 M3：管理页）
 
 ### 完成的功能

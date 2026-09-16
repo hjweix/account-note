@@ -1,4 +1,12 @@
 // 在文件开头添加排序状态
+import {
+  SCOPE_STORAGE_KEY,
+  SCOPE_EXACT,
+  SCOPE_INHERIT,
+  hostOf,
+  normalizeOverrides
+} from './site-scope.js';
+
 let sortConfig = {
   field: 'updateTime',
   direction: 'desc'
@@ -523,6 +531,15 @@ function setupSettingsSidebar() {
   document.getElementById('fieldAnchorsTitle').textContent = getMessage('fieldAnchorsTitle') || '输入框锚定';
   document.getElementById('fieldAnchorsDesc').textContent = getMessage('fieldAnchorsDesc') || '手动指定过的输入框会始终显示备注弹窗。识别不准时，可在扩展弹窗里重新指定。';
 
+  // 站点范围卡片国际化
+  const siteScopeTitle = document.getElementById('siteScopeTitle');
+  if (siteScopeTitle) siteScopeTitle.textContent = getMessage('siteScopeTitle') || '站点范围';
+  const siteScopeDesc = document.getElementById('siteScopeDesc');
+  if (siteScopeDesc) {
+    siteScopeDesc.textContent = getMessage('siteScopeDesc')
+      || '同一网站的上下级入口共用备注（登录域写的，主站也看得到）；平级子域各记各的。想让某个站点彻底分开，把它设为「仅本站」。';
+  }
+
   // 添加网站表单国际化
   const newSiteInput = document.getElementById('newSiteInput');
   newSiteInput.placeholder = getMessage('newSiteInputPlaceholder') || '输入网站域名，如 example.com';
@@ -558,6 +575,9 @@ function setupSettingsSidebar() {
 
   // 输入框锚定记录列表
   loadFieldAnchors();
+
+  // 站点范围设置
+  loadSiteScopes();
   
   // 添加关于功能
   setupAbout();
@@ -778,6 +798,104 @@ function loadFieldAnchors() {
 
       list.appendChild(group);
     });
+  });
+}
+
+// ===== 站点范围（备注按「网站」而不是整串 origin 归属）=====
+//
+// 默认：上下级域名互通（api.x.com ↔ x.com），平级子域隔离（ipsdev ↔ ipsprod 各记各的）。
+// 例外：把某个站点设为「仅本站」即从上下级链上摘掉，只认自己的备注。
+// 备注数据本身不动，改的只是「能看到哪些」，因此随时可改回来、不会丢记录。
+
+function loadSiteScopes() {
+  const list = document.getElementById('siteScopeList');
+  if (!list) return;
+
+  chrome.storage.local.get(null, (result) => {
+    const overrides = normalizeOverrides(result && result[SCOPE_STORAGE_KEY]);
+
+    // 只列出真正有备注的站点，避免出现一堆空壳设置项
+    const hosts = new Set();
+    Object.values(result || {}).forEach(value => {
+      if (value && value.domain && value.note && value.username) {
+        const host = hostOf(value.domain);
+        if (host) hosts.add(host);
+      }
+    });
+
+    if (hosts.size === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <p>${getMessage('noSiteScopes') || '还没有任何站点记录'}</p>
+        </div>
+      `;
+      return;
+    }
+
+    const sorted = Array.from(hosts).sort();
+    list.innerHTML = '';
+
+    sorted.forEach(host => {
+      const row = document.createElement('div');
+      row.className = 'site-scope-item';
+
+      const info = document.createElement('div');
+      info.className = 'site-scope-info';
+
+      const name = document.createElement('span');
+      name.className = 'site-scope-host';
+      name.textContent = host;
+      name.title = host;
+      info.appendChild(name);
+
+      const select = document.createElement('select');
+      select.className = 'site-scope-select';
+      select.dataset.host = host;
+      select.setAttribute('aria-label', host);
+
+      const options = [
+        { value: SCOPE_INHERIT, label: getMessage('siteScopeInherit') || '跟随上下级' },
+        { value: SCOPE_EXACT, label: getMessage('siteScopeExact') || '仅本站' }
+      ];
+      options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        select.appendChild(option);
+      });
+      select.value = overrides[host] ? overrides[host].level : SCOPE_INHERIT;
+
+      select.addEventListener('change', () => {
+        setSiteScope(host, select.value);
+      });
+
+      row.appendChild(info);
+      row.appendChild(select);
+      list.appendChild(row);
+    });
+  });
+}
+
+// 写入站点范围设置。跟随上下级是默认态，直接删键，不留冗余配置
+function setSiteScope(host, level) {
+  chrome.storage.local.get([SCOPE_STORAGE_KEY], (result) => {
+    const all = normalizeOverrides(result[SCOPE_STORAGE_KEY]);
+    if (level === SCOPE_EXACT) {
+      all[host] = { level: SCOPE_EXACT };
+    } else {
+      delete all[host];
+    }
+
+    const done = () => {
+      loadSiteScopes();
+      showToast(getMessage('siteScopeSaved') || '站点范围已更新');
+    };
+
+    if (Object.keys(all).length === 0) {
+      chrome.storage.local.remove(SCOPE_STORAGE_KEY, done);
+    } else {
+      chrome.storage.local.set({ [SCOPE_STORAGE_KEY]: all }, done);
+    }
   });
 }
 
@@ -1552,6 +1670,9 @@ async function refreshViewsAfterImport() {
 
   // 导入的备份可能带来锚定记录（others 会一并还原）
   if (typeof loadFieldAnchors === 'function') loadFieldAnchors();
+
+  // 导入的备份可能带来站点范围设置（同样在 others 里）
+  if (typeof loadSiteScopes === 'function') loadSiteScopes();
 
   // 全局禁用开关
   const globalToggle = document.getElementById('globalDisableToggle');

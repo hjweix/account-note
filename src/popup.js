@@ -1,3 +1,10 @@
+import {
+  SCOPE_STORAGE_KEY,
+  hostOf,
+  inSameScope,
+  normalizeOverrides
+} from './site-scope.js';
+
 document.addEventListener('DOMContentLoaded', async () => {
   // 初始化主题
   initTheme();
@@ -51,15 +58,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ===== 手动锚定 =====
 
-// 读取当前站点的锚定记录并更新提示条
+// 读取当前站点的锚定记录并更新提示条。
+// 与备注同口径：合并同一作用域（上下级域名）的锚定，在登录子域拾取的框主域也认。
 function loadAnchorInfo(domain) {
   if (!domain) return;
-  chrome.storage.local.get(['fieldAnchors'], (result) => {
+  const referenceHost = hostOf(domain);
+  chrome.storage.local.get(['fieldAnchors', SCOPE_STORAGE_KEY], (result) => {
+    const overrides = normalizeOverrides(result[SCOPE_STORAGE_KEY]);
     const all = result.fieldAnchors;
-    const list = all && typeof all === 'object' && Array.isArray(all[domain]) ? all[domain] : [];
-    document.getElementById('anchorPanel').hidden = list.length === 0;
+    let count = 0;
+    if (all && typeof all === 'object') {
+      for (const [groupOrigin, list] of Object.entries(all)) {
+        if (!Array.isArray(list)) continue;
+        if (!inSameScope(hostOf(groupOrigin), referenceHost, overrides)) continue;
+        count += list.length;
+      }
+    }
+    document.getElementById('anchorPanel').hidden = count === 0;
     document.getElementById('anchorCountText').textContent =
-      getMessage('anchoredCount', [String(list.length)]) || `本页已锚定 ${list.length} 个输入框`;
+      getMessage('anchoredCount', [String(count)]) || `本页已锚定 ${count} 个输入框`;
   });
 }
 
@@ -152,11 +169,22 @@ function setupFieldPicker(tab, domain) {
 
   document.getElementById('clearAnchorBtn').addEventListener('click', () => {
     if (!domain) return;
-    chrome.storage.local.get(['fieldAnchors'], (result) => {
+    const referenceHost = hostOf(domain);
+    chrome.storage.local.get(['fieldAnchors', SCOPE_STORAGE_KEY], (result) => {
+      const overrides = normalizeOverrides(result[SCOPE_STORAGE_KEY]);
       const all = result.fieldAnchors;
-      if (!all || typeof all !== 'object' || !all[domain]) return;
-      const next = { ...all };
-      delete next[domain];
+      if (!all || typeof all !== 'object') return;
+      const next = {};
+      let removed = 0;
+      for (const [groupOrigin, list] of Object.entries(all)) {
+        // 「清除本页锚定」把同作用域的记录一并清掉，与提示条上显示的数量对齐
+        if (inSameScope(hostOf(groupOrigin), referenceHost, overrides)) {
+          removed += 1;
+          continue;
+        }
+        next[groupOrigin] = list;
+      }
+      if (removed === 0) return;
 
       const done = () => {
         loadAnchorInfo(domain);
@@ -197,12 +225,24 @@ async function loadSiteNotes(domain) {
   
   // 获取当前标签页，用于后续发送消息
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  
+
+  const referenceHost = hostOf(domain);
+
   chrome.storage.local.get(null, (result) => {
-    // 过滤出当前网站的备注
-    const notes = Object.values(result).filter(note => 
-      note && note.domain === domain && note.username && note.note
-    );
+    const overrides = normalizeOverrides(result && result[SCOPE_STORAGE_KEY]);
+    // 按作用域过滤：同一个网站（域名相同或互为上下级）都能看到自己的备注。
+    // 平级兄弟子域（ipsdev 与 ipsprod）互不可见，各记各的。
+    // 带上 storageKey 与来源 host，供行渲染标注来源、供写操作精确落库。
+    const notes = Object.entries(result)
+      .filter(([key, note]) =>
+        note && note.domain && note.username && note.note &&
+        inSameScope(hostOf(note.domain), referenceHost, overrides)
+      )
+      .map(([key, note]) => ({
+        ...note,
+        storageKey: note.key || key,
+        noteHost: hostOf(note.domain)
+      }));
 
     if (notes.length === 0) {
       // 空状态 + 「去页面添加备注」入口（chrome:// 等不可注入页面除外）
@@ -247,10 +287,15 @@ async function loadSiteNotes(domain) {
 function displayNotes(notes) {
   const notesList = document.getElementById('notesList');
 
+  // 同一作用域下并存多个子域的记录时（如先在本站写过、又在上级域写过），
+  // 每条都标出来源 host，否则用户分不清哪个入口写的
+  const hostSet = new Set(notes.map(note => note.noteHost).filter(Boolean));
+  const showHost = hostSet.size > 1;
+
   notes.forEach(note => {
     const noteElement = document.createElement('div');
     noteElement.className = 'note-item';
-    noteElement.dataset.key = note.key;
+    noteElement.dataset.key = note.storageKey;
 
     // 头像：用户名首字母
     const avatar = document.createElement('div');
@@ -291,6 +336,14 @@ function displayNotes(notes) {
     noteContent.appendChild(noteText);
     noteContent.appendChild(tagsContainer);
 
+    if (showHost && note.noteHost) {
+      const hostChip = document.createElement('span');
+      hostChip.className = 'note-host';
+      hostChip.textContent = note.noteHost;
+      hostChip.title = note.noteHost;
+      noteContent.appendChild(hostChip);
+    }
+
     main.appendChild(username);
     main.appendChild(noteContent);
 
@@ -306,8 +359,8 @@ function displayNotes(notes) {
     favoriteBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       try {
-        const result = await chrome.storage.local.get([note.key]);
-        const noteData = result[note.key];
+        const result = await chrome.storage.local.get([note.storageKey]);
+        const noteData = result[note.storageKey];
         if (!noteData) return;
 
         const newFavoriteStatus = !noteData.isFavorite;
@@ -317,7 +370,7 @@ function displayNotes(notes) {
           favoriteTime: newFavoriteStatus ? new Date().toISOString() : null
         };
 
-        await chrome.storage.local.set({ [note.key]: updatedData });
+        await chrome.storage.local.set({ [note.storageKey]: updatedData });
 
         // 更新UI。星标颜色本身就是即时反馈，高频微操作不再弹 toast
         favoriteBtn.classList.toggle('is-favorite', newFavoriteStatus);
@@ -342,13 +395,13 @@ function displayNotes(notes) {
       const saveEdit = () => {
         const newNote = input.value.trim();
         if (newNote && newNote !== note.note) {
-          chrome.storage.local.get(note.key, (result) => {
-            const noteData = result[note.key];
+          chrome.storage.local.get(note.storageKey, (result) => {
+            const noteData = result[note.storageKey];
             noteData.note = newNote;
             noteData.updateTime = new Date().toISOString();
 
             chrome.storage.local.set({
-              [note.key]: noteData
+              [note.storageKey]: noteData
             }, () => {
               noteText.textContent = newNote;
               noteText.title = newNote;

@@ -349,6 +349,15 @@
   padding: 0 12px 10px;
 }
 
+/* 同作用域下并存多条同名账号备注时的提示行（不喧宾夺主，仅避免「记录丢了」的误判） */
+.account-note-suggestion .note-scope-hint {
+  padding: 0 12px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+  overflow-wrap: anywhere;
+}
+
 .account-note-suggestion .note-tags-container {
   display: flex;
   flex-wrap: wrap;

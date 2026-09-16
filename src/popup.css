@@ -250,6 +250,19 @@ h1 {
   font-weight: 500;
 }
 
+/* 来源子域：仅在同一作用域下并存多个子域记录时出现，用来区分「哪条是哪个入口写的」 */
+.note-item .note-host {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 6px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+}
+
 /* 收藏星标：常驻右侧 */
 .note-item .favorite-btn {
   flex-shrink: 0;

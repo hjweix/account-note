@@ -9,6 +9,7 @@ A browser extension that helps you add and manage notes for your online accounts
 - **Smart Detection**: A scoring-based engine locks onto the account field using keywords, form structure, and input attributes — zero configuration needed
 - **Manual Anchoring**: For fields the engine can't identify (multi-step logins, delayed rendering), pick the field once and it's remembered forever
 - **Quick Notes**: The note card pops up as soon as you focus the account field; click the text to edit, press Enter to save
+- **Scoped to the Site**: Notes follow the *website*, not the exact URL — a note written on the login subdomain shows on the main site, while sibling environments (uat / dev / prod) stay separate by default. Adjustable per site in the management page
 - **Tag Organization**: Add tags inline and filter notes by tag
 - **Favorites**: Star important accounts for quick access
 - **Search & Filter**: Find notes by website, username, tag, or content; sortable

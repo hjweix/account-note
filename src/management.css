@@ -1003,6 +1003,59 @@ input:checked + .slider::before {
   gap: var(--space-2);
 }
 
+/* ========================================
+   站点范围设置（逐站点选择「跟随上下级 / 仅本站」）
+   ======================================== */
+.site-scope-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.site-scope-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+}
+
+.site-scope-item:hover {
+  border-color: var(--primary-500);
+}
+
+.site-scope-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.site-scope-host {
+  font-size: 13px;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.site-scope-select {
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.site-scope-select:focus-visible {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 1px;
+}
+
 .field-anchor-origin {
   font-size: 12px;
   font-weight: 600;

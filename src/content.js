@@ -1,4 +1,12 @@
 // 监听页面加载完成和DOM变化
+import {
+  SCOPE_STORAGE_KEY,
+  hostOf,
+  inSameScope,
+  normalizeOverrides,
+  collectNoteCandidates
+} from './site-scope.js';
+
 // 扩展上下文失效标记
 let isExtensionInvalidated = false;
 // 页面级监听是否已注册（幂等标记，替代原先的 MutationObserver 状态）
@@ -11,6 +19,12 @@ let noteEnabled = false;
 let noteDisabledReason = 'unknown';
 // 锚定记录的存储变更监听是否已注册
 let storageListenerRegistered = false;
+// 站点作用域覆盖表（「仅本站」例外名单）。随每次 storage 读取刷新，
+// 供同步判定路径（禁用检查、锚定匹配）零成本使用。
+let scopeOverrides = {};
+// 字段 → 它当前备注实际存放的 key。跨子域命中时沿用记录自己的 key 更新，
+// 不新建同义记录，从根上避免「新记录写在根域、旧记录留在子域」的分裂。
+const fieldStorageKey = new WeakMap();
 
 // 检查扩展上下文是否有效
 function isExtensionContextValid() {
@@ -62,7 +76,7 @@ function shouldShowNote() {
       return;
     }
     try {
-      chrome.storage.local.get(['disabledGlobal', 'disabledSites'], result => {
+      chrome.storage.local.get(['disabledGlobal', 'disabledSites', SCOPE_STORAGE_KEY], result => {
         if (chrome.runtime.lastError) {
           if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
             isExtensionInvalidated = true;
@@ -73,6 +87,9 @@ function shouldShowNote() {
           return;
         }
 
+        // 顺带刷新作用域覆盖表，供后续同步判定复用
+        scopeOverrides = normalizeOverrides(result[SCOPE_STORAGE_KEY]);
+
         // 检查全局禁用设置
         if (result.disabledGlobal) {
           noteDisabledReason = 'global-disabled';
@@ -80,16 +97,19 @@ function shouldShowNote() {
           return;
         }
 
-        // 检查当前网站是否在禁用列表中
+        // 检查当前网站是否在禁用列表中。
+        // 按作用域比对而非 origin 全等：在登录子域点「在此网站上禁用」，登录后的主域同样静默，
+        // 否则会出现「刚禁完、跳个页又冒出来」的割裂。
         const disabledSites = result.disabledSites || [];
-        if (disabledSites.includes(domain)) {
+        const host = hostOf(domain);
+        if (disabledSites.some(site => inSameScope(hostOf(site), host, scopeOverrides))) {
           noteDisabledReason = 'site-disabled';
           resolve(false);
           return;
         }
 
-        // 检查会话禁用设置
-        const sessionKey = `sessionDisabled_${domain}`;
+        // 检查会话禁用设置（按 host 记，同标签页跨子域跳转后仍然生效）
+        const sessionKey = `sessionDisabled_${host}`;
         if (sessionStorage.getItem(sessionKey)) {
           noteDisabledReason = 'session-disabled';
           resolve(false);
@@ -124,19 +144,25 @@ async function enableCurrentSite() {
   }
 
   // 会话禁用只存在于当前标签页，只有页面侧清得掉
+  const host = hostOf(origin);
   try {
+    sessionStorage.removeItem(`sessionDisabled_${host}`);
+    // 兼容旧版本按 origin 记的会话键
     sessionStorage.removeItem(`sessionDisabled_${origin}`);
   } catch (error) {
     // 存储不可用时忽略，后续判定会反映真实状态
   }
 
   try {
-    const result = await chrome.storage.local.get(['disabledGlobal', 'disabledSites']);
+    const result = await chrome.storage.local.get(['disabledGlobal', 'disabledSites', SCOPE_STORAGE_KEY]);
+    scopeOverrides = normalizeOverrides(result[SCOPE_STORAGE_KEY]);
     const patch = {};
     if (result.disabledGlobal) patch.disabledGlobal = false;
     const sites = Array.isArray(result.disabledSites) ? result.disabledSites : [];
-    if (sites.includes(origin)) {
-      patch.disabledSites = sites.filter(item => item !== origin);
+    // 按作用域摘除：禁用是在子域点的，恢复入口也应该能把它一并清掉
+    const remaining = sites.filter(item => !inSameScope(hostOf(item), host, scopeOverrides));
+    if (remaining.length !== sites.length) {
+      patch.disabledSites = remaining;
     }
     if (Object.keys(patch).length > 0) {
       await chrome.storage.local.set(patch);
@@ -321,8 +347,8 @@ function showDisableOptions(suggestion, field, closeBtn) {
       const action = option.dataset.action;
       switch (action) {
         case 'session':
-          // 仅在当前会话中禁用
-          sessionStorage.setItem(`sessionDisabled_${domain}`, 'true');
+          // 仅在当前会话中禁用（按 host 记，跨子域跳转后仍然生效）
+          sessionStorage.setItem(`sessionDisabled_${hostOf(domain)}`, 'true');
           showToast(getMessage('sessionDisabled') || '已在本次会话中禁用备注功能');
           break;
         case 'site':
@@ -337,7 +363,11 @@ function showDisableOptions(suggestion, field, closeBtn) {
                 return;
               }
               const disabledSites = result.disabledSites || [];
-              if (!disabledSites.includes(domain)) {
+              // 同一作用域内已有禁用记录就不重复追加（存的是原始 origin，避免信息丢失）
+              const alreadyDisabled = disabledSites.some(
+                site => inSameScope(hostOf(site), hostOf(domain), scopeOverrides)
+              );
+              if (!alreadyDisabled) {
                 disabledSites.push(domain);
                 chrome.storage.local.set({
                   disabledSites
@@ -415,14 +445,25 @@ function getFieldInputHandler(field) {
   return handler;
 }
 
-// 读取备注数据并展示（统一的 storage 出口）
+// 当前字段的备注实际存放 key：跨子域命中时是那条记录自己的 key，
+// 未命中时退回「本 origin + 用户名」的新 key。写入路径一律走它。
+function getActiveKey(field) {
+  return fieldStorageKey.get(field) || getFieldKey(field);
+}
+
+// 读取备注数据并展示（统一的 storage 出口）。
+// 查找顺序：本 origin 精确命中 → 同作用域（上级域 / 下级域）同用户名的记录。
+// 命中即记住那条记录自己的 key，后续编辑沿用，绝不新建同义记录。
 function loadNoteForField(field) {
   if (isExtensionInvalidated || !isExtensionContextValid()) {
     isExtensionInvalidated = true;
     return;
   }
+  const username = field.value.trim();
+  const exactKey = getFieldKey(field);
+  const host = hostOf(window.location.origin);
   try {
-    chrome.storage.local.get([getFieldKey(field)], result => {
+    chrome.storage.local.get(null, result => {
       if (chrome.runtime.lastError) {
         if (chrome.runtime.lastError.message?.includes('Extension context invalidated')) {
           isExtensionInvalidated = true;
@@ -430,8 +471,16 @@ function loadNoteForField(field) {
         }
         return;
       }
-      // 无论是否有备注，都使用同一个展示方式
-      showAccountNote(field, result[getFieldKey(field)]);
+      scopeOverrides = normalizeOverrides(result && result[SCOPE_STORAGE_KEY]);
+      const candidates = collectNoteCandidates(result, host, username, scopeOverrides, exactKey);
+      if (candidates.length > 0) {
+        fieldStorageKey.set(field, candidates[0].key);
+      } else {
+        fieldStorageKey.delete(field);
+      }
+      // 同作用域下若还并存同名账号的其他记录（例如先在本站写过、又在上级域写过），
+      // 弹窗只展示最优那条，但要把「还有几条」如实说出来，避免用户以为记录丢了。
+      showAccountNote(field, candidates.length > 0 ? candidates[0].note : null, candidates.length - 1);
     });
   } catch (error) {
     if (error.message?.includes('Extension context invalidated')) {
@@ -767,24 +816,38 @@ function scoreAsAccountField(input) {
 // 匹配按标识强度降级：id > name > placeholder > 可见候选序号（仅限完全无标识的裸框）
 const ANCHOR_STORAGE_KEY = 'fieldAnchors';
 
-// 当前 origin 的锚定记录（同步快照，供事件处理路径零成本查询）
+// 当前作用域的锚定记录（同步快照，供事件处理路径零成本查询）
 let anchorList = [];
 
-// 拉取当前站点的锚定记录到内存快照
+// 拉取当前站点的锚定记录到内存快照。
+// 锚定记录仍按写入时的精确 origin 分组存放，但读取时合并同一作用域：
+// 在登录子域拾取的框，登录后的主域同样认——否则会出现「备注通了、锚定没通」的割裂。
+// 顺序上本 origin 的记录优先，保证同域内的锚定永远压过上级域的。
 function refreshAnchors() {
   const origin = window.location.origin;
   if (!isExtensionContextValid()) return Promise.resolve();
   if (!/^https?:\/\//.test(origin)) return Promise.resolve();
+  const host = hostOf(origin);
   return new Promise(resolve => {
     try {
-      chrome.storage.local.get([ANCHOR_STORAGE_KEY], result => {
+      chrome.storage.local.get([ANCHOR_STORAGE_KEY, SCOPE_STORAGE_KEY], result => {
         if (chrome.runtime.lastError) {
           resolve();
           return;
         }
+        scopeOverrides = normalizeOverrides(result ? result[SCOPE_STORAGE_KEY] : null);
         const all = result ? result[ANCHOR_STORAGE_KEY] : null;
-        const list = all && typeof all === 'object' ? all[origin] : null;
-        anchorList = Array.isArray(list) ? list.slice() : [];
+        const merged = [];
+        if (all && typeof all === 'object') {
+          const local = all[origin];
+          if (Array.isArray(local)) merged.push(...local);
+          for (const [groupOrigin, list] of Object.entries(all)) {
+            if (groupOrigin === origin || !Array.isArray(list)) continue;
+            if (!inSameScope(hostOf(groupOrigin), host, scopeOverrides)) continue;
+            merged.push(...list);
+          }
+        }
+        anchorList = merged;
         resolve();
       });
     } catch (error) {
@@ -795,7 +858,8 @@ function refreshAnchors() {
 
 // 存储变更：其他标签页锚定/取消锚定后，本页立即同步
 function onAnchorStorageChanged(changes, areaName) {
-  if (areaName !== 'local' || !changes || !changes[ANCHOR_STORAGE_KEY]) return;
+  if (areaName !== 'local' || !changes) return;
+  if (!changes[ANCHOR_STORAGE_KEY] && !changes[SCOPE_STORAGE_KEY]) return;
   refreshAnchors();
 }
 
@@ -1075,7 +1139,7 @@ function closeOtherSuggestions(field) {
     destroySuggestion(el);
   });
 }
-function showAccountNote(field, noteData) {
+function showAccountNote(field, noteData, otherCount = 0) {
   const existingSuggestion = getSuggestionFor(field);
 
   // 本字段的弹窗已存在且内容没变：直接复用，不重建，避免闪烁
@@ -1083,7 +1147,7 @@ function showAccountNote(field, noteData) {
     const existingText = existingSuggestion.querySelector('.note-text-readonly');
     const existingNote = existingText ? (existingText.dataset.fullText || '') : '';
     const newNote = noteData ? (noteData.note || '') : '';
-    if (existingNote === newNote) {
+    if (existingNote === newNote && existingSuggestion.dataset.otherCount === String(otherCount)) {
       existingSuggestion.style.display = 'block';
       existingSuggestion.classList.add('show');
       return;
@@ -1144,7 +1208,9 @@ function showAccountNote(field, noteData) {
       <button type="button" class="add-tag-btn" title="${escapeHtml(getMessage('addTag') || '添加标签')}">${escapeHtml(getMessage('addTag') || '+ 标签')}</button>
       <input type="text" class="note-tag-input" hidden placeholder="${escapeHtml(getMessage('addTagPlaceholder') || '添加标签，按回车确认')}" />
     </div>
+    ${otherCount > 0 ? `<div class="note-scope-hint">${escapeHtml(getMessage('otherScopeNotes', [String(otherCount)]))}</div>` : ''}
   `;
+  suggestion.dataset.otherCount = String(otherCount);
 
   // 定位：先挂载（不可见）再实测尺寸，用真实宽高做翻转与夹紧，替代旧的 260/270 魔数。
   // 位置原则：弹窗是辅助角色，字段下方留给浏览器原生密码管理器，我们出现在右侧。
@@ -1182,7 +1248,7 @@ function showAccountNote(field, noteData) {
   const favoriteBtn = suggestion.querySelector('.favorite-btn');
   favoriteBtn.addEventListener('click', async e => {
     e.stopPropagation();
-    const key = getFieldKey(field);
+    const key = getActiveKey(field);
     try {
       const result = await chrome.storage.local.get([key]);
       const currentData = result[key];
@@ -1248,7 +1314,7 @@ function showAccountNote(field, noteData) {
   function saveNote(newNote) {
     const domain = window.location.origin;
     const username = field.value.trim();
-    const key = getFieldKey(field);
+    const key = getActiveKey(field);
 
     chrome.storage.local.get([key], result => {
       if (chrome.runtime.lastError) {
@@ -1263,7 +1329,9 @@ function showAccountNote(field, noteData) {
         note: newNote,
         createTime: result[key]?.createTime || new Date().toISOString(),
         updateTime: new Date().toISOString(),
-        domain: domain,
+        // 沿用原记录归属的域：在上级域改一条子域写的备注，不该把它「搬」到上级域。
+        // 否则记录归属会随编辑地点漂移，用户再设「仅本站」时行为会莫名改变。
+        domain: result[key]?.domain || domain,
         username: username,
         tags: result[key]?.tags || [],
         isFavorite: result[key]?.isFavorite || false,
@@ -1426,7 +1494,7 @@ function showAccountNote(field, noteData) {
           if (e.type === 'blur') collapseTagInput();
           return;
         }
-        const key = getFieldKey(field);
+        const key = getActiveKey(field);
         try {
           const result = await chrome.storage.local.get([key]);
           const currentData = result[key];
@@ -1481,7 +1549,7 @@ function showAccountNote(field, noteData) {
       e.stopPropagation();
       const tagElement = e.target.closest('.note-tag');
       const tag = tagElement.dataset.tag;
-      const key = getFieldKey(field);
+      const key = getActiveKey(field);
       removeTag(key, tag, tagElement);
     });
   });

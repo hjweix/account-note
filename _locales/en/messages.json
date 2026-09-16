@@ -659,5 +659,26 @@
   },
   "importOverwrite": {
     "message": "Overwrite"
+  },
+  "otherScopeNotes": {
+    "message": "$1 more note(s) for the same username exist on this site — see the extension popup"
+  },
+  "siteScopeTitle": {
+    "message": "Site scope"
+  },
+  "siteScopeDesc": {
+    "message": "Sub-domains and their parent share notes (a note written on the login page shows on the main site); sibling sub-domains stay separate. Set a site to \"This site only\" to keep it fully apart."
+  },
+  "siteScopeInherit": {
+    "message": "Follow parent/child"
+  },
+  "siteScopeExact": {
+    "message": "This site only"
+  },
+  "noSiteScopes": {
+    "message": "No sites recorded yet"
+  },
+  "siteScopeSaved": {
+    "message": "Site scope updated"
   }
 }

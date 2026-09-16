@@ -659,5 +659,26 @@
   },
   "importOverwrite": {
     "message": "覆盖导入"
+  },
+  "otherScopeNotes": {
+    "message": "此站点下另有 $1 条同名账号备注，可在扩展弹窗中查看"
+  },
+  "siteScopeTitle": {
+    "message": "站点范围"
+  },
+  "siteScopeDesc": {
+    "message": "同一网站的上下级入口共用备注（登录域写的，主站也看得到）；平级子域各记各的。想让某个站点彻底分开，把它设为「仅本站」。"
+  },
+  "siteScopeInherit": {
+    "message": "跟随上下级"
+  },
+  "siteScopeExact": {
+    "message": "仅本站"
+  },
+  "noSiteScopes": {
+    "message": "还没有任何站点记录"
+  },
+  "siteScopeSaved": {
+    "message": "站点范围已更新"
   }
 }
