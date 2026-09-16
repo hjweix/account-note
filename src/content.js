@@ -1338,8 +1338,9 @@ function showAccountNote(field, noteData) {
   };
   editInput.addEventListener('blur', editInput.blurHandler);
 
-  // —— 头部按钮：✕ = 关闭弹窗（通用约定）；⚙ = 点击展开禁用菜单 ——
-  // 旧实现把 ✕ 当禁用菜单入口且只有 hover 触发：语义错位，键盘/触屏用户完全不可达。
+  // —— 头部按钮：✕ = 关闭弹窗（通用约定）；⚙ = hover 展开禁用菜单，点击亦可开合 ——
+  // 纯点击开合多一步操作，鼠标用户 hover 即达；点击路径保留给键盘/触屏。
+  // hover 关闭走延时：从按钮移到菜单的间隙不闪断。
   const optionsBtn = suggestion.querySelector('.options-btn');
   closeBtn.addEventListener('click', e => {
     e.stopPropagation();
@@ -1347,14 +1348,50 @@ function showAccountNote(field, noteData) {
     suggestion.classList.remove('show');
     setTimeout(() => destroySuggestion(suggestion), 200);
   });
+
+  let menuHoverTimer = null;
+  const cancelMenuHoverTimer = () => {
+    if (menuHoverTimer) {
+      clearTimeout(menuHoverTimer);
+      menuHoverTimer = null;
+    }
+  };
+  const openMenu = () => {
+    cancelMenuHoverTimer();
+    if (document.querySelector('.disable-options-menu')) return;
+    showDisableOptions(suggestion, field, optionsBtn);
+    bindMenuHover(document.querySelector('.disable-options-menu'));
+  };
+  const scheduleMenuClose = () => {
+    cancelMenuHoverTimer();
+    menuHoverTimer = setTimeout(() => {
+      menuHoverTimer = null;
+      document.querySelector('.disable-options-menu')?.remove();
+    }, 250);
+  };
+  const bindMenuHover = menu => {
+    menu.addEventListener('mouseenter', cancelMenuHoverTimer);
+    menu.addEventListener('mouseleave', scheduleMenuClose);
+  };
+
+  optionsBtn.addEventListener('mouseenter', () => {
+    cancelMenuHoverTimer();
+    // 轻微意图延迟：划过头部按钮时不突然弹出
+    menuHoverTimer = setTimeout(() => {
+      menuHoverTimer = null;
+      openMenu();
+    }, 120);
+  });
+  optionsBtn.addEventListener('mouseleave', scheduleMenuClose);
   optionsBtn.addEventListener('click', e => {
     e.stopPropagation();
+    cancelMenuHoverTimer();
     const existing = document.querySelector('.disable-options-menu');
     if (existing) {
       existing.remove();
       return;
     }
-    showDisableOptions(suggestion, field, optionsBtn);
+    openMenu();
   });
 
   // 标签输入功能：＋标签按钮原地切换为行内输入框，不新增行
