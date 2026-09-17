@@ -1,6 +1,6 @@
 # 发布准备清单
 
-> 适用版本：v1.1.0 · 更新：2026-09-16
+> 适用版本：v1.2.0 · 更新：2026-09-17
 
 ## 1. 商店素材准备
 - [ ] 扩展图标 (128x128) — 现有 `icons/icon128.png`（新 logo 方案 A 已定稿，待产出）
@@ -17,7 +17,7 @@
 
 ## 3. 文档准备
 - [x] 用户使用指南 — `document/user-guide.md`
-- [x] 更新日志 — `document/changelog.md`（v1.1.0 已补录）
+- [x] 更新日志 — `document/changelog.md`（v1.2.0 已补录）
 - [x] 支持和反馈方式 — README「支持」章节（GitHub Issues）
 
 ## 4. 测试验证

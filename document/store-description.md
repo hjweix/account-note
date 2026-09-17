@@ -1,6 +1,6 @@
 # Account Note - Chrome 商店上架文案
 
-> 适用版本：v1.1.0 · 最后更新：2026-09-16
+> 适用版本：v1.2.0 · 最后更新：2026-09-17
 
 ## 一、简短描述（商店摘要，上限 132 字符）
 
@@ -86,3 +86,35 @@ Account Note shows your own note right next to the account field when you focus 
 - [ ] 截图 1280×800 至少 3 张：登录页备注卡 / 工具栏弹窗 / 管理页（明暗各一组更佳）
 - [ ] 宣传图 440×280（小图块）
 - [ ] 软删除回收站演示（可作为截图第 4 张，突出差异化）
+
+## 六、老用户升级说明（更新发布时填入商店「新变化 / What's New」）
+
+> 从 v1.1.0 升级到 v1.2.0 时填写。核心目标：①打消数据顾虑 ②主动解释备注可见范围变化，避免被当成 bug 举报。
+
+**中文版：**
+
+> 本次为大版本更新，界面与引擎全面升级：
+>
+> ✅ **你的数据完全安全**：所有备注、标签、收藏、禁用设置原样保留，无需迁移，更新后即可正常使用；旧版导出的备份文件也能直接导入。
+>
+> ⚠️ **备注可见范围有变化**：现在备注跟随「网站」而非精确网址——例如在 `mail.example.com` 写的备注，登录 `example.com` 时也会显示；同级的测试/生产子域仍相互隔离。如需恢复旧行为，可在管理页「站点范围」中将该站切换为「仅本站」。
+>
+> 🆕 新增：评分制识别引擎（含中文识别）、手动锚定、删除进回收站 7 天可撤销、备份信封 v2、Chrome 原生风格界面。
+
+**English:**
+
+> A major update with a redesigned UI and a new detection engine:
+>
+> ✅ **Your data is safe**: all notes, tags, favorites, and settings are preserved as-is — no migration needed. Backups exported from older versions can still be imported.
+>
+> ⚠️ **Notes visibility changed**: notes now belong to a *site* instead of an exact URL — a note written on `mail.example.com` also shows on `example.com`; sibling subdomains (uat / dev / prod) stay isolated. You can switch any site back to "this subdomain only" in Management → Site Scope.
+>
+> 🆕 New: scoring-based field detection (Chinese keywords included), manual anchoring, 7-day undoable trash for deletions, backup envelope v2, native Chrome-style UI.
+
+### 数据兼容性依据（内部参考，不对外）
+
+- 存储 key 格式（`origin_username`）新旧版本逐字节一致，老记录的 key 在新版下依然有效
+- 新版读取不解析 key，按记录内 `domain/username/note` 字段遍历匹配，对老数据格式免疫
+- 管理页 `migrateAllNotes()` 仅补齐缺失字段（tags/isFavorite/key），不删不改已有数据
+- 禁用站点列表、主题设置读写口径一致；备份 `parseBackupPayload()` 兼容旧版裸数组格式
+- 唯一行为变化即站点作用域（见上），已在升级说明中主动告知

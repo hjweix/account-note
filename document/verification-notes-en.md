@@ -3,7 +3,7 @@
 ## Basic Information
 
 - Extension Name: Account Note
-- Version: 1.1.0
+- Version: 1.2.0
 - Purpose: Account Note Management Tool
 
 ## Test Accounts
