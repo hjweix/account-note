@@ -32,7 +32,8 @@ Account Note 会在你聚焦登录页账号框时，自动在旁边显示你为�
 **隐私与安全**
 
 - 不读取、不存储任何密码——备注只与「网站 + 用户名」关联
-- 所有数据仅保存在你的浏览器本地，无服务器、无同步、无上传
+- 所有备注和设置保存在浏览器本地；不会将备注内容上传到服务器，也没有云同步
+- 管理页面会向已保存的网站请求其 `/favicon.ico` 来显示站点图标；请求发往对应网站，不包含备注内容
 - 权限极简：仅需 `storage`（本地存储）与 `activeTab`（当前标签页）
 
 **适用场景**
@@ -61,7 +62,8 @@ Account Note shows your own note right next to the account field when you focus 
 **Privacy & Security**
 
 - Passwords are never read or stored — notes are linked only to "site + username"
-- Everything stays in your browser: no server, no sync, no upload
+- Notes and settings stay in your browser; note content is not uploaded and there is no cloud sync
+- The management page requests `/favicon.ico` from a saved website to show its icon; this sends a normal request to that site without note content
 - Minimal permissions: `storage` (local) and `activeTab` (current tab) only
 
 **Use Cases**
@@ -76,9 +78,11 @@ Account Note shows your own note right next to the account field when you focus 
 |---|---|
 | 类目 | 效率工具（Productivity） |
 | 语言 | 中文（简体）、English |
-| 权限说明 | 仅 `storage` + `activeTab`，无 host 权限申请（content script 走 `<all_urls>` 注入，需在隐私说明中解释） |
+| 权限说明 | manifest 声明 `storage` + `activeTab`；内容脚本匹配 `<all_urls>`，按实际商店权限提示完整披露网页访问范围 |
 | 单一用途说明 | 为用户在网页上输入的账号提供本地文字备注的显示与管理 |
-| 隐私政策 | `document/privacy-policy.md`（上架时作为 URL 填写，建议放到 GitHub Pages 或仓库 Wiki） |
+| 隐私政策（中文） | https://github.com/hjweix/account-note/blob/main/document/privacy-policy.md |
+| Privacy Policy (English) | https://github.com/hjweix/account-note/blob/main/document/privacy-policy.en.md |
+| 源码仓库 | https://github.com/hjweix/account-note |
 
 ## 五、上架素材清单
 

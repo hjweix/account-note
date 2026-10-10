@@ -32,7 +32,7 @@
 1. 下载或克隆此仓库
 2. 打开 Chrome，访问 `chrome://extensions/`
 3. 开启"开发者模式"
-4. 点击"加载已解压的扩展程序"并选择 `dist` 文件夹
+4. 点击"加载已解压的扩展程序"并选择包含 `manifest.json` 的仓库根目录
 
 ## 使用说明
 
@@ -58,10 +58,13 @@
 
 ## 隐私与安全
 
-- 所有数据仅存储在浏览器本地
-- 不会上传任何数据到服务器
+- 备注和设置保存在浏览器本地
+- 备注内容和密码不会发送到服务器
 - 备注仅与网站和用户名关联
 - 不读取、不存储任何密码
+- 管理页面可能会向已保存的网站请求 `/favicon.ico` 以显示站点图标；请求发往对应网站，不包含备注内容
+
+详见[隐私政策](https://github.com/hjweix/account-note/blob/main/document/privacy-policy.md)。
 
 ## 开发说明
 
@@ -83,11 +86,13 @@ npm run check:i18n  # 中英语言包 key 一致性检查
 ## 项目结构
 
 ```
-project/
-├── src/          # 源代码文件
-├── dist/         # 编译后文件（加载扩展指向这里）
+account-note/
+├── manifest.json # 扩展清单；在 Chrome 中加载仓库根目录
+├── src/          # 扩展源代码
+├── dist/         # 构建生成的生产文件
+├── _locales/     # 英文和简体中文语言包
 ├── icons/        # 扩展图标
-└── document/     # 文档文件
+└── document/     # 使用、隐私、商店与发布文档
 ```
 
 ## 参与贡献
@@ -104,4 +109,4 @@ MIT 许可证，详见 [LICENSE](./LICENSE)。
 
 ## 支持
 
-如果您遇到任何问题或有建议，请[提交 Issue](https://github.com/hjweix/account-note/issues)。
+如果您遇到任何问题或有建议，请[提交 Issue](https://github.com/hjweix/account-note/issues)。[开源仓库](https://github.com/hjweix/account-note)和[隐私政策](https://github.com/hjweix/account-note/blob/main/document/privacy-policy.md)也可在线查看。

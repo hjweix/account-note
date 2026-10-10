@@ -7,7 +7,7 @@
 - [ ] 扩展截图 (1280x800) ≥3 张：登录页备注卡 / 工具栏弹窗 / 管理页（明暗各一组更佳）
 - [ ] 宣传图片 (440x280)
 - [x] 详细描述（中英文）— `document/store-description.md`
-- [x] 隐私政策说明 — `document/privacy-policy.md`
+- [x] 隐私政策说明 — [中文版](https://github.com/hjweix/account-note/blob/main/document/privacy-policy.md) / [English](https://github.com/hjweix/account-note/blob/main/document/privacy-policy.en.md)
 
 ## 2. 代码优化
 - [x] 清理所有调试代码（Terser 生产构建剔除 console/debugger；源码内调试日志已治理）
@@ -23,7 +23,7 @@
 ## 4. 测试验证
 - [x] 功能测试（十余套验证 320+ 断言，含识别 / 锚定 / 软删除撤销 / 备份链路 / 管理页分组布局与设置分区）
 - [ ] 兼容性测试（跨浏览器：仅实测 Chrome；Edge 等待验）
-- [x] 安全性检查（本地存储、无网络请求、权限最小化）
+- [x] 安全性说明（备注本地存储；管理页只向对应站点请求 `/favicon.ico`，不上传备注内容）
 - [x] 性能测试（事件委托 + 表单结构缓存，无全量扫描开销）
 
 ## 发布前检查清单

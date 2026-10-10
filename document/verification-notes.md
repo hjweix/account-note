@@ -56,23 +56,22 @@
 
    - 所有数据仅保存在浏览器本地
    - 使用 chrome.storage.local API
-   - 不需要任何网络连接
+   - 管理页会向已保存的网站请求 `/favicon.ico` 显示图标；请求不包含备注内容
 2. 权限说明：
 
    - storage：用于本地数据存储
-   - activeTab：用于识别当前页面的登录表单
-   - tabs：用于在管理页面显示网站信息
+   - activeTab：支持用户在当前标签页发起的扩展操作
+   - 内容脚本在 manifest 声明的 `<all_urls>` 页面匹配上运行，在本地识别账号输入框
 3. 隐私保护：
 
-   - 不收集任何用户数据
-   - 完全独立于登录过程
-   - 不需要任何在线服务
+   - 不会将备注内容、用户名、密码或设置上传到开发者服务器
+   - 备注保存和表单识别在本地完成；站点图标及 GitHub 支持链接需要网络
 
 ## 依赖说明
 
-- 无第三方依赖
+- 无第三方运行时依赖；构建工具见 `package.json` 的 `devDependencies`
 - 无需额外服务或API
-- 完全离线运行
+- 备注功能不使用第三方运行时 API 或云服务；站点图标和 GitHub 支持链接需要网络
 
 ## 测试建议
 
@@ -84,5 +83,6 @@
 
 ## 联系方式
 
-如有任何问题或需要更多信息，请通过以下方式联系：
-[hwacer@outlook.com]
+如有任何问题或需要更多信息，请在 [GitHub 仓库](https://github.com/hjweix/account-note) 提交 Issue。
+
+隐私政策：[在线查看](https://github.com/hjweix/account-note/blob/main/document/privacy-policy.md)。

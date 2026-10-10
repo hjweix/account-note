@@ -11,8 +11,8 @@
     "check:i18n": "node scripts/check-i18n.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "hjweix",
+  "license": "MIT",
   "devDependencies": {
     "@babel/core": "^7.26.0",
     "@babel/preset-env": "^7.26.0",

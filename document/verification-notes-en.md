@@ -56,23 +56,22 @@ No specific test accounts are required. This extension can be tested on any webs
 
    - All data is stored locally in the browser
    - Uses chrome.storage.local API
-   - No network connection required
+   - The management page requests `/favicon.ico` from saved websites for their icons; this request does not include note content
 2. Permission Details:
 
    - storage: For local data storage
-   - activeTab: For identifying login forms on current page
-   - tabs: For displaying website information in management page
+   - activeTab: Supports extension actions initiated on the active tab
+   - The content script runs locally on pages matched by `<all_urls>` in the manifest to identify account fields
 3. Privacy Protection:
 
-   - Does not collect any user data
-   - Does not interfere with login process
-   - No online services required
+   - Does not upload notes, usernames, passwords, or settings to a developer server
+   - Note storage and form detection are local; site icons and GitHub support links require network access
 
 ## Dependency Information
 
-- No third-party dependencies
+- No third-party runtime dependencies; build tools are listed under `devDependencies` in `package.json`
 - No additional services or APIs required
-- Completely offline operation
+- No third-party runtime API or cloud service is used for notes; site icons and GitHub support links require network access
 
 ## Testing Recommendations
 
@@ -84,5 +83,6 @@ No specific test accounts are required. This extension can be tested on any webs
 
 ## Contact Information
 
-For any questions or additional information, please contact:
-[hwacer@outlook.com]
+For questions or suggestions, open an issue in the [GitHub repository](https://github.com/hjweix/account-note).
+
+Privacy Policy: [Read online](https://github.com/hjweix/account-note/blob/main/document/privacy-policy.en.md).
