@@ -100,7 +100,7 @@ project/
 
 ## License
 
-MIT License
+MIT License. See [LICENSE](./LICENSE).
 
 ## Support
 
